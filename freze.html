@@ -332,6 +332,13 @@ table{color:inherit;font-size:inherit}
       <div class="row"><span class="k">Takım</span><span class="v" id="hTool">—</span></div>
       <div class="row"><span class="k">Mil</span><span class="v" id="hSpin">DURUYOR</span></div>
       <div class="row"><span class="k">İlerleme</span><span class="v" id="hFeed">—</span></div>
+      <div class="row"><span class="k">Malzeme</span><span class="v" id="hMat">—</span></div>
+      <div class="row"><span class="k">Kesme hızı Vc</span><span class="v" id="hVc">—</span></div>
+      <div class="row"><span class="k">Mil gücü</span><span class="v" id="hPow">—</span></div>
+      <div class="row"><span class="k">Parça sıcaklığı</span><span class="v" id="hTemp">—</span></div>
+      <div class="row"><span class="k">Takım aşınması</span><span class="v" id="hWear">—</span></div>
+      <div class="row"><span class="k">Son yüzey Ra</span><span class="v" id="hRa">—</span></div>
+      <div class="row"><span class="k">Talaş</span><span class="v" id="hChip">—</span></div>
       <div class="row"><span class="k">Yüzeye mesafe</span><span class="v" id="hGap">—</span></div>
       <div class="row"><span class="k" id="hLoadK">Talaş kalınlığı</span><span class="v" id="hLoad">—</span></div>
       <div class="row"><span class="k">Takım yükü</span><span class="v" id="hStress">kesmiyor</span></div>
@@ -455,6 +462,7 @@ table{color:inherit;font-size:inherit}
     <div class="sec" data-panel="tools">
       <h2><span>Takım</span><span>dolap</span></h2>
       <div class="cur-tool" id="curTool"><span class="tno" id="ctNo">T3</span><span class="tname" id="ctName">—</span><span class="tmeta" id="ctMeta">—</span></div>
+      <div class="stopline" style="grid-template-columns:1fr auto"><span class="dro-note" id="ctWear">VB 0.00 mm</span><button class="btn" id="renewTool">Takımı yenile</button></div>
       <div class="rack" id="rack"></div>
     </div>
 
@@ -469,6 +477,7 @@ table{color:inherit;font-size:inherit}
         <div class="stat"><span>Kaldırılan talaş</span><b id="stVol">0.00 cm³</b></div>
         <div class="stat"><span>Kesme süresi</span><b id="stTime">0:00</b></div>
       </div>
+      <select id="matSel" aria-label="Malzeme"><option value="al">Al 6061 alüminyum</option><option value="s235">S235 (St37) yapı çeliği</option><option value="c45">C45 ıslah çeliği</option><option value="ss304">304 paslanmaz çelik</option><option value="brass">Pirinç (CuZn39Pb3)</option><option value="gg25">GG25 gri döküm</option><option value="pom">Delrin (POM) plastik</option><option value="pa6">PA6 polyamid (naylon)</option></select>
       <div class="row2">
         <button class="btn" id="clearChips">Talaşları süpür</button>
         <button class="btn" id="newPart">Yeni ham parça</button>
@@ -525,15 +534,41 @@ const TOOLS = [
 ];
 const isDrill = T => T.type === 'drill' || T.type === 'spot';
 const TAN59 = Math.tan(59 * Math.PI / 180);
+/* ---- Malzemeler (tornayla aynı tablo) ----
+   kc N/mm² · vcf: önerilen hız çarpanı · ff: önerilen ilerleme çarpanı · rho g/cm³ · c J/gK
+   breakF: talaşın kırılmaya başladığı devir başına ilerleme (matkapta) · chip: talaş karakteri */
+const MATS = {
+  al:    { name:'Al 6061 alüminyum', short:'Al 6061', kc:700, vcf:1.00, ff:1.0, rho:2.70, c:0.90, chip:'curl', breakF:0.12, bue:true, wearK:0.6,
+           raw:[0.50,0.52,0.54], cut:[0.80,0.82,0.85], chipCol:[0.85,0.87,0.90] },
+  s235:  { name:'S235 yapı çeliği (St37)', short:'S235 çelik', kc:1500, vcf:0.75, ff:0.9, rho:7.85, c:0.47, chip:'curl', breakF:0.18, bue:true, wearK:1.2, tint:true,
+           raw:[0.22,0.23,0.25], cut:[0.74,0.75,0.78], chipCol:[0.58,0.58,0.62] },
+  c45:   { name:'C45 ıslah çeliği', short:'C45 çelik', kc:1900, vcf:0.60, ff:0.8, rho:7.85, c:0.47, chip:'curl', breakF:0.15, bue:true, wearK:1.6, tint:true,
+           raw:[0.30,0.31,0.33], cut:[0.74,0.76,0.79], chipCol:[0.55,0.56,0.60] },
+  ss304: { name:'304 paslanmaz çelik', short:'304 paslanmaz', kc:2400, vcf:0.45, ff:0.7, rho:8.0, c:0.50, chip:'string', breakF:0.22, bue:true, wearK:2.4, tint:true,
+           raw:[0.55,0.56,0.57], cut:[0.78,0.79,0.81], chipCol:[0.76,0.77,0.79] },
+  brass: { name:'CuZn39Pb3 pirinç', short:'Pirinç', kc:780, vcf:0.90, ff:1.1, rho:8.5, c:0.38, chip:'flake', breakF:0, bue:false, wearK:0.5,
+           raw:[0.62,0.48,0.24], cut:[0.90,0.76,0.44], chipCol:[0.92,0.76,0.40] },
+  gg25:  { name:'GG25 gri döküm', short:'GG25 döküm', kc:1100, vcf:0.55, ff:1.0, rho:7.2, c:0.46, chip:'dust', breakF:0, bue:false, wearK:1.4, dry:true,
+           raw:[0.26,0.26,0.27], cut:[0.54,0.55,0.56], chipCol:[0.35,0.35,0.36] },
+  pom:   { name:'Delrin (POM) plastik', short:'Delrin', kc:150, vcf:1.00, ff:1.2, rho:1.41, c:1.47, chip:'ribbon', breakF:1, bue:false, wearK:0.2, melt:true, nonMetal:true,
+           raw:[0.90,0.89,0.85], cut:[0.95,0.94,0.91], chipCol:[0.97,0.96,0.93] },
+  pa6:   { name:'PA6 polyamid (naylon)', short:'PA6 naylon', kc:120, vcf:0.90, ff:1.1, rho:1.14, c:1.70, chip:'gum', breakF:9, bue:false, wearK:0.15, melt:true, nonMetal:true,
+           raw:[0.92,0.90,0.82], cut:[0.95,0.94,0.88], chipCol:[0.95,0.93,0.85] },
+};
+let mat = MATS.al;
+// köşe renkleri doğrusal uzayda okunur; tablodaki sRGB değerleri çevrilir
+const toLin = c => c.map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+for (const k in MATS) { MATS[k].rawL = toLin(MATS[k].raw); MATS[k].cutL = toLin(MATS[k].cut); }
+const P_MAX = 2.2;                       // mil motoru (kW), 1000 dev/dk altında sabit tork
 function recRpm(T) {
   if (T.rpm) return T.rpm;
-  return Math.min(4200, Math.round(T.vc * 1000 / (Math.PI * T.d) / 10) * 10);
+  return Math.min(4200, Math.round(T.vc * mat.vcf * 1000 / (Math.PI * T.d) / 10) * 10);
 }
 function recFeed(T) {
   const n = recRpm(T);
   if (T.type === 'edge') return 100;
-  if (isDrill(T)) return Math.round(T.fr * n / 5) * 5;
-  return Math.min(1600, Math.round(T.fz * T.z * n / 5) * 5);
+  if (isDrill(T)) return Math.round(T.fr * mat.ff * n / 5) * 5;
+  return Math.min(1600, Math.round(T.fz * mat.ff * T.z * n / 5) * 5);
 }
 
 /* ---------------- Durum ---------------- */
@@ -545,7 +580,8 @@ const S = {
   zx:0, zy:0, zn:0, pend:{x:0,y:0,z:0}, removed:0, cutTime:0, changing:null,
   peck:{active:false, top:0}, cutting:0, muted:false, spotHint:false,
   wheel:{x:0,y:0,z:0}, wheelMul:0.01, feedNow:0, curFeed:0,
-  win:{vol:0,h:0,v:0,ap:0,idle:0}, lastChip:0, lastStress:0, lastCut:0, lastMove:0, damage:0
+  win:{vol:0,h:0,v:0,ap:0,idle:0}, lastChip:0, lastStress:0, lastCut:0, lastMove:0, damage:0,
+  mat:'al', wear:TOOLS.map(() => 0), temp:0, heatCap:600, power:0, rpmEff:2000, chatNow:0, lastRa:null, lastVc:0, chipForm:null, chipT:0
 };
 S.nose = 70 + TOOLS[S.tool].len;
 S.zn = PH + TOOLS[S.tool].len;
@@ -1183,7 +1219,35 @@ topGeo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
 topGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
 topGeo.setIndex(new THREE.BufferAttribute(idx, 1));
 topGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(PW/2, PH/2, -PD/2), 120);
-const topMesh = new THREE.Mesh(topGeo, new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.34, metalness:0.62 }));
+const MK1 = new Float32Array(nV * 4), MK2 = new Float32Array(nV * 4), TINTC = new Float32Array(nV);
+topGeo.setAttribute('mk1', new THREE.BufferAttribute(MK1, 4));
+topGeo.setAttribute('mk2', new THREE.BufferAttribute(MK2, 4));
+const topMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.34, metalness:0.62 });
+topMat.envMapIntensity = 0.45; M.raw.envMapIntensity = 0.45;   // düz üst yüzey ortamın parlak tavanını yansıtıp beyaza dönmesin
+// Alın ve parmak frezenin taban izleri: takımın arka kenarının çizdiği yaylar, devir başına ilerleme aralığıyla ("balık pulu").
+// Yay ailesi |p − (c0 + s·d)| = R; s = p·d + √(R² − dik²) mutlak koordinatta hesaplanır, böylece komşu hücreler aynı deseni paylaşır.
+topMat.extensions = { derivatives:true };
+topMat.onBeforeCompile = sh => {
+  sh.vertexShader = 'attribute vec4 mk1;\nattribute vec4 mk2;\nvarying vec4 vK1;\nvarying vec4 vK2;\nvarying vec3 vLoc;\nvarying float vUp;\n' +
+    sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vK1 = mk1; vK2 = mk2; vLoc = position; vUp = normal.y;');
+  sh.fragmentShader = 'varying vec4 vK1;\nvarying vec4 vK2;\nvarying vec3 vLoc;\nvarying float vUp;\n' + sh.fragmentShader
+    .replace('#include <color_fragment>', `#include <color_fragment>
+      float mkAmp = 0.0, mkG = 0.0, rip = 0.0;
+      if (vK2.x > 0.001 && vUp > 0.6) {
+        vec2 p = vec2(vLoc.x, -vLoc.z), q = p - vK1.xy;
+        float al = dot(q, vK1.zw); float dp = length(q - al * vK1.zw);
+        float sArc = dot(p, vK1.zw) + sqrt(max(vK2.y * vK2.y - dp * dp, 0.0));
+        float ph = sArc / vK2.x;
+        float aa = clamp(1.0 - fwidth(ph) * 1.2, 0.0, 1.0);
+        mkG = 0.5 + 0.5 * cos(6.2831853 * ph);
+        mkAmp = clamp(vK2.z / 3.0, 0.08, 0.9) * aa;
+      }
+      if (vK2.w > 0.01) rip = vK2.w * (0.5 + 0.5 * sin(dot(vec2(vLoc.x, -vLoc.z), vec2(1.7, 1.1)) * 2.4));
+      diffuseColor.rgb *= 1.0 - 0.16 * mkAmp * mkG - 0.12 * rip;`)
+    .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+      roughnessFactor = clamp(roughnessFactor + mkAmp * (mkG - 0.35) * 0.45 + rip * 0.3, 0.05, 1.0);`);
+};
+const topMesh = new THREE.Mesh(topGeo, topMat);
 topMesh.castShadow = true; topMesh.receiveShadow = true; table.add(topMesh);
 
 function makeWall(n, place, normal) {
@@ -1230,13 +1294,18 @@ function flushMesh() {
     let r, g, b;
     if (INSP[k]) { r = 0.92; g = 0.2; b = 0.16; }
     else if (h <= 0.05) { r = 0.05; g = 0.06; b = 0.065; }
-    else if (CUT[k]) { const s = 0.8 + 0.035 * Math.sin(i * 0.9 + j * 0.35); r = s; g = s + 0.02; b = s + 0.045; }
-    else { r = 0.5; g = 0.52; b = 0.54; }
+    else if (CUT[k]) {
+      const f = (1 - Math.min(0.2, MK2[k*4+2] * 0.03)) * (1 + 0.03 * Math.sin(i * 0.9 + j * 0.35)), c = mat.cutL, tn = TINTC[k];
+      r = c[0] * f; g = c[1] * f; b = c[2] * f;
+      if (tn > 0.02) { const tc = tn < 0.5 ? [0.70, 0.45, 0.12] : [0.07, 0.15, 0.55], kk = Math.min(0.6, tn); r += (tc[0] - r) * kk; g += (tc[1] - g) * kk; b += (tc[2] - b) * kk; }
+    }
+    else { r = mat.rawL[0]; g = mat.rawL[1]; b = mat.rawL[2]; }
     col[k*3] = r; col[k*3+1] = g; col[k*3+2] = b;
   }
   topGeo.attributes.position.needsUpdate = true;
   topGeo.attributes.normal.needsUpdate = true;
   topGeo.attributes.color.needsUpdate = true;
+  topGeo.attributes.mk1.needsUpdate = true; topGeo.attributes.mk2.needsUpdate = true;
   for (const w of walls) {
     const p = w.w.g.attributes.position.array;
     for (let k = 0; k < w.w.n; k++) p[k*3+1] = w.at(k);
@@ -1245,21 +1314,27 @@ function flushMesh() {
   isDirty = false;
 }
 
-/* ---- Talaşlar: düz pul, kıvrık ve matkap spirali ---- */
-const MAXCHIP = 900;
-const chipMat = new THREE.MeshStandardMaterial({ color:0xd5dbe0, roughness:0.25, metalness:0.85, side:THREE.DoubleSide });
+/* ---- Talaşlar: biçim koşula bağlı (virgül, ince kıvrık, kalın kıvrık, matkap spirali, şerit, toz) ---- */
+const MAXCHIP = 1400;
+const chipMat = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.28, metalness:0.8, side:THREE.DoubleSide });
+class FnCurve extends THREE.Curve { constructor(f) { super(); this.f = f; } getPoint(t, o = new THREE.Vector3()) { return this.f(t, o); } }
+const tube = (f, seg, r, rs = 5) => new THREE.TubeGeometry(new FnCurve(f), seg, r, rs, false);
+const helix = (turns, rad, pitch) => (t, o) => o.set(Math.cos(TAU * turns * t) * rad, (t - 0.5) * turns * pitch, Math.sin(TAU * turns * t) * rad);
+const CK = { C:0, SPRING:1, FLAKE:2, SIX:3, SNARL:4, RIBBON:5 };
 const chipMeshes = [
-  new THREE.InstancedMesh(new THREE.BoxGeometry(1.9, 0.28, 0.8), chipMat, MAXCHIP),
-  new THREE.InstancedMesh(new THREE.TorusGeometry(1.1, 0.22, 4, 10, Math.PI * 1.5), chipMat, MAXCHIP),
-  new THREE.InstancedMesh(new THREE.TorusGeometry(1.6, 0.26, 4, 18, Math.PI * 3.2), chipMat, MAXCHIP),
-];
+  new THREE.TorusGeometry(1.2, 0.24, 4, 12, Math.PI * 1.4),
+  tube(helix(5, 2.0, 1.8), 80, 0.2),
+  new THREE.BoxGeometry(1.6, 0.28, 0.7),
+  tube(helix(1.4, 1.4, 0.9), 26, 0.26),
+  tube((t, o) => { const a = TAU * t; return o.set(5 * Math.sin(a * 1.3) + 2.2 * Math.cos(a * 7), 4 * Math.cos(a * 0.9) + 2.2 * Math.sin(a * 7.3), 3.8 * Math.sin(a * 2.1) + 2.2 * Math.cos(a * 6.7 + 1)); }, 220, 0.16),
+  tube(helix(3, 2.8, 3.2), 70, 0.38, 4).scale(1, 1, 0.55),
+].map(g => new THREE.InstancedMesh(g, chipMat, MAXCHIP));
 chipMeshes.forEach(m => { m.castShadow = false; m.frustumCulled = false; table.add(m); });
-const chipMesh = chipMeshes[0];
 const chips = []; let chipHead = 0;
-const dummy = new THREE.Object3D();
+const dummy = new THREE.Object3D(), _cc = new THREE.Color(), chipDirty = new Set();
 for (let i = 0; i < MAXCHIP; i++) {
   chips.push({ p:new THREE.Vector3(), v:new THREE.Vector3(), r:new THREE.Euler(), rv:new THREE.Vector3(), alive:false, rest:false, kind:0, s:1 });
-  dummy.scale.set(0, 0, 0); dummy.updateMatrix(); chipMeshes.forEach(m => m.setMatrixAt(i, dummy.matrix));
+  dummy.scale.set(0, 0, 0); dummy.updateMatrix(); chipMeshes.forEach(m => { m.setMatrixAt(i, dummy.matrix); m.setColorAt(i, new THREE.Color(0xd5dbe0)); });
 }
 
 /* ---- Parçacık sistemi (GPU noktaları): kıvılcım, duman, buğu, kırık parçalar, kutlama ---- */
@@ -1291,6 +1366,7 @@ const PK = {
   smoke:  { c0:[0.5, 0.5, 0.5, 0.32], c1:[0.72, 0.72, 0.74, 0], s0:4,   s1:26,  g:-70,   drag:1.6, bounce:0 },
   mist:   { c0:[0.86, 0.94, 1, 0.26], c1:[0.92, 0.96, 1, 0],    s0:3,   s1:15,  g:-25,   drag:2.6, bounce:0 },
   debris: { c0:[0.3, 0.32, 0.35, 1],  c1:[0.3, 0.32, 0.35, 0],  s0:2.4, s1:2.0, g:2600,  drag:0.3, bounce:0.3 },
+  dust:   { c0:[0.22, 0.22, 0.23, 0.95], c1:[0.3, 0.3, 0.3, 0.4], s0:1.3, s1:1.1, g:2200, drag:1.0, bounce:0.05 },
 };
 const psAdd = makePS(1500, true, false);
 const psAlpha = makePS(1200, false, true);
@@ -1360,29 +1436,31 @@ function groundAt(x, y) {
   if (x >= -400 && x <= 550 && y >= -60 && y <= 160) return -60;
   return -9999;
 }
-function spawnChip(x, y, z, r, drill) {
+// fly: 1 kırık talaş takımdan savrulur; küçük değer uzun talaş takımdan yavaşça akar
+function spawnChip(x, y, z, r, drill, kind, s, col, fly = 1) {
   const c = chips[chipHead];
-  if (c.alive) { dummy.scale.set(0, 0, 0); dummy.updateMatrix(); chipMeshes[c.kind].setMatrixAt(chipHead, dummy.matrix); }
+  if (col) { _cc.setRGB(col[0], col[1], col[2]).convertSRGBToLinear(); chipMeshes[kind].setColorAt(chipHead, _cc); chipMeshes[kind].instanceColor.needsUpdate = true; }
+  if (c.alive) { dummy.scale.set(0, 0, 0); dummy.updateMatrix(); chipMeshes[c.kind].setMatrixAt(chipHead, dummy.matrix); chipDirty.add(c.kind); }
   chipHead = (chipHead + 1) % MAXCHIP;
   const a = Math.random() * Math.PI * 2;
+  c.kind = kind; c.s = s;
   if (drill) {
     // Matkap talaşı: kanallardan yukarı sarmal çıkar, deliğin etrafına dökülür
-    c.kind = 2; c.s = 0.6 + r * 0.12;
     c.p.set(x + Math.cos(a) * r * 0.7, z, -(y + Math.sin(a) * r * 0.7));
-    const sp = 80 + Math.random() * 140;
-    c.v.set(Math.cos(a) * sp - Math.sin(a) * 120, 260 + Math.random() * 240, -(Math.sin(a) * sp + Math.cos(a) * 120));
+    const sp = (80 + Math.random() * 140) * fly;
+    c.v.set(Math.cos(a) * sp - Math.sin(a) * 120 * fly, (260 + Math.random() * 240) * (0.4 + 0.6 * fly), -(Math.sin(a) * sp + Math.cos(a) * 120 * fly));
   } else {
-    c.kind = Math.random() < 0.45 ? 1 : 0; c.s = 0.8 + Math.random() * 0.5;
+    // Freze talaşı: ağız kesişinden teğet yönde savrulur
     c.p.set(x + Math.cos(a) * r, z, -(y + Math.sin(a) * r));
-    const sp = 250 + Math.random() * 450;
-    c.v.set(-Math.sin(a) * sp, 120 + Math.random() * 260, -Math.cos(a) * sp);
+    const sp = (250 + Math.random() * 450) * fly;
+    c.v.set(-Math.sin(a) * sp, (120 + Math.random() * 260) * (0.5 + 0.5 * fly), -Math.cos(a) * sp);
   }
   c.r.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
-  c.rv.set((Math.random() - .5) * 30, (Math.random() - .5) * 30, (Math.random() - .5) * 30);
+  const rs = 30 * (0.3 + 0.7 * fly);
+  c.rv.set((Math.random() - .5) * rs, (Math.random() - .5) * rs, (Math.random() - .5) * rs);
   c.alive = true; c.rest = false;
 }
 function updateChips(dt) {
-  let changed = false;
   for (let i = 0; i < MAXCHIP; i++) {
     const c = chips[i];
     if (!c.alive || c.rest) continue;
@@ -1390,19 +1468,67 @@ function updateChips(dt) {
     c.p.addScaledVector(c.v, dt);
     c.r.x += c.rv.x * dt; c.r.y += c.rv.y * dt; c.r.z += c.rv.z * dt;
     const g = groundAt(c.p.x, -c.p.z);
-    if (c.p.y <= g + 0.2) {
+    if (c.p.y <= g + 0.2 * c.s) {
       if (g < -9000) { c.alive = false; dummy.scale.set(0,0,0); }
-      else { c.p.y = g + 0.2; c.rest = true; c.r.x = 0; c.r.z = 0; }
+      else { c.p.y = g + 0.2 * c.s; c.rest = true; c.r.x = 0; c.r.z = 0; }
     }
     if (c.alive) { dummy.position.copy(c.p); dummy.rotation.copy(c.r); dummy.scale.setScalar(c.s); }
-    dummy.updateMatrix(); chipMeshes[c.kind].setMatrixAt(i, dummy.matrix); changed = true;
+    dummy.updateMatrix(); chipMeshes[c.kind].setMatrixAt(i, dummy.matrix); chipDirty.add(c.kind);
   }
-  if (changed) chipMeshes.forEach(m => m.instanceMatrix.needsUpdate = true);
+  for (const k of chipDirty) chipMeshes[k].instanceMatrix.needsUpdate = true;
+  chipDirty.clear();
 }
 function clearChips() {
   dummy.scale.set(0, 0, 0); dummy.updateMatrix();
   for (let i = 0; i < MAXCHIP; i++) { chips[i].alive = false; chipMeshes.forEach(m => m.setMatrixAt(i, dummy.matrix)); }
   chipMeshes.forEach(m => m.instanceMatrix.needsUpdate = true);
+}
+// Talaş biçimi: frezede her ağız ayrı talaş keser (kesintili kesme), bu yüzden talaş genelde kısa virgüldür.
+// Diş başına ilerleme çok küçükse ince ve uzun kıvrık (sürtme), çok büyükse kalın, sıcak kıvrık çıkar.
+// Matkapta sürekli kesme olduğundan talaş tornadaki gibi devir başına ilerlemeye göre kırılır.
+const CHIP_TXT = { comma:'kısa virgül ✓', thin:'ince uzun kıvrık ⚠', thick:'kalın sıcak kıvrık', spring:'uzun matkap spirali', six:'kırık matkap talaşı ✓',
+  flake:'iğne ve pul ✓', dust:'toz ve kırıntı', ribbon:'sürekli şerit', gum:'uzun tel (naylon) ⚠', torn:'yırtık, düzensiz' };
+function chipForm(T, chip, fRev, vr) {
+  if (mat.chip === 'dust') return 'dust';
+  if (mat.chip === 'flake') return 'flake';
+  if (mat.chip === 'gum') return 'gum';
+  if (isDrill(T)) {
+    if (mat.chip === 'ribbon') return 'ribbon';
+    return fRev < mat.breakF * (S.coolant && !mat.dry ? 0.9 : 1) ? 'spring' : 'six';
+  }
+  if (mat.chip === 'ribbon') return chip < 0.8 ? 'ribbon' : 'comma';
+  if (mat.bue && vr < 0.3) return 'torn';                       // çok düşük hızda yığıntı ağız
+  const lo = mat.chip === 'string' ? 0.6 : 0.45;               // paslanmaz ince talaşta daha kolay sürter
+  if (chip < lo) return 'thin';
+  if (chip > 1.8) return 'thick';
+  return 'comma';
+}
+function chipsFor(nx, ny, z, T, vol, form, heat) {
+  const r = T.d / 2, drill = isDrill(T);
+  if (form === 'dust') {
+    const n = Math.min(5, vol / 1.2);
+    for (let k = 0; k < n; k++) { const a = Math.random() * TAU; emit('dust', Math.cos(a) * r, z, Math.sin(a) * r, -Math.sin(a) * 160, 40 + Math.random() * 120, Math.cos(a) * 160, 1.4); }
+    if (Math.random() < 0.3) spawnChip(nx, ny, z, r, drill, CK.FLAKE, 0.4 + Math.random() * 0.3, mat.chipCol);
+    return;
+  }
+  const tcol = () => heat < 0.9 ? mat.chipCol : heat < 1.2 ? [0.80, 0.62, 0.32] : heat < 1.5 ? [0.55, 0.36, 0.55] : [0.30, 0.40, 0.80];
+  const long = form === 'thin' || form === 'spring' || form === 'ribbon' || form === 'gum';
+  const n = Math.min(long ? 2 : 4, Math.floor(vol / (long ? 3 : 1.2) + Math.random()));
+  for (let k = 0; k < n; k++) {
+    let kind, s, fly = 1;
+    switch (form) {
+      case 'gum': kind = CK.SNARL; s = 1.1 + Math.random() * 0.6; fly = 0.3; break;
+      case 'ribbon': kind = CK.RIBBON; s = 0.9 + Math.random() * 0.5; fly = 0.35; break;
+      case 'spring': kind = CK.SPRING; s = 0.6 + r * 0.1; fly = 0.5; break;
+      case 'six': kind = Math.random() < 0.6 ? CK.SIX : CK.C; s = 0.7 + r * 0.06; break;
+      case 'thin': kind = Math.random() < 0.5 ? CK.SPRING : CK.SIX; s = 0.6 + Math.random() * 0.3; fly = 0.5; break;
+      case 'thick': kind = CK.C; s = 1.3 + Math.random() * 0.4; fly = 1.2; break;
+      case 'flake': kind = Math.random() < 0.6 ? CK.FLAKE : CK.C; s = 0.5 + Math.random() * 0.3; fly = 1.25; break;
+      case 'torn': kind = Math.random() < 0.6 ? CK.FLAKE : CK.C; s = 0.8 + Math.random() * 0.4; break;
+      default: kind = Math.random() < 0.6 ? CK.C : CK.SIX; s = 1.0 + Math.random() * 0.4; fly = 1.1;
+    }
+    spawnChip(nx, ny, z, r, drill, kind, s, tcol(), fly);
+  }
 }
 
 /* ---- Takım görselleri ---- */
@@ -1522,8 +1648,8 @@ function interfere(x, y, tip, T) {
   }
   return out;
 }
-function applyCut(x, y, tip, T) {
-  const r = T.d / 2, r2 = r * r;
+function applyCut(x, y, tip, T, mx = 1, my = 0, mk = null) {
+  const r = T.d / 2, r2 = r * r, ml = Math.hypot(mx, my) || 1;
   const i0 = Math.max(0, Math.floor((x - r) / C)), i1 = Math.min(NX - 1, Math.ceil((x + r) / C));
   const j0 = Math.max(0, Math.floor((y - r) / C)), j1 = Math.min(NY - 1, Math.ceil((y + r) / C));
   let vol = 0;
@@ -1533,7 +1659,10 @@ function applyCut(x, y, tip, T) {
       const dx = i * C - x, d2 = dx * dx + dy * dy;
       if (d2 > r2) continue;
       const k = j * NX + i, p = Math.max(0, profile(T, Math.sqrt(d2), tip));
-      if (H[k] > p) { vol += H[k] - p; H[k] = p; CUT[k] = S.tool + 1; }
+      if (H[k] > p) {
+        vol += H[k] - p; H[k] = p; CUT[k] = S.tool + 1;
+        if (mk) { const o = k * 4; MK1[o] = x; MK1[o+1] = y; MK1[o+2] = mx / ml; MK1[o+3] = my / ml; MK2[o] = mk.f; MK2[o+1] = r; MK2[o+2] = mk.ra; MK2[o+3] = mk.chat; TINTC[k] = mk.tint; }
+      }
     }
   }
   if (vol > 0) markDirty(i0, i1, j0, j1);
@@ -1559,9 +1688,9 @@ function stopMotion() { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.
 
 function loadRatio(T, feedNow, horiz) {
   if (T.type === 'edge' || S.rpm <= 0) return 0;
-  if (isDrill(T)) return (feedNow / S.rpm) / T.fr;
+  if (isDrill(T)) return (feedNow / S.rpm) / (T.fr * mat.ff);
   const fz = feedNow / (S.rpm * T.z);
-  return horiz ? fz / T.fz : fz / (T.fz * 0.5);
+  return horiz ? fz / (T.fz * mat.ff) : fz / (T.fz * mat.ff * 0.5);
 }
 
 // Bir alt adımı dener; geçerliyse true döner
@@ -1621,13 +1750,29 @@ function tryStep(nx, ny, nn, dtStep) {
       }
     }
   }
-  const vol = applyCut(nx, ny, tip, T);
+  // kesme hızı oranı, devir başına ilerleme ve yüzey: Ra ≈ fz²/(8·0.8) (aşınma, yığıntı ağız, tırlama, erime bozar)
+  const rpmE = Math.max(1, S.rpmEff || S.rpm), vcNow = Math.PI * T.d * rpmE / 1000, vr = vcNow / Math.max(1, T.vc * mat.vcf);
+  const fRev = S.feedNow / rpmE, fz = fRev / Math.max(1, T.z), wr = S.wear[S.tool];
+  const melt = mat.melt && !S.coolant && vr > 1.2;
+  let ra = (T.type === 'face' ? 0.6 : 1) * Math.max(0.2, fz * fz / 0.0064 + 0.25) * (1 + wr * 6) * (mat.bue && vr < 0.3 ? 2.5 : 1) * (1 + S.chatNow * 4) * (melt ? 3 : 1);
+  const heatIdx = mat.tint ? vr * (0.55 + fz / 0.06) * (S.coolant ? 0.45 : 1) : 0;
+  const mk = (T.type === 'face' || T.type === 'end') ? { f:Math.max(0.02, fRev), ra, chat:S.chatNow, tint:clamp((heatIdx - 0.9) * 1.2, 0, 1) } : { f:0, ra, chat:S.chatNow, tint:0 };
+  const vol = applyCut(nx, ny, tip, T, nx - S.px, ny - S.py, mk);
   if (vol <= 0) return true;
+  if (melt) { S.rubT = performance.now(); warnOnce('melt', `${mat.short} eriyor: kesme hızı bu plastik için fazla. Devri düşürün ya da soğutma sıvısı açın.`); }
   const stepLen = Math.hypot(horiz, Math.abs(nn - S.nose));
   const tCut = stepLen / Math.max(1, S.feedNow / 60);   // bu alt adımın gerçek kesme süresi (s)
   S.removed += vol; S.cutTime += tCut; S.cutAcc += vol; S.lastCut = performance.now();
-  const nch = Math.min(4, Math.floor(vol / 1.2 + Math.random()));
-  for (let k = 0; k < nch; k++) spawnChip(nx, ny, isDrill(T) ? it.maxH + 0.5 : Math.max(tip, 0) + 1 + Math.random() * 2, T.d / 2, isDrill(T));
+  S.lastVc = vcNow; S.lastRa = ra;
+  // takım aşınması (Taylor): kesme hızının ~2.5. kuvvetiyle hızlanır; ısı: kesme enerjisinin bir kısmı parçaya geçer
+  S.wear[S.tool] += 0.3 / 900 * mat.wearK * Math.pow(Math.max(vr, 0.2), 2.5) * tCut * (S.coolant && !mat.dry ? 0.8 : 1) * (isDrill(T) ? 1.5 : 1);
+  if (S.wear[S.tool] > 0.3) warnOnce('wear', `Takım köreldi (VB ${S.wear[S.tool].toFixed(2)} mm): yüzey bozuluyor, yük artıyor. Takım panelinden takımı yenileyin.`, 'warn', 8000);
+  S.temp += vol * mat.kc * 1e-3 * 0.45 / Math.max(50, S.heatCap);
+  const form = chipForm(T, S.lastChip || 1, fRev, vr);
+  S.chipForm = form; S.chipT = performance.now();
+  if (form === 'thin') warnOnce('chipThin', 'Talaş çok ince ve uzun: takım sürtüyor. Diş başına ilerlemeyi artırın (önerilen ilerlemeyi uygulayın).', 'warn', 9000);
+  if (form === 'gum') warnOnce('chipGum', 'Naylon talaşı kırılmaz ve takıma dolanır; arada durup talaşı alın.', 'warn', 9000);
+  chipsFor(nx, ny, isDrill(T) ? it.maxH + 0.5 : Math.max(tip, 0) + 1 + Math.random() * 2, T, vol, form, heatIdx);
 
   // Yük değerlendirmesi: ızgara hücrelerinin anlık sıçramalarını önlemek için ~0.5 mm'lik pencerede ortalanır
   const W = S.win;
@@ -1635,8 +1780,20 @@ function tryStep(nx, ny, nn, dtStep) {
   if (W.h + W.v < 1) return true;
   const L = evalLoad(T, W);
   S.win = { vol:0, h:0, v:0, ap:0, idle:0 };
-  S.lastChip = L.chip; S.lastStress = L.stress;
   const winT = (W.h + W.v) / Math.max(1, S.feedNow / 60);
+  const kcR = Math.pow(mat.kc / 700, 0.25) * (1 + S.wear[S.tool] * 1.5);
+  L.stress *= kcR;
+  S.lastChip = L.chip; S.lastStress = L.stress;
+  // mil gücü: kc · talaş debisi; 1000 dev/dk altında sabit tork, aşırı yükte devir düşer, çok aşırıda mil boğulur
+  const Pc = mat.kc * (W.vol / Math.max(1e-3, winT)) * 1e-6, Pav = P_MAX * Math.min(1, S.rpm / 1000);
+  S.power = Pc / Pav;
+  if (S.power > 1.5) { crash(`Mil boğuldu: kesme ${Pc.toFixed(1)} kW istiyor, motor bu devirde ${Pav.toFixed(1)} kW verebiliyor. Talaş derinliğini ya da ilerlemeyi azaltın.`); return false; }
+  if (S.power > 1) warnOnce('power', `Mil zorlanıyor: güç %${Math.round(S.power * 100)}, devir düşüyor.`, 'warn', 5000);
+  // tırlama: uzun ve ince takımda (çıkıntı/çap) ve ağır kesmede başlar; devre göre loblar halinde kararlı bölgeler var
+  const LD = T.stick / T.d, lobe = 0.45 + 0.55 * Math.pow(Math.abs(Math.sin(Math.PI * ((S.rpm / 730) % 1))), 0.6);
+  const ci = isDrill(T) ? 0 : L.stress * Math.pow(LD / 3, 1.6) * Math.pow(mat.kc / 700, 0.3) / (2.2 * lobe);
+  S.chatNow = clamp(ci - 1, 0, 1);
+  if (S.chatNow > 0.05) warnOnce('chat', `Tırlama: takım ${LD.toFixed(1)}×D çıkıntılı ve yük ağır. Kesme derinliğini azaltın ya da devri biraz değiştirin; yüzeyde dalga oluşuyor.`, 'warn', 6000);
   if (L.chip > 8 || L.stress > 6) {
     crash(`Ani aşırı yük: talaş kalınlığı ${L.chip.toFixed(1)}×, takım yükü ${L.stress.toFixed(1)}×. Takım kırıldı. Devri artırın, ilerlemeyi ya da kesme derinliğini düşürün.`);
     return false;
@@ -1651,11 +1808,11 @@ function tryStep(nx, ny, nn, dtStep) {
 
 // chip: talaş kalınlığı / önerilen (radyal incelme dahil), eng: kavrama alanı / nominal, stress: takıma binen yük oranı
 function evalLoad(T, W) {
-  const D = T.d, r = D / 2, n = Math.max(1, S.rpm);
+  const D = T.d, r = D / 2, n = Math.max(1, S.rpmEff || S.rpm);
   if (isDrill(T)) {
     const A = W.vol / (W.h + W.v);
     const eng = clamp(A / (Math.PI * r * r), 0, 1);
-    const chip = (S.feedNow / n) / T.fr;
+    const chip = (S.feedNow / n) / (T.fr * mat.ff);
     return { chip, eng, stress: chip * (0.25 + 0.75 * eng) };
   }
   const path = W.h + W.v;
@@ -1664,14 +1821,14 @@ function evalLoad(T, W) {
     const ap = clamp(W.ap, 0.05, T.flute);
     const x = clamp(A / ap / D, 0, 1);                      // ae / D
     const thin = x >= 0.5 ? 1 : 2 * Math.sqrt(x * (1 - x)); // radyal talaş incelmesi
-    const chip = (S.feedNow / (n * T.z)) * thin / T.fz;
+    const chip = (S.feedNow / (n * T.z)) * thin / (T.fz * mat.ff);
     const nom = T.type === 'face' ? D * 0.7 * 3 : D * D * 0.5;  // referans: D/2 derinlikte kanal
     const eng = A / nom;
     return { chip, eng, stress: chip * Math.min(eng, 3) };
   }
   const A = W.vol / path;
   const eng = clamp(A / (Math.PI * r * r), 0, 1);
-  const chip = (S.feedNow / (n * T.z)) / (T.fz * 0.5);
+  const chip = (S.feedNow / (n * T.z)) / (T.fz * mat.ff * 0.5);
   return { chip, eng, stress: chip * eng };
 }
 
@@ -1812,6 +1969,15 @@ function spindle(on) {
 }
 $('rpm').addEventListener('input', e => setRpm(+e.target.value));
 $('feed').addEventListener('input', e => setFeed(+e.target.value));
+$('matSel').addEventListener('change', e => {
+  if (S.job && !S.job.done) { e.target.value = S.mat; log('İş sürerken malzeme değiştirilemez; iş emri malzemeyi belirler.', 'warn'); return; }
+  resetPart(e.target.value);
+  log(`Malzeme: ${mat.name}. Yeni ham parça bağlandı; önerilen hız ve ilerleme buna göre değişti.`, 'ok');
+});
+$('renewTool').addEventListener('click', () => {
+  if (S.spindle) { log('Takımı yenilemek için önce mili durdurun.', 'warn'); return; }
+  S.wear[S.tool] = 0; log(`${tool().no} yenilendi: keskin takım takıldı.`, 'ok');
+});
 $('applyRec').addEventListener('click', () => { const T = tool(); setRpm(recRpm(T)); setFeed(recFeed(T)); log(`Önerilen kesme değerleri uygulandı: ${recRpm(T)} dev/dk, ${recFeed(T)} mm/dk.`); });
 $('coolant').addEventListener('click', toggleCoolant);
 function toggleCoolant() { S.coolant = !S.coolant; $('coolant').textContent = 'Soğutma sıvısı: ' + (S.coolant ? 'AÇIK' : 'KAPALI'); $('coolant').classList.toggle('on', S.coolant); }
@@ -1948,12 +2114,23 @@ $('newPart').addEventListener('click', () => {
   const now = performance.now();
   if (now - newPartArm > 3000) { newPartArm = now; $('newPart').textContent = 'Onayla: parçayı değiştir'; setTimeout(() => $('newPart').textContent = 'Yeni ham parça', 3000); return; }
   newPartArm = 0; $('newPart').textContent = 'Yeni ham parça';
-  resetPart();
-  log('Mengeneye yeni ham parça bağlandı (150×100×40 mm).', 'ok');
+  resetPart($('matSel').value);
+  log(`Mengeneye yeni ham parça bağlandı: ${mat.name}, 150×100×40 mm.`, 'ok');
 });
-function resetPart() {
+function setMaterial(k) {
+  mat = MATS[k] || MATS.al; S.mat = MATS[k] ? k : 'al';
+  $('matSel').value = S.mat;
+  $('brandMat').textContent = $('tbMat').textContent = `${mat.short} · 150×100×40`;
+  topMat.metalness = mat.nonMetal ? 0 : 0.62; topMat.roughness = mat.nonMetal ? 0.5 : 0.34;
+  M.raw.color.setRGB(...mat.rawL); M.raw.metalness = mat.nonMetal ? 0 : 0.55; M.raw.roughness = mat.nonMetal ? 0.6 : 0.55;
+  chipMat.metalness = mat.nonMetal ? 0 : 0.8; chipMat.roughness = mat.nonMetal ? 0.55 : 0.28;
+  updateRec();
+}
+function resetPart(k) {
   if (S.spindle) spindle(false);
-  H.fill(PH); CUT.fill(0); INSP.fill(0); markDirty(0, NX - 1, 0, NY - 1);
+  if (k) setMaterial(k);
+  H.fill(PH); CUT.fill(0); INSP.fill(0); MK1.fill(0); MK2.fill(0); TINTC.fill(0); markDirty(0, NX - 1, 0, NY - 1);
+  S.temp = 0; S.power = 0; S.chatNow = 0; S.lastRa = null;
   S.removed = 0; S.cutTime = 0; S.peck.active = false; clearChips();
   stopMotion();
   if (tipZ() < PH + 5) S.nose = PH + 20 + tool().len;
@@ -2219,7 +2396,7 @@ function selectJob(i) {
 function startJob() {
   initAudio();
   if (selJob < 0) return;
-  resetPart();
+  resetPart(JOBS[selJob].mat || 'al');
   S.job = { idx:selJob, J:JOBS[selJob], time:0, done:false, stats:{ breaks:0, load:0, spot:0, peck:0, rub:0 } };
   $('report').hidden = true;
   $('jobStart').textContent = 'Yeniden başla';
@@ -2321,6 +2498,10 @@ function frame(now) {
   const dt = Math.min(0.05, S.realDt); last = now;
   motion(dt);
   if (now - S.lastCut > 500) S.damage = Math.max(0, S.damage - 0.06 * dt);   // kesme bitince takım soğur
+  if (!S.spindle || now - S.lastCut > 400) { S.power = 0; S.chatNow = 0; }
+  S.rpmEff += ((S.spindle ? S.rpm * (S.power > 1 ? 1 - (S.power - 1) * 0.5 : 1) : S.rpm) - S.rpmEff) * Math.min(1, dt * 3);
+  S.temp = Math.max(0, S.temp - S.temp * dt * S.sim * (S.coolant && !mat.dry ? 1 / 25 : 1 / 400));
+  if ((S.hcT = (S.hcT || 0) + dt) > 0.5) { S.hcT = 0; let v = 0; for (let k = 0; k < nV; k++) v += H[k]; S.heatCap = v * C * C * mat.rho * 1e-3 * mat.c; }
   S.cutting += ((S.cutAcc > 0 ? Math.min(0.3, 0.05 + S.cutAcc / (dt * 4000)) : 0) - S.cutting) * Math.min(1, dt * 12);
   flushMesh();
   updateChips(dt);
@@ -2363,6 +2544,17 @@ function frame(now) {
 }
 function updateHud(T, tip) {
   updateLamps();
+  { const vc = Math.PI * T.d * (S.spindle ? S.rpmEff : S.rpm) / 1000, rec = T.vc * mat.vcf;
+    $('hMat').textContent = mat.short;
+    $('hVc').textContent = T.type === 'edge' ? '—' : `${Math.round(vc)} m/dk (öneri ${Math.round(rec)})`;
+    $('hVc').style.color = T.type !== 'edge' && (vc > rec * 1.5 || vc < rec * 0.4) ? 'var(--warn)' : '';
+    $('hPow').textContent = S.power > 0.02 ? `%${Math.round(S.power * 100)}` : '—';
+    $('hPow').style.color = S.power > 1 ? 'var(--bad)' : S.power > 0.8 ? 'var(--warn)' : '';
+    $('hTemp').textContent = (20 + S.temp).toFixed(1) + ' °C';
+    $('hWear').textContent = `VB ${S.wear[S.tool].toFixed(2)} mm`; $('ctWear').textContent = `${T.no} aşınma VB ${S.wear[S.tool].toFixed(2)} mm`;
+    $('hWear').style.color = S.wear[S.tool] > 0.3 ? 'var(--warn)' : '';
+    $('hRa').textContent = S.lastRa === null ? '—' : S.lastRa.toFixed(2) + ' µm';
+    $('hChip').textContent = S.chipForm && performance.now() - S.chipT < 800 ? CHIP_TXT[S.chipForm] : '—'; }
   const d = droVals();
   $('droX').textContent = fmt(d.x); $('droY').textContent = fmt(d.y); $('droZ').textContent = fmt(d.z);
   $('hwxv').textContent = fmt(d.x); $('hwyv').textContent = fmt(d.y); $('hwzv').textContent = fmt(d.z);
@@ -2629,7 +2821,7 @@ $('alarmFix').addEventListener('click', () => {
 $('estopBtn').addEventListener('click', estop);
 function updateLamps() {
   PM.lamp('spindle', S.spindle ? 'on' : '');
-  PM.lamp('tools', S.broken ? 'bad' : S.changing ? 'warn' : '');
+  PM.lamp('tools', S.broken ? 'bad' : S.changing ? 'warn' : S.wear[S.tool] > 0.3 ? 'warn' : '');
   PM.lamp('hud', S.alarm ? 'bad' : S.lastStress > 1.2 || S.damage > 0.5 ? 'warn' : S.spindle ? 'on' : '');
   PM.lamp('jobs', S.job && !S.job.done ? 'on' : '');
 }
@@ -2723,7 +2915,7 @@ setRpm(4200); setFeed(500);
 renderJobs(); selectJob(-1);
 log('Tezgâh hazır. T3 Ø10 parmak freze takılı. Sıfır noktası parçanın sol-ön-üst köşesinde.', 'ok');
 for (const id of ['alarm', 'report', 'toast']) document.body.append($(id));
-$('tbMat').textContent = $('brandMat').textContent;
+setMaterial('al');
 PM.init();
 requestAnimationFrame(frame);
 })();
