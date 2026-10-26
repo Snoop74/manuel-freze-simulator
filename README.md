@@ -12,6 +12,8 @@ Tarayıcıda çalışan, 3B bir manuel freze tezgâhı simülasyonu ve oyunu. Te
 - **Eksen kontrolü:** klavye, ekrandaki kol düğmeleri ve sürüklenebilir el çarkları (×1 / ×10 / ×100). Dijital okuma (DRO) ile sıfırlama ve değer atama.
 - **Takım dolabı:** alın frezesi, parmak frezeler, küresel freze, punta matkabı, matkaplar ve kenar bulucu. Takım boyları farklı; değişimden sonra Z yeniden sıfırlanır.
 - **Kesme fiziği:** radyal talaş incelmesi ve kavrama alanıyla hesaplanan talaş kalınlığı ve takım yükü; aşırı yükte birikerek dolan zorlanma göstergesi; matkapta gagalama ve punta kontrolü; mengene/altlık/tutucu çarpışmaları.
+- **Tezgâh ve atölye:** konsollu dik freze (Bridgeport tarzı): kolon, taret ve koç, kayış muhafazası ve motorlu kafa, kapstan kovan kolu, krom el çarkları, T kanallı tabla, otomatik ilerleme ünitesi, mengene. Döküm boya dokusu, mat renkler, ortam yansıması; atölyede güvenlik çizgileri, paspas, takım dolabı, tezgâh, çalışma lambası. Mil lambası, start düğmesi ve acil stop mantarı durumla oynar.
+- **Ses:** kayıt dosyası yok, fizikten üretiliyor: devirle değişen motor uğultusu ve dişli vınlaması, kesmede ağız vuruşu (devir × ağız sayısı), kavrama sesleri, metal çınlamalı kırılma, atölye yankısı.
 - **Soğutma sıvısı:** eklemli hortum, damlacık jeti, sıçrama ve buğu.
 - **Partiküller:** kıvrık ve sarmal talaşlar, kırılma kıvılcımları, ısınma dumanı, kutlama efektleri.
 - **İş emirleri:** teknik resim ve delik tablosu, parça üstünde markalama çizgileri, teslimde ölçüm (muayene) ve 1–3 yıldızla puanlama. Beş görevlik kampanya.

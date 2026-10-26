@@ -403,11 +403,13 @@ table{color:inherit;font-size:inherit}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
 <script>
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const TAU = Math.PI * 2;
 
 /* ---------------- Ham parça (yükseklik haritası) ---------------- */
 const C = 0.5, PW = 150, PD = 100, PH = 40;
@@ -485,46 +487,152 @@ function warnOnce(key, msg, lvl = 'warn', gap = 3000) {
   if (S.job && !S.job.done && key in S.job.stats) S.job.stats[key]++;
 }
 
-/* ---------------- Ses ---------------- */
-let ac = null, spOsc, spGain, cutGain, cutFilter, master;
+/* ---------------- Ses ----------------
+   Saf ton yerine süzülmüş gürültü: motor uğultusu, dişli vınlaması, kesme hışırtısı, tırlama ötmesi.
+   Tek seferlik sesler (kırılma, kavrama) metalin uyumsuz kısmi tonlarıyla çalınır;
+   hepsi küçük bir atölye yankısından geçer. */
+let ac = null, master, bus, SN = null, lastSnd = 0;
+// Malzemeye göre kesme sesi: bant merkezi, keskinlik, gövde gürültüsü, çıtırtı
+const SND = {
+  al:    { f:2300, q:0.9, body:0.5, crackle:0,    gain:0.8 },
+  c45:   { f:3400, q:1.6, body:0.8, crackle:0,    gain:1.0 },
+  ss304: { f:4300, q:2.4, body:0.7, crackle:0,    gain:1.0 },
+  brass: { f:2900, q:1.1, body:0.5, crackle:0.35, gain:0.8 },
+  gg25:  { f:1900, q:0.8, body:0.9, crackle:1.0,  gain:0.9 },
+  pom:   { f:1100, q:0.7, body:0.3, crackle:0,    gain:0.55 },
+  s235:  { f:3100, q:1.4, body:0.8, crackle:0,    gain:0.95 },
+  pa6:   { f:950,  q:0.6, body:0.25, crackle:0,   gain:0.5 },
+};
+function noiseBuffer(brown) {
+  const b = ac.createBuffer(1, ac.sampleRate * 3, ac.sampleRate), d = b.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < d.length; i++) {
+    const w = Math.random() * 2 - 1;
+    if (brown) { last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; } else d[i] = w;
+  }
+  return b;
+}
 function initAudio() {
-  if (ac) return;
+  if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
   try {
     ac = new (window.AudioContext || window.webkitAudioContext)();
-    master = ac.createGain(); master.gain.value = S.muted ? 0 : 0.9; master.connect(ac.destination);
-    spOsc = ac.createOscillator(); spOsc.type = 'sawtooth';
-    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
-    spGain = ac.createGain(); spGain.gain.value = 0;
-    spOsc.connect(lp); lp.connect(spGain); spGain.connect(master); spOsc.start();
-    const buf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
-    const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    const ns = ac.createBufferSource(); ns.buffer = buf; ns.loop = true;
-    cutFilter = ac.createBiquadFilter(); cutFilter.type = 'bandpass'; cutFilter.frequency.value = 2400; cutFilter.Q.value = 3;
-    cutGain = ac.createGain(); cutGain.gain.value = 0;
-    ns.connect(cutFilter); cutFilter.connect(cutGain); cutGain.connect(master); ns.start();
+    const comp = ac.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4;
+    master = ac.createGain(); master.gain.value = S.muted ? 0 : 0.9;
+    master.connect(comp); comp.connect(ac.destination);
+    // atölye yankısı: üstel sönen gürültüden üretilmiş dürtü yanıtı
+    const ir = ac.createBuffer(2, ac.sampleRate * 1.4, ac.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3.2) * (i < 200 ? i / 200 : 1); }
+    const rev = ac.createConvolver(); rev.buffer = ir;
+    const wet = ac.createGain(); wet.gain.value = 0.22;
+    bus = ac.createGain(); bus.connect(master); bus.connect(wet); wet.connect(rev); rev.connect(master);
+    const white = noiseBuffer(false), brown = noiseBuffer(true);
+    const src = (buf, rate = 1) => { const s = ac.createBufferSource(); s.buffer = buf; s.loop = true; s.playbackRate.value = rate; s.loopStart = Math.random(); s.start(0, Math.random() * 2); return s; };
+    const filt = (type, f, q = 0.7) => { const b = ac.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; };
+    const gain = (v = 0) => { const g = ac.createGain(); g.gain.value = v; return g; };
+    const chain = (...n) => { for (let i = 0; i < n.length - 1; i++) n[i].connect(n[i + 1]); return n[n.length - 1]; };
+    SN = {};
+    // motor: şebeke uğultusu (100 Hz manyetik), dönen kütlenin gürlemesi, dişli vınlaması, fan hışırtısı
+    SN.humG = gain(); SN.hum = ac.createOscillator(); SN.hum.frequency.value = 100; SN.hum2 = ac.createOscillator(); SN.hum2.frequency.value = 200;
+    const h2g = gain(0.35); SN.hum.connect(SN.humG); chain(SN.hum2, h2g, SN.humG); SN.humG.connect(bus); SN.hum.start(); SN.hum2.start();
+    SN.rumbleF = filt('lowpass', 80, 1.2); SN.rumbleG = gain(); chain(src(brown), SN.rumbleF, SN.rumbleG, bus);
+    SN.gear1 = filt('bandpass', 400, 14); SN.gear2 = filt('bandpass', 700, 18); SN.gearG = gain();
+    const wg = src(white); wg.connect(SN.gear1); wg.connect(SN.gear2); SN.gear1.connect(SN.gearG); SN.gear2.connect(SN.gearG); SN.gearG.connect(bus);
+    SN.fanF = filt('lowpass', 900, 0.5); SN.fanG = gain(); chain(src(white, 0.7), filt('highpass', 180), SN.fanF, SN.fanG, bus);
+    // dönme titreşimi: kesme sesini mil devriyle hafifçe dalgalandırır
+    SN.rot = ac.createOscillator(); SN.rot.frequency.value = 10; SN.rotDepth = gain(0.0); SN.rot.connect(SN.rotDepth); SN.rot.start();
+    // kesme: bant geçiren hışırtı + kalın paso gövde gürültüsü
+    SN.cutF = filt('bandpass', 2500, 1); SN.cutF2 = filt('peaking', 5000, 2); SN.cutF2.gain.value = 4;
+    SN.cutMod = gain(1); SN.rotDepth.connect(SN.cutMod.gain);
+    SN.cutG = gain(); chain(src(white), SN.cutF, SN.cutF2, SN.cutMod, SN.cutG, bus);
+    SN.bodyF = filt('lowpass', 350, 0.9); SN.bodyG = gain(); chain(src(brown, 1.3), SN.bodyF, SN.bodyG, bus);
+    // tırlama: dar bantta ötme, 20-40 Hz'lik vızıltıyla
+    SN.chatF = filt('bandpass', 900, 35); SN.chatF2 = filt('bandpass', 1800, 30); SN.chatG = gain();
+    SN.buzz = ac.createOscillator(); SN.buzz.type = 'triangle'; SN.buzz.frequency.value = 28; SN.buzzD = gain(0); SN.chatMod = gain(0.5);
+    SN.buzz.connect(SN.buzzD); SN.buzzD.connect(SN.chatMod.gain); SN.buzz.start();
+    const wc = src(white, 1.1); wc.connect(SN.chatF); wc.connect(SN.chatF2); SN.chatF.connect(SN.chatMod); SN.chatF2.connect(SN.chatMod); chain(SN.chatMod, SN.chatG, bus);
+    // soğutma sıvısı: yumuşak şırıltı
+    SN.polF = filt('bandpass', 2600, 0.8); SN.polG = gain(); chain(src(white, 0.9), SN.polF, filt('highshelf', 5000), SN.polG, bus);
+    SN.coolG = gain(); chain(src(brown, 2.5), filt('bandpass', 1300, 0.5), filt('lowpass', 2400), SN.coolG, bus);   // tiz tıslama yerine boğuk akış
+    SN.spd = 0;
   } catch (e) { ac = null; }
+}
+// Tek seferlik sesler ---------------------------------------------------------
+function noiseHit(t, type, f, q, vol, len, dest = bus) {
+  const s = ac.createBufferSource(); s.buffer = SN.white || (SN.white = noiseBuffer(false));
+  const b = ac.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q;
+  const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  s.connect(b); b.connect(g); g.connect(dest); s.start(t, Math.random() * 2); s.stop(t + len + 0.02);
+}
+// metal çınlaması: çubuk/plaka titreşiminin uyumsuz kısmi tonları (1, 2.76, 5.40, 8.93)
+function metalRing(base, vol, len) {
+  if (!ac || S.muted) return;
+  const t = ac.currentTime;
+  [[1, 1], [2.76, 0.55], [5.40, 0.3], [8.93, 0.16]].forEach(([k, a], i) => {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.value = base * k * (1 + (Math.random() - 0.5) * 0.02);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol * a, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len / (1 + i * 0.8));
+    o.connect(g); g.connect(bus); o.start(t); o.stop(t + len + 0.05);
+  });
+  noiseHit(t, 'bandpass', base * 3, 1.2, vol * 0.8, 0.03);
+}
+// mekanik tok ses: kavrama, durdurucu, kol
+function thud(f = 90, vol = 0.2, len = 0.18) {
+  if (!ac || S.muted) return;
+  const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+  o.frequency.setValueAtTime(f * 1.6, t); o.frequency.exponentialRampToValueAtTime(f * 0.7, t + len);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  o.connect(g); g.connect(bus); o.start(t); o.stop(t + len + 0.02);
+  noiseHit(t, 'lowpass', f * 8, 0.7, vol * 0.7, len * 0.4);
 }
 function crashSound() {
   if (!ac) return;
-  const o = ac.createOscillator(), g = ac.createGain();
-  o.type = 'square'; o.frequency.setValueAtTime(180, ac.currentTime); o.frequency.exponentialRampToValueAtTime(40, ac.currentTime + 0.4);
-  g.gain.setValueAtTime(0.25, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.5);
-  o.connect(g); g.connect(master); o.start(); o.stop(ac.currentTime + 0.55);
-}
-function beep(f = 1600) {
-  if (!ac) return;
-  const o = ac.createOscillator(), g = ac.createGain();
-  o.frequency.value = f; g.gain.setValueAtTime(0.08, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.15);
-  o.connect(g); g.connect(master); o.start(); o.stop(ac.currentTime + 0.16);
-}
-function updateAudio(dt) {
-  if (!ac) return;
   const t = ac.currentTime;
-  const on = S.spindle ? 1 : 0;
-  spOsc.frequency.setTargetAtTime(40 + S.rpm / 22, t, 0.3);
-  spGain.gain.setTargetAtTime(on * 0.045, t, on ? 0.4 : 0.6);
-  cutGain.gain.setTargetAtTime(Math.min(0.22, S.cutting * 0.9), t, 0.05);
-  cutFilter.frequency.setTargetAtTime(1200 + S.rpm * 0.6, t, 0.2);
+  noiseHit(t, 'bandpass', 2600, 0.9, 0.5, 0.09);      // uç kırılma çatırtısı
+  noiseHit(t + 0.01, 'lowpass', 500, 0.8, 0.45, 0.35); // tezgâha vuran darbe
+  thud(70, 0.35, 0.3);
+  metalRing(1150, 0.07, 0.9);
+}
+// arayüz bildirimi: yumuşak, kısa, yankılı bir çan (oyun içi makine sesleri bunu kullanmaz)
+function beep(f = 1600, len = 0.15, vol = 0.08) {
+  if (!ac || S.muted) return;
+  const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(), fr = Math.min(f, 1400);
+  o.frequency.value = fr;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol * 0.45, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + len * 2.5);
+  o.connect(g); g.connect(bus); o.start(t); o.stop(t + len * 2.5 + 0.05);
+}
+function updateAudio() {
+  if (!ac || !SN) return;
+  const t = ac.currentTime, dt = Math.min(0.1, t - lastSnd); lastSnd = t;
+  // mil sesi kalkışta ~1.2 sn'de hızlanır, durunca ~2.5 sn'de serbest yavaşlar
+  const target = S.spindle ? (S.rpmEff || S.rpm) : 0;
+  SN.spd += (target - SN.spd) * Math.min(1, dt * (target > SN.spd ? 2.2 : 0.9));
+  const sp = SN.spd, n = clamp(sp / 4200, 0, 1), run = sp > 5 ? 1 : 0, load = clamp(S.power || 0, 0, 1.6);
+  const fr = sp / 60, sm = 0.08;
+  SN.humG.gain.setTargetAtTime(S.spindle ? 0.010 + load * 0.008 : 0, t, 0.15);
+  SN.rumbleF.frequency.setTargetAtTime(40 + fr * 2.2, t, sm);
+  SN.rumbleG.gain.setTargetAtTime(run * (0.035 + n * 0.06 + load * 0.08), t, sm);   // freze motoru tornadan küçük
+  SN.gear1.frequency.setTargetAtTime(Math.max(60, fr * 31), t, sm); SN.gear2.frequency.setTargetAtTime(Math.max(90, fr * 47 * 1.3), t, sm);
+  SN.gearG.gain.setTargetAtTime(run * (0.03 + n * 0.11), t, sm);
+  SN.fanF.frequency.setTargetAtTime(500 + n * 2200, t, sm);
+  SN.fanG.gain.setTargetAtTime(run * n * 0.03, t, sm);
+  // kesme
+  const m = SND[S.mat] || SND.al, c = clamp(S.cutting / 0.3, 0, 1), chip = clamp(S.lastChip || 0, 0, 3);
+  const cut = c > 0.02 && S.spindle ? Math.sqrt(c) : 0;
+  SN.cutF.frequency.setTargetAtTime(m.f * (0.8 + n * 0.5) / (0.85 + chip * 0.2), t, 0.05); SN.cutF.Q.value = m.q;
+  SN.cutF2.frequency.setTargetAtTime(m.f * 1.9, t, 0.1);
+  SN.cutG.gain.setTargetAtTime(cut * 0.16 * m.gain * (0.7 + chip * 0.25), t, 0.04);
+  SN.bodyG.gain.setTargetAtTime(cut * m.body * (0.05 + chip * 0.07), t, 0.05);
+  SN.rot.frequency.setTargetAtTime(Math.max(0.5, fr * (tool().z || 2)), t, 0.1); SN.rotDepth.gain.setTargetAtTime(cut * 0.5, t, 0.1);   // ağız vuruşu
+  // döküm ve pirinçte kırık talaş çıtırtısı
+  if (cut && m.crackle && Math.random() < m.crackle * c * dt * 60 * 0.6) noiseHit(t + Math.random() * 0.02, 'bandpass', 2500 + Math.random() * 3000, 2, 0.05 * cut, 0.012);
+  // tırlama
+  const ch = cut ? S.chatNow || 0 : 0;
+  SN.chatF.frequency.setTargetAtTime(650 + n * 900, t, 0.2); SN.chatF2.frequency.setTargetAtTime((650 + n * 900) * 2.03, t, 0.2);
+  SN.buzzD.gain.setTargetAtTime(ch * 0.5, t, 0.1); SN.buzz.frequency.setTargetAtTime(18 + fr * 0.6, t, 0.2);
+  SN.chatG.gain.setTargetAtTime(ch * 0.9, t, 0.06);
+  SN.coolG.gain.setTargetAtTime(S.coolant ? 0.03 : 0, t, 0.3);
+  SN.polG.gain.setTargetAtTime((S.polishNow || 0) * 0.05, t, 0.05); SN.polF.frequency.setTargetAtTime(1800 + (S.polishNow || 0) * 1200, t, 0.1);
 }
 
 /* ---------------- Three.js sahnesi ---------------- */
@@ -542,20 +650,20 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x151b1d);
-scene.fog = new THREE.Fog(0x151b1d, 1400, 3200);
-const camera = new THREE.PerspectiveCamera(40, 1, 2, 6000);
+scene.fog = new THREE.Fog(0x151b1d, 2600, 8000);
+const camera = new THREE.PerspectiveCamera(40, 1, 2, 9000);
 const controls = new THREE.OrbitControls(camera, canvas);
 controls.enableDamping = true; controls.dampingFactor = 0.12;
 controls.maxPolarAngle = Math.PI * 0.95;
 
-scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x2a2622, 0.75));
-const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x2a2622, 0.25));
+const sun = new THREE.DirectionalLight(0xffffff, 0.75);
 sun.position.set(260, 700, 380); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left:-320, right:320, top:320, bottom:-320, near:100, far:1600 });
+Object.assign(sun.shadow.camera, { left:-750, right:850, top:800, bottom:-900, near:100, far:2600 });
 sun.shadow.bias = -0.0008;
 scene.add(sun);
-const fill = new THREE.DirectionalLight(0x9fc4ff, 0.35); fill.position.set(-400, 200, -200); scene.add(fill);
+const fill = new THREE.DirectionalLight(0x9fc4ff, 0.18); fill.position.set(-400, 200, -200); scene.add(fill);
 
 const M = {
   paint: new THREE.MeshStandardMaterial({ color:0x56766f, roughness:0.62, metalness:0.15 }),
@@ -578,23 +686,231 @@ function cyl(rt, rb, h, mat, seg = 32) {
   m.castShadow = true; m.receiveShadow = true; return m;
 }
 
-// Zemin ve gövde
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), M.floor);
-floor.rotation.x = -Math.PI / 2; floor.position.y = -760; floor.receiveShadow = true; scene.add(floor);
-box(560, 460, 620, M.paint, 0, -530, -220);               // taban
-box(300, 1180, 260, M.paint, 0, -170, -470);              // kolon
-box(420, 150, 420, M.paint, 0, -235, -120);               // konsol (knee)
-box(240, 90, 520, M.paintDark, 0, 470, -330);             // koç (ram)
-box(190, 200, 190, M.paint, 0, 430, -40);                 // kafa
-const motor = cyl(70, 70, 150, M.paintDark); motor.position.set(0, 605, -40); scene.add(motor);
-const quillHousing = cyl(62, 62, 40, M.paint); quillHousing.position.set(0, 330, 0); scene.add(quillHousing);
-// Z kolu (dekoratif)
-const zLever = new THREE.Group(); zLever.position.set(105, 440, -20); scene.add(zLever);
-{ const a = cyl(5, 5, 150, M.steel, 12); a.rotation.z = Math.PI / 2; a.position.x = 60; zLever.add(a);
-  const k = new THREE.Mesh(new THREE.SphereGeometry(13, 16, 12), M.black); k.position.x = 135; zLever.add(k); }
+function boxR(x0, x1, y0, y1, z0, z1, mat, parent) { return box(x1 - x0, y1 - y0, z1 - z0, mat, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, parent); }
 
+/* ---- Ortam yansıması, ton eşleme, mat boya ---- */
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.85;
+if (THREE.RoomEnvironment) {
+  const pm = new THREE.PMREMGenerator(renderer);
+  scene.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+  pm.dispose();
+  for (const k of ['paint', 'paintDark', 'dark', 'black', 'yellow', 'floor']) M[k].envMapIntensity = 0.25;
+  M.steel.envMapIntensity = 0.45; M.ground.envMapIntensity = 0.5;   // makine mat; parlak kalan tek şey işlenen parça
+}
+// gövde renkleri sRGB olarak verildi; doğrusal uzaya çevrilmezse soluk, beyazımsı görünür
+M.paint = new THREE.MeshStandardMaterial({ color:0x5f7d72, roughness:0.86, metalness:0.04 });
+M.paintDark = new THREE.MeshStandardMaterial({ color:0x44574f, roughness:0.88, metalness:0.04 });
+M.steel = new THREE.MeshStandardMaterial({ color:0x8a9196, roughness:0.58, metalness:0.55 });
+M.ground = new THREE.MeshStandardMaterial({ color:0x7a8286, roughness:0.48, metalness:0.6 });
+for (const k of ['paint', 'paintDark', 'steel', 'ground']) M[k].color.convertSRGBToLinear();
+M.paint.envMapIntensity = M.paintDark.envMapIntensity = 0.25; M.steel.envMapIntensity = 0.45; M.ground.envMapIntensity = 0.5;
+
+/* ---- Tezgâh ve atölye görünümü ---- */
+const NOISE_GLSL = `
+float h3(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float vnoise(vec3 x) {
+  vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(h3(i), h3(i + vec3(1,0,0)), f.x), mix(h3(i + vec3(0,1,0)), h3(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(h3(i + vec3(0,0,1)), h3(i + vec3(1,0,1)), f.x), mix(h3(i + vec3(0,1,1)), h3(i + vec3(1,1,1)), f.x), f.y), f.z);
+}`;
+function addMottle(m, sc, amt) {
+  m.onBeforeCompile = sh => {
+    sh.uniforms.mSc = { value:sc }; sh.uniforms.mAmt = { value:amt };
+    sh.vertexShader = 'varying vec3 vWp;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWp = (modelMatrix * vec4(position, 1.0)).xyz;');
+    sh.fragmentShader = 'uniform float mSc;\nuniform float mAmt;\nvarying vec3 vWp;\n' + NOISE_GLSL + '\n' + sh.fragmentShader
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        float nz = vnoise(vWp * mSc) * 0.55 + vnoise(vWp * mSc * 4.3) * 0.3 + vnoise(vWp * mSc * 17.0) * 0.15;
+        diffuseColor.rgb *= 1.0 - mAmt + 2.0 * mAmt * nz;`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        roughnessFactor = clamp(roughnessFactor + (nz - 0.5) * mAmt * 1.6, 0.05, 1.0);`);
+  };
+  m.customProgramCacheKey = () => 'mottle';
+}
+const lin = h => new THREE.Color(h).convertSRGBToLinear();
+function smat(hex, rough, metal, env = 0.3, extra) {
+  const m = new THREE.MeshStandardMaterial(Object.assign({ color:lin(hex), roughness:rough, metalness:metal }, extra || {}));
+  m.envMapIntensity = env; return m;
+}
+addMottle(M.paint, 0.08, 0.07); addMottle(M.paintDark, 0.08, 0.07);
+M.floor = smat(0x5a5e5c, 0.92, 0, 0.15); addMottle(M.floor, 0.004, 0.16);
+const MX = {
+  cream: smat(0xc9c6b6, 0.8, 0.02, 0.2),
+  wallLow: smat(0x3f5a51, 0.9, 0, 0.12), wallHigh: smat(0x9fa39a, 0.95, 0, 0.1),
+  rubber: smat(0x1b1d1e, 0.95, 0, 0.05),
+  tray: smat(0x6a7176, 0.55, 0.6, 0.35),
+  red: smat(0xb3261e, 0.45, 0.05, 0.3), green: smat(0x2f8f4e, 0.45, 0.05, 0.3),
+  stripe: smat(0xe0a92a, 0.7, 0, 0.15),
+  cabinet: smat(0x9b2b24, 0.6, 0.15, 0.3), cabinetDark: smat(0x2b2f33, 0.6, 0.3, 0.3),
+  wood: smat(0x7a5a3a, 0.85, 0, 0.1), chrome: smat(0xd8dde0, 0.18, 1, 0.8),
+  glow: new THREE.MeshBasicMaterial({ color:0xf4f1e6 }),
+};
+addMottle(MX.wallLow, 0.006, 0.08); addMottle(MX.wallHigh, 0.006, 0.08); addMottle(MX.cabinet, 0.05, 0.05);
+// Yuvarlatılmış kenarlı kutu (döküm ve sac parçalar için)
+function rbox(x0, x1, y0, y1, z0, z1, r, mat, parent, shadow = true) {
+  const w = x1 - x0, h = y1 - y0, d = z1 - z0;
+  r = Math.min(r, w / 2 - 0.01, h / 2 - 0.01, d / 2 - 0.01);
+  const sh = new THREE.Shape(), hw = w / 2 - r, hh = h / 2 - r;
+  sh.moveTo(-hw, -hh); sh.lineTo(hw, -hh); sh.lineTo(hw, hh); sh.lineTo(-hw, hh); sh.lineTo(-hw, -hh);
+  const g = new THREE.ExtrudeGeometry(sh, { depth:Math.max(0.01, d - 2 * r), bevelEnabled:r > 0.05, bevelSize:r, bevelThickness:r, bevelSegments:3, curveSegments:1 });
+  g.translate(0, 0, -(d - 2 * r) / 2);
+  const m = new THREE.Mesh(g, mat);
+  m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  m.castShadow = shadow; m.receiveShadow = true; (parent || scene).add(m); return m;
+}
+// Kol: göbek, eğik çubuk ve siyah topuz
+function lever(parent, x, y, z, len, tilt, knob = 11, mat = M.steel) {
+  const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g);
+  const boss = cyl(9, 11, 12, M.paintDark, 16); boss.rotation.x = Math.PI / 2; g.add(boss);
+  const arm = new THREE.Group(); arm.rotation.x = tilt; g.add(arm);
+  const rod = cyl(3.2, 3.2, len, mat, 10); rod.position.y = len / 2; arm.add(rod);
+  const kn = new THREE.Mesh(new THREE.SphereGeometry(knob, 16, 12), M.black); kn.position.y = len; kn.castShadow = true; arm.add(kn);
+  const hit = new THREE.Mesh(new THREE.SphereGeometry(knob * 2.2, 8, 6), M.black); hit.visible = false; hit.position.y = len * 0.8; arm.add(hit);   // fareyle tutması kolay olsun
+  return arm;
+}
+function dialTexture(label, n, big) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#d7d8d0'; g.beginPath(); g.arc(128, 128, 126, 0, TAU); g.fill();
+  g.strokeStyle = '#1c2224'; g.fillStyle = '#1c2224'; g.lineWidth = 3; g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (let k = 0; k < n; k++) {
+    const a = k / n * TAU - Math.PI / 2, major = k % (n / 10) === 0;
+    g.beginPath(); g.moveTo(128 + Math.cos(a) * 124, 128 + Math.sin(a) * 124); g.lineTo(128 + Math.cos(a) * (major ? 100 : 112), 128 + Math.sin(a) * (major ? 100 : 112)); g.stroke();
+    if (big && major) { g.font = 'bold 20px sans-serif'; g.fillText(String(k / (n / 10) * (big)), 128 + Math.cos(a) * 82, 128 + Math.sin(a) * 82); }
+  }
+  g.font = 'bold 22px sans-serif'; if (label) g.fillText(label, 128, 128);
+  const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t;
+}
+
+/* -- atölye: zemin, güvenlik çizgileri, duvarlar, tavan lambaları, dolap ve tezgâh -- */
+const FLOOR_Y = -760;
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), M.floor);
+floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR_Y; floor.receiveShadow = true; scene.add(floor);
+{
+  const y = FLOOR_Y + 0.6, W = 46;
+  const lines = [[-900, 1000, 600, 600 + W], [-900, 1000, -800 - W, -800], [-900 - W, -900, -800 - W, 600 + W], [1000, 1000 + W, -800 - W, 600 + W]];
+  for (const [x0, x1, z0, z1] of lines) boxR(x0, x1, y - 0.5, y + 0.5, z0, z1, MX.stripe).castShadow = false;
+  // operatörün durduğu kauçuk paspas
+  rbox(-420, 620, FLOOR_Y, FLOOR_Y + 14, 300, 880, 6, MX.rubber).castShadow = false;
+  for (let x = -390; x < 600; x += 40) boxR(x, x + 14, FLOOR_Y + 14, FLOOR_Y + 17, 310, 870, MX.rubber).castShadow = false;
+  // duvarlar: altı boyalı lambri, üstü açık renk
+  const wall = (x0, x1, z0, z1) => { boxR(x0, x1, FLOOR_Y, FLOOR_Y + 1300, z0, z1, MX.wallLow).castShadow = false; boxR(x0, x1, FLOOR_Y + 1300, FLOOR_Y + 3600, z0, z1, MX.wallHigh).castShadow = false; boxR(x0 - 4, x1 + 4, FLOOR_Y + 1290, FLOOR_Y + 1320, z0 - 4, z1 + 4, MX.stripe).castShadow = false; };
+  wall(-3400, 3600, -1640, -1600); wall(-3400, -3360, -1600, 3000);
+  // tavan floresanları
+  for (const x of [-1200, 300, 1800]) for (const z of [-700, 700]) {
+    boxR(x - 600, x + 600, 2450, 2480, z - 60, z + 60, MX.cabinetDark).castShadow = false;
+    boxR(x - 580, x + 580, 2440, 2452, z - 40, z + 40, MX.glow).castShadow = false;
+  }
+  // takım dolabı (sol arka)
+  const cx = -2300, cz = -1480;
+  rbox(cx - 380, cx + 380, FLOOR_Y, FLOOR_Y + 1050, cz - 120, cz + 120, 8, MX.cabinet);
+  for (let k = 0; k < 6; k++) {
+    const y0 = FLOOR_Y + 70 + k * 160;
+    rbox(cx - 360, cx + 360, y0, y0 + 140, cz + 120, cz + 128, 3, MX.cabinet);
+    rbox(cx - 120, cx + 120, y0 + 100, y0 + 112, cz + 128, cz + 142, 4, MX.chrome);
+  }
+  rbox(cx - 400, cx + 400, FLOOR_Y + 1050, FLOOR_Y + 1080, cz - 140, cz + 140, 5, MX.wood);
+  // dolabın üstünde kumpas kutusu ve yağdanlık
+  rbox(cx - 250, cx - 30, FLOOR_Y + 1080, FLOOR_Y + 1130, cz - 60, cz + 40, 4, MX.cabinetDark);
+  const can = cyl(55, 70, 150, MX.stripe, 24); can.position.set(cx + 200, FLOOR_Y + 1155, cz); scene.add(can);
+  const spout = cyl(6, 9, 180, MX.chrome, 10); spout.position.set(cx + 270, FLOOR_Y + 1280, cz); spout.rotation.z = -0.9; scene.add(spout);
+  // delikli pano ve anahtarlar
+  rbox(cx - 380, cx + 380, FLOOR_Y + 1250, FLOOR_Y + 1900, -1600, -1585, 3, MX.cream);
+  for (let k = 0; k < 7; k++) { const w = rbox(cx - 320 + k * 100, cx - 300 + k * 100, FLOOR_Y + 1380, FLOOR_Y + 1620 - k * 18, -1585, -1575, 6, MX.chrome); w.castShadow = false; }
+  // sağ arkada çalışma tezgâhı ve mengene
+  const bx = 2000, bz = -1350;
+  rbox(bx - 700, bx + 700, FLOOR_Y + 820, FLOOR_Y + 880, bz - 300, bz + 300, 6, MX.wood);
+  for (const sx of [-650, 650]) for (const sz of [-250, 250]) rbox(bx + sx - 30, bx + sx + 30, FLOOR_Y, FLOOR_Y + 820, bz + sz - 30, bz + sz + 30, 4, MX.cabinetDark);
+  rbox(bx - 680, bx + 680, FLOOR_Y + 120, FLOOR_Y + 150, bz - 280, bz + 280, 4, MX.cabinetDark);
+  rbox(bx + 300, bx + 520, FLOOR_Y + 880, FLOOR_Y + 1010, bz + 150, bz + 290, 8, M.paint);
+  rbox(bx + 280, bx + 540, FLOOR_Y + 1000, FLOOR_Y + 1060, bz + 170, bz + 270, 6, M.ground);
+  // talaş varili
+  const drum = cyl(280, 280, 880, smat(0x2f4f7a, 0.55, 0.3), 32); drum.position.set(2500, FLOOR_Y + 440, -700); scene.add(drum);
+  for (const y of [180, 700]) { const r = new THREE.Mesh(new THREE.TorusGeometry(282, 7, 8, 48), MX.tray); r.rotation.x = Math.PI / 2; r.position.set(2500, FLOOR_Y + y, -700); scene.add(r); }
+}
+
+/* -- konsollu dik freze gövdesi (Bridgeport tarzı) --
+   Ölçüler eski kutu gövdenin zarfında; çarpışma ve talaş zeminleri (groundAt, fikstür listesi) değişmedi. */
+// el çarkı: krom jant, çanak kollar, bölüntülü bilezik, döner kol (çark düzlemi XY, ekseni Z)
+const collarMat = new THREE.MeshStandardMaterial({ map:dialTexture('', 100, 0), roughness:0.45, metalness:0.5 });
+function hwheel(parent, R = 48) {
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(R, 5, 14, 48), MX.chrome); rim.castShadow = true; parent.add(rim);
+  const hub = cyl(12, 14, 26, MX.chrome, 24); hub.rotation.x = Math.PI / 2; parent.add(hub);
+  for (let k = 0; k < 3; k++) {
+    const a = k * Math.PI * 2 / 3, sp = cyl(3, 4.4, R * 0.75, MX.chrome, 10);
+    sp.position.set(-Math.sin(a) * R * 0.55, Math.cos(a) * R * 0.55, -3); sp.rotation.z = a; sp.castShadow = true; parent.add(sp);
+  }
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(26, 26, 12, 48), [M.ground, collarMat, M.ground]);
+  col.rotation.x = Math.PI / 2; col.position.z = -18; parent.add(col);
+  const h = cyl(7, 7, 38, M.black, 12); h.rotation.x = Math.PI / 2; h.position.set(0, R * 0.82, 22); parent.add(h);
+}
+// taban ve kolon
+rbox(-280, 280, -736, -300, -530, 90, 14, M.paint);
+rbox(-296, 296, FLOOR_Y, -730, -546, 106, 6, M.paintDark);
+rbox(-180, 180, -660, -380, 88, 96, 6, M.paintDark);                          // soğutma deposu kapağı
+rbox(120, 136, -560, -480, 94, 108, 5, MX.chrome);
+rbox(-150, 150, -300, 420, -600, -340, 18, M.paint);                            // kolon
+for (const x of [-128, 98]) rbox(x, x + 30, -300, 300, -346, -334, 2, M.ground); // konsol kızak yolları
+for (let k = 0; k < 5; k++) boxR(-90, 90, 250 + k * 22, 258 + k * 22, -600 - 3, -598, M.black).castShadow = false;   // arka havalandırma
+// taret, koç ve kafa adaptörü
+{ const t = cyl(135, 140, 32, M.paintDark, 48); t.position.set(0, 436, -470); scene.add(t);
+  const r = new THREE.Mesh(new THREE.CylinderGeometry(141, 141, 6, 48, 1, true), new THREE.MeshStandardMaterial({ map:dialTexture('', 72, 0), roughness:0.5, metalness:0.4 }));
+  r.position.set(0, 436, -470); scene.add(r); }
+rbox(-110, 110, 452, 536, -640, -70, 16, M.paint);                               // koç (ram)
+for (const x of [-112, 102]) rbox(x, x + 10, 470, 520, -620, -90, 3, M.ground);
+{ const ad = cyl(105, 105, 18, M.paintDark, 48); ad.rotation.x = Math.PI / 2; ad.position.set(0, 470, -72); scene.add(ad); }
+// kafa: kovan gövdesi, kayış muhafazası, motor
+rbox(-92, 92, 330, 470, -132, 62, 26, M.paint);
+rbox(-112, 112, 470, 560, -165, 72, 34, M.paint);
+rbox(-60, 60, 556, 566, -110, 40, 6, M.paintDark);
+const motor = cyl(74, 74, 160, M.paintDark, 40); motor.position.set(0, 646, -60); scene.add(motor);
+for (let k = 0; k < 7; k++) { const f = new THREE.Mesh(new THREE.TorusGeometry(75, 2.2, 6, 40), M.paintDark); f.rotation.x = Math.PI / 2; f.position.set(0, 585 + k * 18, -60); scene.add(f); }
+{ const cap = cyl(60, 74, 18, M.paint, 40); cap.position.set(0, 735, -60); scene.add(cap);
+  rbox(68, 104, 610, 668, -90, -30, 6, M.paint); }                              // motor klemens kutusu
+const quillHousing = cyl(62, 66, 40, M.paint, 40); quillHousing.position.set(0, 330, 0); scene.add(quillHousing);
+// derinlik durdurucu mili ve somunları
+{ const r = cyl(5, 5, 170, MX.chrome, 12); r.position.set(-66, 420, 62); scene.add(r);
+  for (const y of [370, 382]) { const n = cyl(10, 10, 9, M.black, 6); n.position.set(-66, y, 62); scene.add(n); } }
+// kovan ilerleme kolu (üç kollu kapstan, kafanın sağında; x ekseninde döner)
+const zLever = new THREE.Group(); zLever.position.set(100, 410, -20); scene.add(zLever);
+{ const hub = cyl(16, 16, 26, MX.chrome, 20); hub.rotation.z = Math.PI / 2; hub.position.x = 6; zLever.add(hub);
+  for (let k = 0; k < 3; k++) {
+    const a = k * Math.PI * 2 / 3, arm = new THREE.Group(); arm.rotation.x = a; arm.position.x = 12; zLever.add(arm);
+    const rod = cyl(4, 4, 110, MX.chrome, 10); rod.position.y = 55; arm.add(rod);
+    const kn = new THREE.Mesh(new THREE.SphereGeometry(12, 16, 12), M.black); kn.position.y = 112; kn.castShadow = true; arm.add(kn);
+  } }
+// ince ilerleme el çarkı (solda) ve kovan kilidi
+{ const g = new THREE.Group(); g.position.set(-100, 405, -10); g.rotation.y = -Math.PI / 2; scene.add(g); hwheel(g, 32); }
+const quillLock = lever(scene, 60, 360, 64, 34, 1.2, 7);
+// motor şalteri: İLERİ / DUR / GERİ (kafanın solunda)
+rbox(-150, -110, 470, 540, -50, 10, 6, MX.cream);
+const motorSwitch = new THREE.Group(); motorSwitch.position.set(-152, 505, -20); scene.add(motorSwitch);
+{ const b = cyl(13, 13, 8, M.black, 24); b.rotation.z = Math.PI / 2; motorSwitch.add(b);
+  const k = box(4, 26, 7, MX.red, -5, 0, 0, motorSwitch); k.castShadow = true; }
+// kolonda kumanda kutusu: start, acil stop mantarı, mil lambası
+const ctrlG = new THREE.Group(); ctrlG.position.set(150, 120, -420); ctrlG.rotation.y = Math.PI / 2; scene.add(ctrlG);
+rbox(-40, 40, -60, 60, 0, 28, 6, MX.cream, ctrlG);
+const spLampMat = new THREE.MeshStandardMaterial({ color:0x4a3a12, emissive:0xffb020, emissiveIntensity:0, roughness:0.3 });
+const spLamp = new THREE.Mesh(new THREE.SphereGeometry(9, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), spLampMat); spLamp.rotation.x = Math.PI / 2; spLamp.position.set(0, 38, 28); ctrlG.add(spLamp);
+const startBtnMat = new THREE.MeshStandardMaterial({ color:lin(0x2f8f4e), emissive:0x2fd060, emissiveIntensity:0, roughness:0.4 });
+const bStart = cyl(9, 9, 8, startBtnMat, 20); bStart.rotation.x = Math.PI / 2; bStart.position.set(0, 12, 32); ctrlG.add(bStart);
+{ const r = cyl(18, 18, 3, MX.stripe, 24); r.rotation.x = Math.PI / 2; r.position.set(0, -26, 29); ctrlG.add(r); }
+const mush = new THREE.Mesh(new THREE.SphereGeometry(15, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), MX.red); mush.rotation.x = Math.PI / 2; mush.position.set(0, -26, 34); mush.castShadow = true; ctrlG.add(mush);
+{ const s = cyl(6, 6, 6, MX.red, 12); s.rotation.x = Math.PI / 2; s.position.set(0, -26, 31); ctrlG.add(s); }
+// kolon yanında eklemli çalışma lambası
+{
+  const g = new THREE.Group(); g.position.set(-150, 300, -420); scene.add(g);
+  rbox(-18, 0, -30, 30, -30, 30, 4, M.black, g);
+  const a1 = cyl(4, 4, 260, M.black, 10); a1.rotation.z = 0.6; a1.position.set(-80, 105, 0); g.add(a1);
+  const a2 = cyl(4, 4, 300, M.black, 10); a2.rotation.z = -1.05; a2.rotation.y = -0.6; a2.position.set(-30, 300, 110); g.add(a2);
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(30, 44, 24, 1, true), smat(0x2e5a52, 0.5, 0.3, 0.3, { side:THREE.DoubleSide }));
+  shade.position.set(90, 340, 230); shade.rotation.z = 0.5; g.add(shade);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(10, 12, 8), MX.glow); bulb.position.set(90, 330, 230); g.add(bulb);
+  const spot = new THREE.SpotLight(0xffe6c0, 0.9, 1400, 0.55, 0.6, 1.2);
+  spot.position.set(-150 + 90, 300 + 330, -420 + 230); spot.target.position.set(0, 0, -30);
+  scene.add(spot); scene.add(spot.target);
+}
 // Kovan (quill) – birim boylu silindir, boyu değişir
-const quill = cyl(42, 42, 1, M.steel); scene.add(quill);
+const quill = cyl(42, 42, 1, M.ground); scene.add(quill);
 const spindleG = new THREE.Group(); scene.add(spindleG);   // y = mil burnu
 const noseCap = cyl(38, 40, 18, M.dark); noseCap.position.y = 9; spindleG.add(noseCap);
 const toolRot = new THREE.Group(); spindleG.add(toolRot);
@@ -709,35 +1025,48 @@ function updateCoolant(dt, tip) {
   dropsVisible = any;
 }
 
-// Kızak (Y) ve tabla (X). Tabla grubu = parça koordinatları (x, z, -y)
+// Konsol (sabit), kızak (Y) ve tabla (X). Tabla grubu = parça koordinatları (x, z, -y)
+rbox(-210, 210, -310, -160, -330, 90, 12, M.paint);                         // konsol (knee)
+for (const x of [-196, 150]) rbox(x, x + 46, -162, -157, -320, 84, 2, M.ground);   // konsol üstü kızak yolları
+{ const c = new THREE.Group(); c.position.set(-150, -250, 92); scene.add(c);         // konsol kaldırma krankı
+  const sh = cyl(9, 9, 24, MX.chrome, 14); sh.rotation.x = Math.PI / 2; sh.position.z = 10; c.add(sh);
+  const arm = rbox(-6, 6, -4, 60, 20, 30, 3, MX.chrome, c);
+  const h = cyl(7, 7, 40, M.black, 12); h.rotation.x = Math.PI / 2; h.position.set(0, 58, 46); c.add(h); }
+lever(scene, 160, -200, 92, 34, 0.7, 8);                                     // konsol kilidi
 const saddle = new THREE.Group(); scene.add(saddle);
-box(420, 60, 300, M.paint, 75 - 75, -130, -50, saddle);   // kızak, X'te sabit
+rbox(-210, 210, -160, -100, -200, 100, 6, M.paint, saddle);                 // kızak, X'te sabit
+for (const x of [-200, 186]) rbox(x, x + 14, -150, -110, 100, 104, 2, M.paintDark, saddle);
+lever(saddle, 170, -130, 102, 30, 0.6, 7);                                   // kızak kilidi
 const table = new THREE.Group(); saddle.add(table);
-box(950, 40, 220, M.ground, 75, -80, -50, table);
-for (const zz of [-10, -50, -90]) box(950, 1.5, 14, M.black, 75, -59.5, zz, table, false); // T-kanalları
+rbox(-400, 550, -100, -60, -160, 60, 4, M.ground, table);
+for (const zz of [-10, -50, -90]) boxR(-400, 550, -60.5, -59.2, zz - 8, zz + 8, M.black, table).castShadow = false;   // T-kanalları
+rbox(-400, 550, -102, -96, 58, 66, 2, M.paintDark, table);                  // ön kenarda durdurucu kanalı
+for (const x of [-250, 400]) rbox(x, x + 22, -112, -94, 62, 80, 3, M.ground, table);   // tabla durdurucuları
+// otomatik tabla ilerleme ünitesi (sol uçta)
+rbox(-392, -300, -98, -62, 60, 112, 8, M.paintDark, table);
+const pfLever = lever(table, -346, -80, 112, 34, 0.5, 8);
+// X el çarkları (tablanın iki ucunda, x ekseninde döner)
 const wheels = [];
 for (const sx of [-410, 560]) {
   const g = new THREE.Group(); g.position.set(sx, -80, -50); table.add(g);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(48, 5, 10, 36), M.steel); rim.rotation.y = Math.PI / 2; g.add(rim);
-  const hub = cyl(12, 12, 30, M.steel, 16); hub.rotation.z = Math.PI / 2; g.add(hub);
-  for (let k = 0; k < 3; k++) { const s = box(4, 48, 6, M.steel, 0, 0, 0, g); s.rotation.x = k * Math.PI * 2 / 3; s.position.set(0, Math.cos(k * 2.094) * 24, Math.sin(k * 2.094) * 24); }
-  const h = cyl(7, 7, 38, M.black, 12); h.rotation.z = Math.PI / 2; h.position.set(sx < 0 ? -24 : 24, 40, 0); g.add(h);
+  const inner = new THREE.Group(); inner.rotation.y = sx < 0 ? -Math.PI / 2 : Math.PI / 2; g.add(inner);
+  hwheel(inner, 48);
   wheels.push(g);
 }
 // Y el çarkı (konsolun önünde, sabit)
 const yWheel = new THREE.Group(); yWheel.position.set(0, -235, 112); scene.add(yWheel);
-{ const rim = new THREE.Mesh(new THREE.TorusGeometry(48, 5, 10, 36), M.steel); yWheel.add(rim);
-  const hub = cyl(12, 12, 30, M.steel, 16); hub.rotation.x = Math.PI / 2; yWheel.add(hub);
-  for (let k = 0; k < 3; k++) { const s = box(4, 48, 6, M.steel, 0, 0, 0, yWheel); s.rotation.z = k * Math.PI * 2 / 3; s.position.set(-Math.sin(k * 2.094) * 24, Math.cos(k * 2.094) * 24, 0); }
-  const h = cyl(7, 7, 38, M.black, 12); h.rotation.x = Math.PI / 2; h.position.set(0, 40, 24); yWheel.add(h); }
+hwheel(yWheel, 48);
 // Mengene
-box(230, 25, 220, M.paint, 75, -47.5, -50, table);         // gövde (-60..-35)
-box(220, 57, 25, M.steel, 75, -6.5, -112.5, table);        // sabit çene (y 100..125)
-box(220, 57, 25, M.steel, 75, -6.5, 12.5, table);          // hareketli çene (y -25..0)
-box(160, 35, 10, M.ground, 75, -17.5, -8, table);          // paralel 1 (y 3..13)
-box(160, 35, 10, M.ground, 75, -17.5, -92, table);         // paralel 2 (y 87..97)
-{ const s = cyl(9, 9, 90, M.steel, 12); s.rotation.x = Math.PI / 2; s.position.set(75, -40, 70); table.add(s);
-  const hd = cyl(5, 5, 110, M.black, 10); hd.rotation.z = Math.PI / 2; hd.position.set(75, -40, 115); table.add(hd); }
+rbox(-40, 190, -60, -35, -160, 60, 3, M.paint, table);                    // gövde (-60..-35)
+rbox(-35, 185, -35, 22, -125, -100, 2, M.ground, table);                  // sabit çene (y 100..125)
+rbox(-35, 185, -35, 22, 0, 25, 2, M.ground, table);                       // hareketli çene (y -25..0)
+for (const [z0, z1] of [[-100.4, -99.9], [-0.1, 0.4]]) boxR(-30, 180, -20, 20, z0, z1, MX.chrome, table).castShadow = false;   // çene plakaları
+rbox(-5, 155, -35, 0, -13, -3, 1, M.steel, table);                        // paralel 1 (y 3..13)
+rbox(-5, 155, -35, 0, -97, -87, 1, M.steel, table);                       // paralel 2 (y 87..97)
+{ const s = cyl(9, 9, 90, MX.chrome, 14); s.rotation.x = Math.PI / 2; s.position.set(75, -40, 70); table.add(s);
+  const b = cyl(16, 16, 14, M.ground, 6); b.rotation.x = Math.PI / 2; b.position.set(75, -40, 112); table.add(b);
+  const hd = cyl(5, 5, 110, MX.chrome, 10); hd.rotation.z = Math.PI / 2; hd.position.set(75, -40, 120); table.add(hd);
+  for (const x of [20, 130]) { const k = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 8), M.black); k.position.set(x, -40, 120); table.add(k); } }
 
 /* ---- Parça mesh'i ---- */
 const nV = NX * NY;
@@ -1381,7 +1710,7 @@ function spindle(on) {
   if (on && S.changing) return;
   if (on && S.broken) { log('Takım kırık. Mili çalıştırmadan önce takımı değiştirin.', 'warn'); return; }
   if (S.spindle === on) return;
-  S.spindle = on; updateSpindleUI();
+  S.spindle = on; updateSpindleUI(); thud(on ? 120 : 85, 0.16, 0.16);   // kavrama / fren
   log(on ? `Mil çalıştı: ${S.rpm} dev/dk.` : 'Mil durdu.');
 }
 $('rpm').addEventListener('input', e => setRpm(+e.target.value));
@@ -1446,10 +1775,7 @@ function wheelClick() {
   const t = ac.currentTime;
   if (t - lastClick < 0.03) return;
   lastClick = t;
-  const o = ac.createOscillator(), g = ac.createGain();
-  o.type = 'square'; o.frequency.value = 2600;
-  g.gain.setValueAtTime(0.025, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.018);
-  o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.025);
+  noiseHit(t, 'bandpass', 3200 + Math.random() * 400, 3, 0.05, 0.012);   // çark çentiği
 }
 function wheelTicks(ax, t) {
   if (!t) return;
@@ -1909,7 +2235,11 @@ function frame(now) {
   spindleG.position.y = S.nose;
   const qTop = 310;
   quill.scale.y = Math.max(1, qTop - S.nose); quill.position.y = (qTop + S.nose) / 2;
-  zLever.rotation.z = -(S.nose - 150) / 300;
+  zLever.rotation.x = -(S.nose - 150) / 60;
+  spLampMat.emissiveIntensity += ((S.spindle ? 2.4 : 0) - spLampMat.emissiveIntensity) * Math.min(1, dt * 10);
+  startBtnMat.emissiveIntensity = S.spindle ? 0.9 : 0;
+  mush.position.z = S.alarm ? 29 : 34;
+  motorSwitch.rotation.x += ((S.spindle ? -0.7 : 0) - motorSwitch.rotation.x) * Math.min(1, dt * 12);
   if (S.spindle) spinAng -= Math.min(S.rpm / 60, 14) * Math.PI * 2 * dt * 0.35;
   toolRot.rotation.y = spinAng;
   yWheel.rotation.z = -S.py / 5 * Math.PI * 2;
