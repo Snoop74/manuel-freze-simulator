@@ -20,6 +20,9 @@ Tarayıcıda çalışan, 3B bir manuel freze tezgâhı simülasyonu ve oyunu. Te
 - **Gerçekçi kesme davranışı:** Taylor modeline göre takım aşınması (Takımlar panelinden takım yenilenir), parçanın ısınması ve soğuması, 2.2 kW mil gücü (ağır pasoda devir düşer, mil boğulur), uzun ve ince takımda devre bağlı tırlama, plastikte erime.
 - **İşleme izleri:** alın ve parmak frezenin tabanında devir başına ilerleme aralığıyla arka kenar yayları ("balık pulu"); Ra'ya göre belirginlik, tırlamada dalga, çelikte ısı rengi.
 - **Talaş biçimi:** frezede kısa virgül; diş başına ilerleme çok düşükse ince uzun kıvrık (sürtme), çok yüksekse kalın sıcak kıvrık. Matkapta devir başına ilerlemeye göre uzun spiral ya da kırık talaş; dökümde toz, pirinçte pul, plastikte şerit. Durum panelinde canlı gösterilir.
+- **Fareyle sürme (G):** parçanın üstünde sol tuşu basılı tutup sürükleyince takım farenin peşinden gider; kalemle yazar gibi gravür, cep ya da serbest şekil işlenir. Hız ilerleme ayarıyla sınırlı.
+- **Otomatik tabla ilerlemesi:** X ekseninde sağa/sola, ayarlı ilerlemeyle; tabladaki kol ya da Hareket panelinden. Eksen sonunda durur.
+- **Kılavuz (M6, M10):** mil İLERİ dönerken deliğe girer ve kovanı kendi adımıyla çeker; çıkarmak için mil GERİ (R) çalıştırılır. Deliksiz yüzey, küçük delik, kör delik dibi, yüksek devir, yanal hareket ve paslanmazda yağsız çekme kılavuzu kırar. Diş açılan yerler koyu görünür.
 - **Soğutma sıvısı:** eklemli hortum, damlacık jeti, sıçrama ve buğu.
 - **Partiküller:** kıvrık ve sarmal talaşlar, kırılma kıvılcımları, ısınma dumanı, kutlama efektleri.
 - **İş emirleri:** teknik resim ve delik tablosu, parça üstünde markalama çizgileri, teslimde ölçüm (muayene) ve 1–3 yıldızla puanlama. Beş görevlik kampanya.
@@ -35,4 +38,6 @@ Tarayıcıda çalışan, 3B bir manuel freze tezgâhı simülasyonu ve oyunu. Te
 | Boşluk | Mil start / stop |
 | 1–4 | Kol adımı 0.01 / 0.1 / 1 / 10 mm |
 | C | Soğutma sıvısı |
+| R | Mil yönü İLERİ / GERİ |
+| G | Fareyle sürme |
 | Esc | Acil stop: mil ve tüm hareketler |
