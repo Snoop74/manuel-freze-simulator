@@ -464,6 +464,9 @@ table{color:inherit;font-size:inherit}
 .vac-g .meter{grid-column:1/-1}
 .probe-box{display:grid;gap:6px;border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--panel-2)}
 .probe-box[hidden]{display:none}
+.dt-row{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:center}
+.dt-dial{width:96px;height:96px}
+.dt-read{font-family:var(--f-dro);font-size:20px}
 .pr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
 .pr-grid .btn{padding:6px 2px;font-size:12px}
 .pr-zero{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
@@ -769,6 +772,16 @@ table{color:inherit;font-size:inherit}
       <div class="dro-note" id="holderNote"></div>
       <button class="btn" id="teOpen" style="width:100%">Takım editörü: bu takımı kopyala ya da düzenle</button>
       <button class="btn" id="airBtn" style="width:100%">Hava tabancası: KAPALI</button>
+      <div class="probe-box dial-box" id="dialBox" hidden>
+        <div class="sub">Mekanik 3B taster</div>
+        <div class="dt-row">
+          <svg viewBox="-50 -50 100 100" class="dt-dial" aria-hidden="true"><circle r="47" fill="#f3f1ea" stroke="#1b1d1f" stroke-width="2"/>
+            <g id="dtTicks"></g><circle cy="18" r="9" fill="none" stroke="#1b1d1f" stroke-width=".8"/>
+            <g id="dtTurns"><line x1="0" y1="18" x2="0" y2="11" stroke="#c0271c" stroke-width="1.6"/></g>
+            <g id="dtNeedle"><line x1="0" y1="8" x2="0" y2="-40" stroke="#1b1d1f" stroke-width="2" stroke-linecap="round"/><circle r="3" fill="#1b1d1f"/></g></svg>
+          <div><b class="dt-read" id="dtRead">temas yok</b><div class="dro-note" id="dtHint">Parçaya el çarkıyla yavaşça yaklaşın; bilye değince ibre döner.</div></div>
+        </div>
+      </div>
       <div class="probe-box" id="probeBox" hidden>
         <div class="sub">3B taster döngüleri</div>
         <div class="pr-grid"><button class="btn" data-pr="x+">X+ kenar</button><button class="btn" data-pr="x-">X− kenar</button><button class="btn" data-pr="y+">Y+ kenar</button><button class="btn" data-pr="y-">Y− kenar</button>
@@ -855,10 +868,12 @@ const TOOLS = [
   { no:'T10', name:'Kenar bulucu',     d:10,  type:'edge',  z:1, flute:10,  stick:50,  len:95,  rpm:1000, mat:'Ø10 uç' },
   { no:'T11', name:'Kılavuz M6',      d:6,   type:'tap',   z:3, flute:14,  stick:45,  len:105, vc:10,  rpm:250, p:1.0, drill:5,   mat:'HSS, makine kılavuzu' },
   { no:'T12', name:'Kılavuz M10',     d:10,  type:'tap',   z:3, flute:20,  stick:55,  len:120, vc:12,  rpm:180, p:1.5, drill:8.5, mat:'HSS, makine kılavuzu' },
+  { no:'3M',  name:'Mekanik 3B taster', d:4,   type:'dial',  z:1, flute:26,  stick:104, len:150, vc:0, fz:0, fr:0, mat:'Kadranlı, Ø4 bilye' },
   { no:'3B',  name:'3B taster',        d:4,   type:'probe', z:1, flute:30,  stick:58,  len:108, vc:0, fz:0, fr:0, mat:'Ø4 yakut bilye, LED' },
 ];
 const isDrill = T => T.type === 'drill' || T.type === 'spot';
 const isProbe = T => T.type === 'probe';
+const isTaster = T => T.type === 'probe' || T.type === 'dial';
 const TAN59 = Math.tan(59 * Math.PI / 180);
 /* ---- Malzemeler (tornayla aynı tablo) ----
    kc N/mm² · vcf: önerilen hız çarpanı · ff: önerilen ilerleme çarpanı · rho g/cm³ · c J/gK
@@ -2192,6 +2207,24 @@ function holderMesh(T, hl) {
   }
   return g;
 }
+let dialNeedle = null, dialTurns = null, dialTex = null;
+// kadran yüzü: 100 bölmeli beyaz kadran, küçük tur kadranı
+function dialTexture3B() {
+  if (dialTex) return dialTex;
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  g.fillStyle = '#f3f1ea'; g.beginPath(); g.arc(128, 128, 126, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#1b1d1f'; g.fillStyle = '#1b1d1f'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '600 15px sans-serif';
+  for (let k = 0; k < 100; k++) {
+    const a = k / 100 * Math.PI * 2 - Math.PI / 2, r0 = k % 10 ? (k % 5 ? 108 : 102) : 96;
+    g.lineWidth = k % 10 ? 1.4 : 2.4; g.beginPath(); g.moveTo(128 + Math.cos(a) * r0, 128 + Math.sin(a) * r0); g.lineTo(128 + Math.cos(a) * 118, 128 + Math.sin(a) * 118); g.stroke();
+    if (!(k % 10)) g.fillText(String(k), 128 + Math.cos(a) * 82, 128 + Math.sin(a) * 82);
+  }
+  g.strokeStyle = '#c0271c'; g.lineWidth = 6; g.beginPath(); g.arc(128, 128, 121, Math.PI * 0.62, Math.PI * 0.88); g.stroke();
+  g.font = '700 16px sans-serif'; g.fillText('3B-TASTER', 128, 104); g.font = '11px sans-serif'; g.fillText('0.01 mm', 128, 150);
+  g.strokeStyle = '#1b1d1f'; g.lineWidth = 1.2; g.beginPath(); g.arc(128, 176, 18, 0, Math.PI * 2); g.stroke();
+  for (const [t, k] of [['-1', -1], ['0', 0], ['1', 1], ['2', 2]]) { const a = k / 6 * Math.PI * 2 - Math.PI / 2; g.fillText(t, 128 + Math.cos(a) * 11, 176 + Math.sin(a) * 11); }
+  dialTex = new THREE.CanvasTexture(c); dialTex.encoding = THREE.sRGBEncoding; return dialTex;
+}
 function buildToolVisual() {
   while (toolRot.children.length) toolRot.remove(toolRot.children[0]);
   buildToolInto(toolRot, tool(), S.broken);
@@ -2214,6 +2247,24 @@ function buildToolInto(grp, T, broken) {
       const sc = cyl(2.2, 2.2, 1.4, TMAT.bright, 8); sc.rotation.x = Math.PI / 2; sc.position.set(r - 6.5, 6.5, 1.3); ins.add(sc);   // uç vidası
     }
     place(latheMesh([[0, T.stick - 2], [9, T.stick - 2], [9, T.stick + 3], [0, T.stick + 3]], TMAT.bright, 6), 0);
+    return;
+  }
+  if (T.type === 'dial') {
+    // mekanik 3B taster: kırmızı stylus ve bilye, yassı oval gövde, önde kadran (operatöre dönük), üstte şaft
+    const b = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), TMAT.ruby); b.castShadow = true; place(b, 0);
+    place(latheMesh([[0.8, 1.6], [0.8, 20], [1.6, 21], [1.6, 26]], TMAT.red, 20), 0);
+    place(latheMesh([[1.6, 26], [5, 28], [6, 31], [6, 33]], TMAT.bright, 24), 0);
+    const body = latheMesh([[6, 33], [20, 35], [25, 40], [26, 50], [26, 66], [24, 72], [14, 78], [9, 80]], TMAT.holder, 48); body.scale.z = 0.72; place(body, 0);
+    place(latheMesh([[8, 80], [8, T.stick]], TMAT.bright, 32), 0);
+    const face = new THREE.Mesh(new THREE.CircleGeometry(20, 48), new THREE.MeshStandardMaterial({ map:dialTexture3B(), roughness:0.5 }));
+    place(face, 54).position.z = 26 * 0.72 + 0.3;
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(20.6, 1.2, 8, 48), TMAT.holder); place(rim, 54).position.z = 26 * 0.72 + 0.3;
+    const nd = new THREE.Group(), tn = new THREE.Group();
+    const n1 = box(0.9, 17, 0.4, TMAT.holder, 0, 7, 0, nd); n1.castShadow = false;
+    const n2 = box(0.6, 2.6, 0.3, TMAT.red, 0, 1.3, 0, tn); n2.castShadow = false;
+    place(nd, 54).position.z = 26 * 0.72 + 0.9;
+    place(tn, 54 - 7.5).position.z = 26 * 0.72 + 0.6;          // küçük tur ibresi
+    if (grp === toolRot) { dialNeedle = nd; dialTurns = tn; }
     return;
   }
   if (T.type === 'probe') {
@@ -2240,7 +2291,7 @@ function buildToolInto(grp, T, broken) {
 function profile(T, d, tip) {
   const r = T.d / 2;
   switch (T.type) {
-    case 'ball': return tip + r - Math.sqrt(Math.max(0, r * r - d * d));
+    case 'ball': case 'dial': return tip + r - Math.sqrt(Math.max(0, r * r - d * d));
     case 'end': { const R = T.cr || 0, q = d - (r - R); return R > 0 && q > 0 ? tip + R - Math.sqrt(Math.max(0, R * R - q * q)) : tip; }
     case 'chamfer': return tip + d / T.tanTip;
     case 'drill': return tip + d / (T.tanTip || TAN59);
@@ -2334,7 +2385,7 @@ function crash(msg) {
 function stopMotion() { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0; S.autoX = 0; if (typeof updateAutoUI === 'function') updateAutoUI(); pressed.forEach(p => p.t0 = Infinity); }
 
 function loadRatio(T, feedNow, horiz) {
-  if (T.type === 'edge' || T.type === 'tap' || isProbe(T) || S.rpm <= 0) return 0;
+  if (T.type === 'edge' || T.type === 'tap' || isTaster(T) || S.rpm <= 0) return 0;
   if (isDrill(T)) return (feedNow / S.rpm) / (T.fr * mat.ff);
   const fz = feedNow / (S.rpm * T.z);
   return horiz ? fz / (T.fz * mat.ff) : fz / (T.fz * mat.ff * 0.5);
@@ -2344,8 +2395,9 @@ function loadRatio(T, feedNow, horiz) {
 function tryStep(nx, ny, nn, dtStep) {
   const T = tool(), tip = nn - T.len;
   const horiz = Math.hypot(nx - S.px, ny - S.py), down = nn < S.nose;
-  const fh = fixtureHit(nx, ny, tip, T);
+  const fh = fixtureHit(nx, ny, T.type === 'dial' ? tip - 2 : tip, T);
   if (fh) { crash(fh); return false; }
+  if (T.type === 'dial') return DT.step(nx, ny, nn, T);
   const it = interfere(nx, ny, tip, T);
   if (S.loose && it.any) { warnOnce('loose', 'Parça bağlı değil, tabladan kopmuş. Yeni ham parça bağlayın.', 'bad'); return false; }
   if (T.type === 'tap') return tapStep(nx, ny, nn, T, it, horiz);
@@ -2665,12 +2717,13 @@ function updateToolUI() {
   $('holderNote').textContent = H0 ? `${H0.n}: salgı ${Math.round(H0.ro * 1000)} µm · ${H0.t}${T.slipped ? ` · TAKIM ${T.slipped} mm KAYDI: düğmeye basıp yeniden bağlayın` : ''}`
     : T.type === 'face' ? 'Kabuk freze malafası' : isDrill(T) || T.type === 'tap' ? 'Matkap aynası' : 'Sabit tutucu';
   $('curTool').classList.toggle('broken', S.broken);
-  $('probeBox').hidden = !isProbe(T);
+  $('probeBox').hidden = !isProbe(T); $('dialBox').hidden = T.type !== 'dial';
+  if (T.type === 'dial') spinAng = 0;              // kadran operatöre dönük
   [...$('rack').children].forEach(b => b.classList.toggle('active', b.dataset.i !== undefined && +b.dataset.i === S.tool));
 }
 function updateRec() {
   const T = tool();
-  $('recTxt').textContent = isProbe(T) ? 'mil DURUR · ≤ 400 mm/dk yaklaşma, döngüleri kullanın' : T.type === 'edge' ? '1000 dev/dk, yavaş yaklaşma' : T.type === 'tap' ? `${T.rpm} dev/dk · kovan kendini çeker (adım ${T.p}), delik Ø${T.drill}` : `${recRpm(T)} dev/dk · ${recFeed(T)} mm/dk`;
+  $('recTxt').textContent = T.type === 'dial' ? 'mil DURUR · el çarkıyla yaklaş, ibreyi 0\'a getir' : isProbe(T) ? 'mil DURUR · ≤ 400 mm/dk yaklaşma, döngüleri kullanın' : T.type === 'edge' ? '1000 dev/dk, yavaş yaklaşma' : T.type === 'tap' ? `${T.rpm} dev/dk · kovan kendini çeker (adım ${T.p}), delik Ø${T.drill}` : `${recRpm(T)} dev/dk · ${recFeed(T)} mm/dk`;
 }
 function setRpm(v) { S.rpm = v; $('rpm').value = v; $('rpmOut').textContent = v + ' dev/dk'; updateSpindleUI(); }
 function setFeed(v) { S.feed = v; $('feed').value = v; $('feedOut').textContent = v + ' mm/dk'; }
@@ -2727,7 +2780,7 @@ function spindle(on) {
   if (on && S.alarm) { log('Alarm aktifken mil çalıştırılamaz.', 'warn'); return; }
   if (on && S.changing) return;
   if (on && S.broken) { log('Takım kırık. Mili çalıştırmadan önce takımı değiştirin.', 'warn'); return; }
-  if (on && isProbe(tool())) { log('3B taster takılıyken mil çalıştırılmaz: taster dönerken kırılır.', 'warn'); return; }
+  if (on && isTaster(tool())) { log('3B taster takılıyken mil çalıştırılmaz: taster dönerken kırılır.', 'warn'); return; }
   if (S.spindle === on) return;
   S.spindle = on; updateSpindleUI(); thud(on ? 120 : 85, 0.16, 0.16);   // kavrama / fren
   log(on ? `Mil çalıştı: ${S.rpm} dev/dk.` : 'Mil durdu.');
@@ -3311,7 +3364,7 @@ function frame(now) {
   if ((S.hcT = (S.hcT || 0) + dt) > 0.5) { S.hcT = 0; let v = 0; for (let k = 0; k < nV; k++) v += H[k]; S.heatCap = v * C * C * mat.rho * 1e-3 * mat.c; }
   S.cutting += ((S.cutAcc > 0 ? Math.min(0.3, 0.05 + S.cutAcc / (dt * 4000)) : 0) - S.cutting) * Math.min(1, dt * 12);
   flushMesh();
-  updateChips(dt); AG.update(dt); PR.update(dt); VAC.update(dt);
+  updateChips(dt); AG.update(dt); PR.update(dt); VAC.update(dt); DT.update();
 
   const T = tool(), tip = tipZ();
   saddle.position.z = S.py;
@@ -3419,6 +3472,7 @@ function toolIcon(T) {
     case 'end': return s + '<path d="M11 3h10v11H11z"/><path d="M12 14h8v15h-8z" fill="currentColor" fill-opacity=".25"/><path d="M12 17l8 3M12 22l8 3"/></svg>';
     case 'ball': return s + '<path d="M11 3h10v11H11z"/><path d="M12 14h8v11a4 4 0 0 1-8 0z" fill="currentColor" fill-opacity=".25"/><path d="M12 17l8 3"/></svg>';
     case 'chamfer': return s + '<path d="M11 3h10v12H11z"/><path d="M9 15h14l-7 12z" fill="currentColor" fill-opacity=".25"/><path d="M12 18h8"/></svg>';
+    case 'dial': return s + '<path d="M13 2h6v6h-6z"/><rect x="8" y="8" width="16" height="15" rx="6" fill="currentColor" fill-opacity=".25"/><circle cx="16" cy="15.5" r="4.5"/><path d="M16 15.5l2-3"/><path d="M16 23v5"/><circle cx="16" cy="29" r="1.6" fill="currentColor"/></svg>';
     case 'probe': return s + '<path d="M11 3h10v12H11z"/><path d="M12 15h8l-2 4h-4z" fill="currentColor" fill-opacity=".25"/><path d="M16 19v6"/><circle cx="16" cy="27" r="2.6" fill="currentColor"/></svg>';
     case 'spot': return s + '<path d="M11 3h10v13H11z"/><path d="M11 16h10l-5 11z" fill="currentColor" fill-opacity=".25"/></svg>';
     case 'drill': return s + '<path d="M12 3h8v7h-8z"/><path d="M13 10h6v16l-3 4-3-4z"/><path d="M13 13l6 3M13 18l6 3M13 23l5 2"/></svg>';
@@ -3880,6 +3934,58 @@ const AG = (() => {
    Taster mil DURURKEN çalışır. Elle sürünce temas noktası kaydedilir (LED yanar, bip). Döngüler tasteri kendisi sürer:
    temas eder, 2 mm geri çekilir, sonraki adıma geçer ve bulunan noktayı DRO'ya sıfır olarak yazar.
    Temas noktası adım içinde ikiye bölme ile ızgara çözünürlüğünde kesinleştirilir. */
+/* ---------------- Mekanik 3B taster: kadranlı, elle ----------------
+   Bilye kenara değince stylus itilir; itilme kadranda okunur (1 tur = 1 mm, küçük kırmızı ibre turları sayar).
+   Kadran bilye yarıçapı kadar (2 mm) itilmede 0'ı gösterir: o anda mil ekseni tam kenarın üstündedir (X/Y),
+   Z'de ise takım boyu kadranın sıfırına göre verildiği için Z0 doğrudan yüzeydir. 4.5 mm'yi aşan itilmede
+   stylus kırılma noktasından kopar. İtilme, bilyeyi serbest bırakan en kısa geri çekilme (±X, ±Y, +Z) olarak bulunur. */
+const DT = (() => {
+  const LIMIT = 4.5, DIRS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1]];
+  let defl = 0, ax = null, shown = -99, was = false;
+  const freeAt = (x, y, n, T) => !interfere(x, y, n - T.len - 2, T).any;
+  function deflection(x, y, n, T) {
+    if (freeAt(x, y, n, T)) return { d:0, ax:null };
+    let best = { d:99, ax:null };
+    for (const [dx, dy, dz] of DIRS) {
+      let lo = 0, hi = -1;
+      for (let s = 0.25; s <= 6; s += 0.25) if (freeAt(x - dx * s, y - dy * s, n + dz * s, T)) { hi = s; lo = s - 0.25; break; }
+      if (hi < 0) continue;
+      for (let k = 0; k < 10; k++) { const m = (lo + hi) / 2; if (freeAt(x - dx * m, y - dy * m, n + dz * m, T)) hi = m; else lo = m; }
+      if (hi < best.d) best = { d:hi, ax:dz ? 'z' : dx ? 'x' : 'y' };
+    }
+    return best;
+  }
+  function step(nx, ny, nn, T) {
+    const r = deflection(nx, ny, nn, T);
+    if (r.d > 0) {
+      if (S.spindle) { crash('Mekanik taster dönerken parçaya değdi: stylus koptu. Taster yalnızca mil DURURKEN kullanılır.'); return false; }
+      if (S.feedNow > 1500) { crash('Mekanik taster hızlı harekette çarptı: stylus kırılma noktasından koptu. El çarkıyla yavaş yaklaşın.'); return false; }
+      if (r.d > LIMIT) { crash(`Stylus ${LIMIT} mm'den fazla itildi ve kırılma noktasından koptu (taster korundu). Yedek stylus takın.`); return false; }
+      if (!was) { metalRing(3200, 0.02, 0.15); was = true; }
+    } else was = false;
+    defl = r.d; ax = r.ax;
+    return true;
+  }
+  // kadran: 3B modeldeki ibreler ve paneldeki gösterge
+  function update() {
+    const T = tool();
+    if (T.type !== 'dial') return;
+    const rd = defl > 0 ? defl - 2 : -2.5;                          // serbestken ibre sıfırın gerisinde bekler
+    if (dialNeedle) { dialNeedle.rotation.z = -rd * Math.PI * 2; dialTurns.rotation.z = -rd * Math.PI / 3; }
+    if (Math.abs(rd - shown) < 0.0005) return;
+    shown = rd;
+    $('dtNeedle').setAttribute('transform', `rotate(${rd * 360})`); $('dtTurns').setAttribute('transform', `rotate(${rd * 60})`);
+    const near = defl > 0 && Math.abs(rd) < 0.005;
+    $('dtRead').textContent = defl > 0 ? (rd < 0 ? '−' : '+') + Math.abs(rd).toFixed(3) + ' mm' : 'temas yok';
+    $('dtRead').style.color = near ? 'var(--ok)' : defl > 0 ? 'var(--fg)' : 'var(--muted)';
+    $('dtHint').textContent = !defl ? 'Parçaya el çarkıyla yavaşça yaklaşın; bilye değince ibre döner.'
+      : near ? `İbre 0'da: mil ekseni tam ${ax === 'z' ? 'yüzeyde' : 'kenarın üstünde'}. DRO'da ${ax.toUpperCase()}0 basın.`
+      : `${ax.toUpperCase()} ekseninde ${defl.toFixed(3)} mm itildi. İbreyi 0'a getirin (${rd < 0 ? 'biraz daha ilerleyin' : 'biraz geri gelin'}).`;
+  }
+  return { step, update };
+})();
+// panel kadranının çentikleri
+{ let t = ''; for (let k = 0; k < 100; k++) { const a = k / 100 * Math.PI * 2, r0 = k % 10 ? 41 : 37; t += `<line x1="${Math.sin(a) * r0}" y1="${-Math.cos(a) * r0}" x2="${Math.sin(a) * 45}" y2="${-Math.cos(a) * 45}" stroke="#1b1d1f" stroke-width="${k % 10 ? 0.6 : 1.4}"/>`; } $('dtTicks').innerHTML = t; }
 const PR = (() => {
   const FEED = 400;
   let seq = null, hit = null, led = 0;
@@ -4613,11 +4719,12 @@ const CR = (() => {
     ['Demir Tarım Aletleri', 'atölye'], ['Usta Kahveci Ekipman', 'atölye'], ['Yıldız Makina', 'fabrika'], ['Öz Kalıp', 'kalıphane'],
     ['Akın Otomasyon', 'fabrika'], ['Marmara Tekne', 'tersane'], ['Kaya Hidrolik', 'fabrika'], ['Gökçe Havacılık', 'havacılık'],
   ];
-  const BUILTIN_PRICE = { T1:2400, T10:450, T11:380, T12:520, '3B':2500 };
+  const BUILTIN_PRICE = { T1:2400, T10:450, T11:380, T12:520, '3B':2500, '3M':1400 };
   const START = ['T3', 'T6', 'T8'];                               // ilk dolap: Ø10 parmak, punta, Ø8.5 matkap
   // ready: tezgâhta kullanılabilir; diğerleri dükkânda "yakında" görünür
   const EQUIP = [
     { id:'air', n:'Hava tabancası', t:'Talaşı üfleyerek temizle (B). Talaşsız teslim %5 prim', p:350, ready:true },
+    { id:'dial', n:'Mekanik 3B taster', t:'Kadranlı, elle: ibre 0\'da mil ekseni kenarda. Kopan stylus 180 ₺', p:1400, ready:true },
     { id:'probe', n:'3B taster', t:'Kenar, köşe ve delik merkezini bul, sıfırı yaz. Dönerken çarparsa kırılır!', p:2500, ready:true },
     { id:'h_weldon', n:'Weldon tutucu', t:HOLDERS.weldon.t, p:HOLDERS.weldon.p, ready:true },
     { id:'h_shrink', n:'Shrink-fit tutucu', t:HOLDERS.shrink.t, p:HOLDERS.shrink.p, ready:true },
@@ -4642,7 +4749,7 @@ const CR = (() => {
   const level = () => { let l = 0; LEVELS.forEach(([r], i) => { if (st.rep >= r) l = i; }); return l; };
   const priceOf = T => T.price || BUILTIN_PRICE[T.no] || toolPrice(TE.specOf(T));
   const stockCost = (w, d, h, m) => Math.round(w * d * h / 1e6 * MATS[m].rho * PRICE_KG[m] + 20);   // kg × ₺/kg + kesim
-  const owns = i => !on || (isProbe(TOOLS[i]) ? !!st.eq.probe : !!st.owned[TOOLS[i].no]);
+  const owns = i => !on || (isTaster(TOOLS[i]) ? !!st.eq[TOOLS[i].type] : !!st.owned[TOOLS[i].no]);
   const hasEq = id => !on || !!st.eq[id];
   function buyEq(id) {
     const E = EQUIP.find(q => q.id === id);
@@ -4729,7 +4836,7 @@ const CR = (() => {
       : 'Serbest atölyede her şey ücretsiz ve açık. Kariyer modunda alışveriş burada yapılır.';
     const T0 = $('shopTools'); T0.innerHTML = '';
     TOOLS.forEach((T, i) => {
-      if (T.gone || isProbe(T)) return;
+      if (T.gone || isTaster(T)) return;
       const own = owns(i), p = priceOf(T), d = document.createElement('div'); d.className = 'sh-item' + (own ? ' own' : '');
       d.innerHTML = `<span class="ico">${toolIcon(T)}</span><span class="nm"><b>${T.no}</b> ${T.name} Ø${T.d}<small>${T.mat}</small></span>`;
       const b = document.createElement('button'); b.className = 'btn' + (own ? '' : ' start');
@@ -4817,7 +4924,7 @@ const CR = (() => {
   // dolapta olmayan takım: ilk tık fiyatı söyler, 4 s içinde ikinci tık satın alır
   function allowTool(i) {
     if (owns(i)) return true;
-    if (isProbe(TOOLS[i])) { log('3B taster atölyede yok: dükkândan alabilirsiniz.', 'warn'); openShop(); return false; }
+    if (isTaster(TOOLS[i])) { log(`${TOOLS[i].name} atölyede yok: dükkândan alabilirsiniz.`, 'warn'); openShop(); return false; }
     const T = TOOLS[i], p = priceOf(T);
     if (st.money < p) { log(`${T.no} ${T.name} dolapta yok ve kasada ${tl(p)} yok.`, 'warn'); return false; }
     if (arm.i === i && performance.now() - arm.t < 4000) { arm.i = -1; return buy(i); }
@@ -4826,6 +4933,7 @@ const CR = (() => {
     return false;
   }
   function lost(i) {
+    if (on && TOOLS[i].type === 'dial') { if (st.money >= 180) { st.money -= 180; save(); cash(-180); } log('Yedek stylus takıldı: −180 ₺. Taster sağlam.', 'warn'); render(); return; }
     if (on && isProbe(TOOLS[i]) && st.eq.probe) { delete st.eq.probe; save(); log('3B taster kırıldı. Yenisi dükkânda (2.500 ₺).', 'warn'); render(); return; }
     if (!on || !st.owned[TOOLS[i].no]) return;
     delete st.owned[TOOLS[i].no]; save();
