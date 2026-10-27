@@ -410,6 +410,21 @@ table{color:inherit;font-size:inherit}
 .sec-row{display:grid;grid-template-columns:auto 1fr 70px;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
 .sec-row output{font-family:var(--f-dro);color:var(--fg);text-align:right}
 @media (max-width:900px){.bench-body{grid-template-columns:1fr;grid-template-rows:1fr auto}.bench-side{border-left:0;border-top:1px solid var(--line);max-height:40vh}}
+/* ---- Takım editörü ---- */
+#tedit .bench-body{grid-template-columns:minmax(0,1fr) 350px}
+.te-side .sec-row{grid-template-columns:84px minmax(0,1fr) 62px}
+.te-side .sec-row.off{opacity:.35;pointer-events:none}
+.te-seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px}
+.te-seg .btn{padding:6px 4px}
+.te-base{display:grid;gap:3px;font-size:11px;color:var(--muted);font-family:var(--f-display);letter-spacing:.08em}
+.te-base select,.te-base input{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:6px 7px;color:var(--fg);font-size:12.5px}
+.te-side li span{color:var(--muted)}
+.te-side li.warn b{color:var(--warn)}.te-side li.bad b{color:var(--bad)}
+.te-act{display:grid;grid-template-columns:1fr 1fr auto;gap:6px}
+.rack button.add{border-style:dashed}
+.rack button.add .ico{font-size:24px;font-weight:700;color:var(--safety)}
+.rack button.custom .nm b{color:var(--safety)}
+@media (max-width:900px){#tedit .bench-body{grid-template-columns:1fr;grid-template-rows:minmax(220px,1fr) auto}}
 </style>
 
 <div class="app">
@@ -460,6 +475,35 @@ table{color:inherit;font-size:inherit}
       <div class="dw-note">Ölçüler mm. Sıfır noktası: parçanın sol-ön köşesi. Sarı çizgiler parçadaki markalama izleridir.</div>
     </div>
     <div class="toast" id="toast"></div>
+    <div class="bench" id="tedit" hidden>
+      <div class="bench-box" role="dialog" aria-label="Takım editörü">
+        <div class="bench-head"><b>TAKIM EDİTÖRÜ</b><span id="teMode"></span><button class="btn" id="teClose">Kapat</button></div>
+        <div class="bench-body">
+          <div class="bench-view"><canvas id="teC" aria-label="Takımın 3B önizlemesi"></canvas><div class="bench-hint" id="teHint"></div></div>
+          <div class="bench-side te-side">
+            <label class="te-base">BAŞLANGIÇ<select id="teBase"></select></label>
+            <div class="sub">Tip</div>
+            <div class="te-seg" id="teKind"><button class="btn" data-tk="end">Parmak</button><button class="btn" data-tk="ball">Küresel</button><button class="btn" data-tk="chamfer">Pah</button><button class="btn" data-tk="drill">Matkap</button></div>
+            <div class="sub">Ölçüler</div>
+            <div class="sec-row"><span>Çap</span><input type="range" id="teD"><output id="teDv"></output></div>
+            <div class="sec-row"><span>Ağız sayısı</span><input type="range" id="teZ"><output id="teZv"></output></div>
+            <div class="sec-row"><span>Ağız boyu</span><input type="range" id="teFl"><output id="teFlv"></output></div>
+            <div class="sec-row"><span>Çıkıntı</span><input type="range" id="teSt"><output id="teStv"></output></div>
+            <div class="sec-row"><span>Helis açısı</span><input type="range" id="teHx"><output id="teHxv"></output></div>
+            <div class="sec-row"><span>Köşe radyüsü</span><input type="range" id="teCr"><output id="teCrv"></output></div>
+            <div class="sec-row" id="teAngRow"><span>Uç açısı</span><div class="te-seg" id="teAng"></div><output></output></div>
+            <div class="sub">Malzeme ve kaplama</div>
+            <div class="te-seg" id="teTm"><button class="btn" data-tm="hss">HSS</button><button class="btn" data-tm="carbide">Karbür</button></div>
+            <div class="te-seg" id="teCoat"><button class="btn" data-tc="none">Yok</button><button class="btn" data-tc="tin">TiN</button><button class="btn" data-tc="altin">AlTiN</button><button class="btn" data-tc="dlc">DLC</button></div>
+            <label class="te-base">AD<input id="teName" maxlength="24"></label>
+            <div class="sub">Tezgâhta ne değişir</div>
+            <ul id="teStats"></ul>
+            <div class="te-act"><button class="btn start" id="teMount">Kaydet ve tak</button><button class="btn" id="teSave">Dolaba ekle</button><button class="btn" id="teDel">Sil</button></div>
+            <div class="dro-note">Takımlar bu tarayıcıda saklanır. Sürükle döndür, tekerlek yakınlaştır.</div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="bench" id="bench" hidden>
       <div class="bench-box" role="dialog" aria-label="Parça masası">
         <div class="bench-head"><b>PARÇA MASASI</b><span id="bnInfo"></span><button class="btn" id="bnClose">Kapat</button></div>
@@ -658,6 +702,7 @@ table{color:inherit;font-size:inherit}
       <h2><span>Takım</span><span>dolap</span></h2>
       <div class="cur-tool" id="curTool"><span class="tno" id="ctNo">T3</span><span class="tname" id="ctName">—</span><span class="tmeta" id="ctMeta">—</span></div>
       <div class="stopline" style="grid-template-columns:1fr auto"><span class="dro-note" id="ctWear">VB 0.00 mm</span><button class="btn" id="renewTool">Takımı yenile</button></div>
+      <button class="btn" id="teOpen" style="width:100%">Takım editörü: bu takımı kopyala ya da düzenle</button>
       <div class="rack" id="rack"></div>
     </div>
 
@@ -1887,6 +1932,7 @@ const TMAT = {
   carbide: smat(0xa3aaaf, 0.26, 0.92, 0.9),           // kaplamasız karbür
   altin:   smat(0x46424e, 0.32, 0.85, 0.9),           // AlTiN kaplama: koyu mor-gri
   tin:     smat(0xc9a03a, 0.28, 0.9, 0.9),            // TiN kaplama: altın sarısı
+  dlc:     smat(0x1f2024, 0.3, 0.8, 0.9),             // DLC kaplama: siyah
   hss:     smat(0xc3c8cc, 0.22, 0.92, 0.9),           // taşlanmış HSS
   holder:  smat(0x2b2e31, 0.38, 0.85, 0.7),           // siyah oksit tutucu
   bright:  smat(0x9aa2a7, 0.22, 0.95, 0.9),           // taşlanmış çelik yüzey
@@ -1901,6 +1947,7 @@ function geoOf(T) {
     ball:  { helix:30, core:0.58, land:0.07, tip:'ball', coat:'altin', corner:0 },
     drill: { helix:30, core:0.28, land:0.16, tip:'cone', tipAngle:118, coat:'tin', corner:0 },
     spot:  { helix:18, core:0.35, land:0.12, tip:'cone', tipAngle:90, coat:'hss', corner:0 },
+    chamfer:{ helix:0, core:0.5, land:0.12, tip:'cone', tipAngle:90, coat:'altin', corner:0 },
     tap:   { helix:0, core:0.62, land:0.42, tip:'lead', coat:'hss', corner:0 },
     face:  { helix:0, core:0.72, land:0.55, tip:'flat', coat:'holder', corner:0 },
   }[T.type] || { helix:0, core:0.6, land:0.1, tip:'flat', coat:'hss', corner:0 };
@@ -1917,10 +1964,11 @@ function toothProfile(u, core, land) {
 // kanallı gövde: y = 0 uç, y = len kanal sonu; çap kanal boyunca sabit, uçta seçilen kapanış
 function fluteGeo(r, z, len, g, opt = {}) {
   const seg = Math.max(48, z * 28), tanH = Math.tan(g.helix * Math.PI / 180);
-  const tipH = g.tip === 'ball' ? r : g.tip === 'cone' ? r / Math.tan(g.tipAngle / 2 * Math.PI / 180) : g.tip === 'lead' ? (opt.p || 1) * 2.5 : 0;
+  const rad = g.tip === 'flat' && g.corner > 0.3;
+  const tipH = g.tip === 'ball' ? r : g.tip === 'cone' ? r / Math.tan(g.tipAngle / 2 * Math.PI / 180) : g.tip === 'lead' ? (opt.p || 1) * 2.5 : rad ? g.corner : 0;
   const ys = [];                                                  // uca yakın sık, gövdede seyrek satır
   const nTip = tipH > 0 ? 18 : 0;
-  for (let k = 0; k < nTip; k++) ys.push(tipH * Math.pow(k / nTip, g.tip === 'ball' ? 1.6 : 1));
+  for (let k = 0; k < nTip; k++) ys.push(tipH * Math.pow(k / nTip, g.tip === 'ball' || rad ? 1.6 : 1));
   const rest = Math.max(4, Math.ceil((len - tipH) / (opt.p ? opt.p / 8 : Math.min(1.2, r * 0.25))));   // kılavuzda diş adımının 1/8'i
   for (let k = 0; k <= rest; k++) ys.push(tipH + (len - tipH) * k / rest);
   const pos = [], idx = [];
@@ -1929,7 +1977,7 @@ function fluteGeo(r, z, len, g, opt = {}) {
     if (g.tip === 'ball' && y < r) sc = Math.sqrt(Math.max(0, 1 - Math.pow((r - y) / r, 2)));
     else if ((g.tip === 'cone') && y < tipH) sc = y / tipH;
     else if (g.tip === 'lead' && y < tipH) sc = 0.82 + 0.18 * y / tipH;
-    else if (g.tip === 'flat' && g.corner > 0 && y < g.corner) sc = 1 - (g.corner - y) * 0.5 / r;   // köşe pahı
+    else if (g.tip === 'flat' && g.corner > 0 && y < g.corner) { const R = g.corner; sc = (r - R + Math.sqrt(Math.max(0, R * R - (R - y) * (R - y)))) / r; }   // köşe radyüsü
     const tw = y * tanH / r;                                       // helis bükümü (radyan)
     for (let j = 0; j <= seg; j++) {
       const th = j / seg * TAU, u = ((th + tw) * z / TAU % 1 + 1) % 1;
@@ -1988,17 +2036,20 @@ function holderMesh(T, hl) {
 }
 function buildToolVisual() {
   while (toolRot.children.length) toolRot.remove(toolRot.children[0]);
-  const T = tool(), r = T.d / 2, L = T.len, g = geoOf(T), coat = TMAT[g.coat] || TMAT.carbide;
-  const place = (o, y0) => { o.position.y = -L + y0; toolRot.add(o); return o; };
+  buildToolInto(toolRot, tool(), S.broken);
+}
+function buildToolInto(grp, T, broken) {
+  const r = T.d / 2, L = T.len, g = geoOf(T), coat = TMAT[g.coat] || TMAT.carbide;
+  const place = (o, y0) => { o.position.y = -L + y0; grp.add(o); return o; };
   // tutucu: takım çıkıntısının üstünde
   const hl = L - T.stick;
   place(holderMesh(T, hl), T.stick);
-  const flute = S.broken ? Math.max(2, T.flute * 0.3) : T.flute, off = S.broken ? T.flute - flute : 0;
+  const flute = broken ? Math.max(2, T.flute * 0.3) : T.flute, off = broken ? T.flute - flute : 0;
   if (T.type === 'face') {
     // alın frezesi: talaş cepli gövde, vidalı kare karbür uçlar, merkez bağlama cıvatası
     const body = new THREE.Mesh(fluteGeo(r - 3, T.z, T.stick - 2, g), TMAT.holder); body.castShadow = true; place(body, 2);
     place(latheMesh([[r - 3, 0], [r - 3, 1.5], [r - 6, 2]], TMAT.holder), 0);
-    if (!S.broken) for (let k = 0; k < T.z; k++) {
+    if (!broken) for (let k = 0; k < T.z; k++) {
       const a = k / T.z * TAU + 0.22, ins = new THREE.Group(); ins.rotation.y = -a; place(ins, 0);
       const plate = box(12, 12, 4.2, TMAT.insert, r - 6, 6, -1, ins); plate.rotation.z = -0.25; plate.rotation.x = 0.1;
       const edge = box(12.2, 1.1, 4.3, TMAT.tin, r - 6, 0.7, -1, ins); edge.castShadow = false;   // kaplamalı kesici kenar
@@ -2013,10 +2064,10 @@ function buildToolVisual() {
     return;
   }
   // şaft: kanalın üstünden tutucuya kadar, üstte pah
-  place(latheMesh([[r * 0.97, 0], [r, 0.6], [r, T.stick - T.flute], [r * 0.9, T.stick - T.flute + 0.8]], T.type === 'tap' ? TMAT.hss : coat === TMAT.tin ? TMAT.tin : TMAT.carbide, 40), T.flute);
-  const fg = fluteGeo(r, T.z, flute, S.broken ? Object.assign({}, g, { tip:'flat', corner:0 }) : g, T.type === 'tap' ? { p:T.p } : {});
+  place(latheMesh([[r * 0.97, 0], [r, 0.6], [r, T.stick - T.flute], [r * 0.9, T.stick - T.flute + 0.8]], coat === TMAT.tin ? TMAT.tin : T.type === 'tap' || T.tm === 'hss' ? TMAT.hss : TMAT.carbide, 40), T.flute);
+  const fg = fluteGeo(r, T.z, flute, broken ? Object.assign({}, g, { tip:'flat', corner:0 }) : g, T.type === 'tap' ? { p:T.p } : {});
   const body = new THREE.Mesh(fg, coat); body.castShadow = true; place(body, off);
-  if (S.broken) place(latheMesh([[0, -0.6], [r * 0.95, -0.6], [r * 0.9, 0.4], [0, 0.4]], TMAT.broken, 24), off);
+  if (broken) place(latheMesh([[0, -0.6], [r * 0.95, -0.6], [r * 0.9, 0.4], [0, 0.4]], TMAT.broken, 24), off);
 }
 
 /* ---------------- Kesme / çarpışma mantığı ---------------- */
@@ -2024,7 +2075,9 @@ function profile(T, d, tip) {
   const r = T.d / 2;
   switch (T.type) {
     case 'ball': return tip + r - Math.sqrt(Math.max(0, r * r - d * d));
-    case 'drill': return tip + d / TAN59;
+    case 'end': { const R = T.cr || 0, q = d - (r - R); return R > 0 && q > 0 ? tip + R - Math.sqrt(Math.max(0, R * R - q * q)) : tip; }
+    case 'chamfer': return tip + d / T.tanTip;
+    case 'drill': return tip + d / (T.tanTip || TAN59);
     case 'spot': return tip + d;
     default: return tip;
   }
@@ -2187,10 +2240,11 @@ function tryStep(nx, ny, nn, dtStep) {
     }
   }
   // kesme hızı oranı, devir başına ilerleme ve yüzey: Ra ≈ fz²/(8·0.8) (aşınma, yığıntı ağız, tırlama, erime bozar)
+  const md = toolMods(T);
   const rpmE = Math.max(1, S.rpmEff || S.rpm), vcNow = Math.PI * T.d * rpmE / 1000, vr = vcNow / Math.max(1, T.vc * mat.vcf);
   const fRev = S.feedNow / rpmE, fz = fRev / Math.max(1, T.z), wr = S.wear[S.tool];
   const melt = mat.melt && !S.coolant && vr > 1.2;
-  let ra = (T.type === 'face' ? 0.6 : 1) * Math.max(0.2, fz * fz / 0.0064 + 0.25) * (1 + wr * 6) * (mat.bue && vr < 0.3 ? 2.5 : 1) * (1 + S.chatNow * 4) * (melt ? 3 : 1);
+  let ra = (T.type === 'face' ? 0.6 : 1) * Math.max(0.2, fz * fz / 0.0064 + 0.25) * (1 + wr * 6) * (mat.bue && vr < 0.3 ? 2.5 : 1) * (1 + S.chatNow * 4) * (melt ? 3 : 1) * md.ra;
   const heatIdx = mat.tint ? vr * (0.55 + fz / 0.06) * (S.coolant ? 0.45 : 1) : 0;
   const mk = (T.type === 'face' || T.type === 'end') ? { f:Math.max(0.02, fRev), ra, chat:S.chatNow, tint:clamp((heatIdx - 0.9) * 1.2, 0, 1) } : { f:0, ra, chat:S.chatNow, tint:0 };
   const vol = applyCut(nx, ny, tip, T, nx - S.px, ny - S.py, mk);
@@ -2202,7 +2256,7 @@ function tryStep(nx, ny, nn, dtStep) {
   S.removed += vol; S.cutTime += tCut; S.cutAcc += vol; S.lastCut = performance.now();
   S.lastVc = vcNow; S.lastRa = ra;
   // takım aşınması (Taylor): kesme hızının ~2.5. kuvvetiyle hızlanır; ısı: kesme enerjisinin bir kısmı parçaya geçer
-  S.wear[S.tool] += 0.3 / 900 * mat.wearK * Math.pow(Math.max(vr, 0.2), 2.5) * tCut * (S.coolant && !mat.dry ? 0.8 : 1) * (isDrill(T) ? 1.5 : 1);
+  S.wear[S.tool] += 0.3 / 900 * mat.wearK * Math.pow(Math.max(vr, 0.2), 2.5) * tCut * (S.coolant && !mat.dry ? 0.8 : 1) * (isDrill(T) ? 1.5 : 1) * md.wear;
   if (S.wear[S.tool] > 0.3) warnOnce('wear', `Takım köreldi (VB ${S.wear[S.tool].toFixed(2)} mm): yüzey bozuluyor, yük artıyor. Takım panelinden takımı yenileyin.`, 'warn', 8000);
   S.temp += vol * mat.kc * 1e-3 * 0.45 / Math.max(50, S.heatCap);
   const form = chipForm(T, S.lastChip || 1, fRev, vr);
@@ -2228,15 +2282,20 @@ function tryStep(nx, ny, nn, dtStep) {
   if (S.power > 1) warnOnce('power', `Mil zorlanıyor: güç %${Math.round(S.power * 100)}, devir düşüyor.`, 'warn', 5000);
   // tırlama: uzun ve ince takımda (çıkıntı/çap) ve ağır kesmede başlar; devre göre loblar halinde kararlı bölgeler var
   const LD = T.stick / T.d, lobe = 0.45 + 0.55 * Math.pow(Math.abs(Math.sin(Math.PI * ((S.rpm / 730) % 1))), 0.6);
-  const ci = isDrill(T) ? 0 : L.stress * Math.pow(LD / 3, 1.6) * Math.pow(mat.kc / 700, 0.3) / (2.2 * lobe);
+  const ci = isDrill(T) ? 0 : L.stress * Math.pow(LD / 3, 1.6) * Math.pow(mat.kc / 700, 0.3) * md.chat / (2.2 * lobe);
   S.chatNow = clamp(ci - 1, 0, 1);
   if (S.chatNow > 0.05) warnOnce('chat', `Tırlama: takım ${LD.toFixed(1)}×D çıkıntılı ve yük ağır. Kesme derinliğini azaltın ya da devri biraz değiştirin; yüzeyde dalga oluşuyor.`, 'warn', 6000);
-  if (L.chip > 8 || L.stress > 6) {
+  if (L.chip > 8 * md.tough || L.stress > 6 * md.tough) {
     crash(`Ani aşırı yük: talaş kalınlığı ${L.chip.toFixed(1)}×, takım yükü ${L.stress.toFixed(1)}×. Takım kırıldı. Devri artırın, ilerlemeyi ya da kesme derinliğini düşürün.`);
     return false;
   }
-  if (L.stress > 1.5) S.damage += (L.stress - 1.5) * 0.35 * winT;
-  if (L.chip > 2.5) S.damage += (L.chip - 2.5) * 0.12 * winT;
+  if (L.stress > 1.5) S.damage += (L.stress - 1.5) * 0.35 * winT / md.tough;
+  if (L.chip > 2.5) S.damage += (L.chip - 2.5) * 0.12 * winT / md.tough;
+  // çok ağızlı takımda talaş cebi dar: yumuşak malzemede tam kanalda talaş sıkışır
+  if (T.z >= 4 && (S.mat === 'al' || mat.melt) && L.ae > 0.9 && W.ap > 0.5 * T.d && T.type !== 'face') {
+    S.damage += 0.5 * winT / md.tough;
+    warnOnce('clog', `${T.z} ağızlı takımda talaş cebi dar: ${mat.short} talaşı kanallara sıkışıyor. Kanal açarken 2–3 ağızlı takım kullanın ya da derinliği azaltın.`, 'warn', 8000);
+  }
   if (S.damage >= 1) { crash('Takım uzun süre aşırı yük altında kaldı ve kırıldı. Talaş derinliğini ya da ilerlemeyi azaltın.'); return false; }
   if (L.stress > 1.2 || L.chip > 2) warnOnce('load', `Takım zorlanıyor: yük ${L.stress.toFixed(1)}×, talaş ${L.chip.toFixed(1)}×. İlerlemeyi düşürün ya da paso derinliğini azaltın.`);
   else if (L.chip < 0.12 && L.eng > 0.05 && (S.rubT = performance.now())) warnOnce('rub', 'Talaş çok ince: takım kesmek yerine sürtüyor ve ısınıyor. İlerlemeyi artırın ya da devri düşürün.');
@@ -2316,7 +2375,7 @@ function evalLoad(T, W) {
     const chip = (S.feedNow / (n * T.z)) * thin / (T.fz * mat.ff);
     const nom = T.type === 'face' ? D * 0.7 * 3 : D * D * 0.5;  // referans: D/2 derinlikte kanal
     const eng = A / nom;
-    return { chip, eng, stress: chip * Math.min(eng, 3) };
+    return { chip, eng, stress: chip * Math.min(eng, 3), ae:x };
   }
   const A = W.vol / path;
   const eng = clamp(A / (Math.PI * r * r), 0, 1);
@@ -2425,7 +2484,7 @@ function updateToolUI() {
   $('ctName').textContent = `${T.name} Ø${T.d}${S.broken ? ' · KIRIK' : ''}`;
   $('ctMeta').textContent = `${T.mat} · ağız boyu ${T.flute} mm · takım boyu ${T.len} mm`;
   $('curTool').classList.toggle('broken', S.broken);
-  [...$('rack').children].forEach((b, i) => b.classList.toggle('active', i === S.tool));
+  [...$('rack').children].forEach(b => b.classList.toggle('active', b.dataset.i !== undefined && +b.dataset.i === S.tool));
 }
 function updateRec() {
   const T = tool();
@@ -2435,12 +2494,20 @@ function setRpm(v) { S.rpm = v; $('rpm').value = v; $('rpmOut').textContent = v 
 function setFeed(v) { S.feed = v; $('feed').value = v; $('feedOut').textContent = v + ' mm/dk'; }
 
 // Takım dolabı
-TOOLS.forEach((T, i) => {
-  const b = document.createElement('button');
-  b.innerHTML = `<span class="ico">${toolIcon(T)}</span><span class="nm"><b>${T.no}</b>${T.name}</span><span class="d">Ø${T.d} · ${T.mat.split(',')[0]}</span>`;
-  b.addEventListener('click', () => requestToolChange(i));
-  $('rack').append(b);
-});
+function renderRack() {
+  const rk = $('rack'); rk.innerHTML = '';
+  TOOLS.forEach((T, i) => {
+    if (T.gone) return;
+    const b = document.createElement('button'); b.dataset.i = i;
+    if (T.custom) { b.classList.add('custom'); b.title = 'Sağ tık: editörde aç'; b.addEventListener('contextmenu', e => { e.preventDefault(); TE.show(i); }); }
+    b.innerHTML = `<span class="ico">${toolIcon(T)}</span><span class="nm"><b>${T.no}</b>${T.name}</span><span class="d">Ø${T.d} · ${T.mat.split(',')[0]}</span>`;
+    b.addEventListener('click', () => requestToolChange(i));
+    rk.append(b);
+  });
+  const nb = document.createElement('button'); nb.className = 'add';
+  nb.innerHTML = '<span class="ico">+</span><span class="nm"><b>Yeni</b>Takım tasarla</span><span class="d">editör</span>';
+  nb.addEventListener('click', () => TE.show(null)); rk.append(nb);
+}
 function requestToolChange(i) {
   initAudio();
   if (S.alarm) { log('Önce alarmı sıfırlayın.', 'warn'); return; }
@@ -3131,6 +3198,7 @@ function toolIcon(T) {
     case 'face': return s + '<path d="M12 3h8v9h-8z"/><path d="M5 12h22v6H5z" fill="currentColor" fill-opacity=".25"/><path d="M6 18l2 4M12 18l1 4M19 18l1 4M25 18l-1 4"/></svg>';
     case 'end': return s + '<path d="M11 3h10v11H11z"/><path d="M12 14h8v15h-8z" fill="currentColor" fill-opacity=".25"/><path d="M12 17l8 3M12 22l8 3"/></svg>';
     case 'ball': return s + '<path d="M11 3h10v11H11z"/><path d="M12 14h8v11a4 4 0 0 1-8 0z" fill="currentColor" fill-opacity=".25"/><path d="M12 17l8 3"/></svg>';
+    case 'chamfer': return s + '<path d="M11 3h10v12H11z"/><path d="M9 15h14l-7 12z" fill="currentColor" fill-opacity=".25"/><path d="M12 18h8"/></svg>';
     case 'spot': return s + '<path d="M11 3h10v13H11z"/><path d="M11 16h10l-5 11z" fill="currentColor" fill-opacity=".25"/></svg>';
     case 'drill': return s + '<path d="M12 3h8v7h-8z"/><path d="M13 10h6v16l-3 4-3-4z"/><path d="M13 13l6 3M13 18l6 3M13 23l5 2"/></svg>';
     case 'tap': return s + '<path d="M12 3h8v9h-8z"/><path d="M12 12h8v13l-4 4-4-4z"/><path d="M12 15l8 2M12 19l8 2M12 23l7 2"/></svg>';
@@ -3775,12 +3843,245 @@ const BN = (() => {
   return { show, hide };
 })();
 
+/* ---------------- Takım editörü: kendi takımını tasarla ----------------
+   Tip, çap, ağız sayısı, boylar, helis, köşe radyüsü, uç açısı, malzeme ve kaplama seçilir; takım T13'ten itibaren dolaba eklenir.
+   Parametreler fiziğe bağlıdır (toolMods): önerilen hız ve ilerleme, aşınma, kırılma direnci, tırlama, yüzey, talaş sıkışması. */
+const TKEY = 'freze-tools-v1';
+const KIND = {
+  end:     { name:'Parmak freze', d:[1, 25], z:[1, 6] },
+  ball:    { name:'Küresel freze', d:[1, 20], z:[1, 4] },
+  chamfer: { name:'Pah frezesi', d:[4, 20], z:[1, 6], ang:[60, 90, 120] },
+  drill:   { name:'Matkap', d:[1, 20], z:[2, 2], ang:[118, 135, 140] },
+};
+const COATS = { none:'Kaplamasız', tin:'TiN', altin:'AlTiN', dlc:'DLC' };
+const num = (v, a, b, def) => Number.isFinite(+v) ? clamp(+v, a, b) : def;
+const tipHOf = sp => sp.kind === 'chamfer' ? sp.d / 2 / Math.tan(sp.ang / 2 * Math.PI / 180) : sp.kind === 'ball' ? sp.d / 2 : sp.kind === 'drill' ? sp.d / 2 / Math.tan(sp.ang / 2 * Math.PI / 180) : 0;
+// kurallar: çap tipe göre, ağız boyu uç yüksekliğinden kısa olamaz, çıkıntı ağız boyundan en az 5 mm uzun
+function fixSpec(sp) {
+  if (!KIND[sp.kind]) sp.kind = 'end';
+  const K = KIND[sp.kind];
+  sp.d = Math.round(num(sp.d, K.d[0], K.d[1], 10) * 10) / 10;
+  sp.z = Math.round(num(sp.z, K.z[0], K.z[1], 2));
+  if (K.ang) { if (!K.ang.includes(+sp.ang)) sp.ang = K.ang[sp.kind === 'drill' ? 0 : 1]; } else sp.ang = 0;
+  sp.flute = Math.round(num(sp.flute, Math.ceil(tipHOf(sp) + 1), sp.kind === 'drill' ? 160 : 80, sp.d * 2));
+  sp.stick = Math.round(num(sp.stick, sp.flute + 5, 170, sp.flute + 15));
+  sp.corner = sp.kind === 'end' ? Math.round(num(sp.corner, 0, sp.d * 0.3, 0) * 10) / 10 : 0;
+  sp.helix = Math.round(sp.kind === 'drill' ? num(sp.helix, 15, 40, 30) : num(sp.helix, 0, 55, 35));
+  if (sp.tm !== 'hss') sp.tm = 'carbide';
+  if (!COATS[sp.coat]) sp.coat = 'none';
+  sp.name = String(sp.name || '').slice(0, 24);
+  return sp;
+}
+function toolPrice(sp) {
+  const hss = sp.tm === 'hss';
+  let p = sp.kind === 'drill' ? (hss ? 6 + sp.d * 1.6 : 25 + sp.d * 6)
+    : (hss ? 0.4 : 1) * (18 + sp.d * 5 + sp.z * 4 + sp.flute * 0.4) * (sp.kind === 'ball' ? 1.2 : sp.kind === 'chamfer' ? 1.1 : 1);
+  p *= { none:1, tin:1.15, altin:1.3, dlc:1.45 }[sp.coat];
+  if (sp.corner > 0) p *= 1.12;
+  if (sp.stick > 4 * sp.d) p *= 1.1;                                // uzun boylu özel takım
+  return Math.max(30, Math.round(p * 2) * 5);                       // oyun içi ₺
+}
+// parametrelerden TOOLS kaydı: önerilen kesme hızı malzeme ve kaplamaya, diş başına ilerleme çapa göre
+function toolDef(sp) {
+  const hss = sp.tm === 'hss', cf = { none:0.85, tin:0.95, altin:1, dlc:1 }[sp.coat];   // yerleşik takımlar kaplamalı değerlerle
+  const T = { no:sp.no, name:sp.name || KIND[sp.kind].name, d:sp.d, type:sp.kind, z:sp.z, flute:sp.flute, stick:sp.stick, len:sp.stick + 50,
+    tm:sp.tm, cr:sp.corner, spec:sp, custom:true };
+  T.geo = { helix:sp.helix, tip:{ end:'flat', ball:'ball', chamfer:'cone', drill:'cone' }[sp.kind], corner:sp.corner,
+    coat:sp.coat === 'none' ? (hss ? 'hss' : 'carbide') : sp.coat };
+  if (sp.ang) { T.geo.tipAngle = sp.ang; T.tanTip = Math.tan(sp.ang / 2 * Math.PI / 180); }
+  if (sp.kind === 'drill') { T.vc = Math.round((hss ? 74 : 150) * cf); T.fr = +(0.015 * sp.d * (hss ? 1 : 1.2)).toFixed(3); }
+  else {
+    T.vc = Math.round((hss ? 90 : sp.d <= 6 ? 220 : 250) * cf * (sp.kind === 'chamfer' ? 0.75 : 1));
+    T.fz = +((sp.kind === 'ball' ? 0.005 * sp.d : sp.kind === 'chamfer' ? 0.003 * sp.d + 0.01 : 0.004 * sp.d + 0.01) * (hss ? 0.8 : 1)).toFixed(3);
+  }
+  T.mat = `${hss ? 'HSS' : 'Karbür'}${sp.coat !== 'none' ? ' ' + COATS[sp.coat] : ''}, ${T.z} ağız${T.cr ? `, R${T.cr}` : ''}${sp.ang ? `, ${sp.ang}°` : ''}`;
+  T.price = toolPrice(sp);
+  return T;
+}
+// takım parametrelerinin kesmeye etkisi (çarpanlar): aşınma, kırılma direnci, tırlama eğilimi, yüzey pürüzlülüğü
+function toolMods(T) {
+  const g = geoOf(T), hss = T.tm === 'hss', r = T.d / 2, cr = T.cr || 0;
+  const nonFe = !!(mat.nonMetal || S.mat === 'al' || S.mat === 'brass');
+  const coatW = { tin:0.8, altin:nonFe ? 0.85 : 0.65, dlc:nonFe ? 0.55 : 1.1 }[g.coat] || 1;
+  return {
+    wear: coatW * (1 - Math.min(0.35, cr / r)),                     // köşe radyüsü kesici köşeyi korur
+    tough: (hss ? 1.25 : 1) * (1 + 0.15 * Math.min(1, cr / (0.1 * T.d))),   // HSS kırılmaz, bükülür; karbür gevrek
+    chat: T.type === 'face' || isDrill(T) ? 1 : (hss ? 1.25 : 1) * (T.type === 'chamfer' ? 1 : clamp(1 + (35 - g.helix) / 70, 0.75, 1.4)),   // düşük helis vuruntulu, HSS daha esnek
+    ra: T.type === 'end' ? 1 - Math.min(0.4, cr / r * 0.8) : 1,
+  };
+}
+TOOLS.forEach(T => { T.tm = /HSS/.test(T.mat) ? 'hss' : 'carbide'; });
+const nextToolNo = () => 'T' + (Math.max(...TOOLS.filter(T => !T.gone).map(T => parseInt(String(T.no).slice(1)) || 0)) + 1);
+try {
+  for (const sp of JSON.parse(localStorage.getItem(TKEY) || '[]')) {
+    if (!sp || typeof sp !== 'object') continue;
+    if (!/^T\d+$/.test(sp.no) || TOOLS.some(T => T.no === sp.no)) sp.no = nextToolNo();
+    TOOLS.push(toolDef(fixSpec(sp))); S.wear.push(0);
+  }
+} catch (e) {}
+function saveTools() {
+  try { localStorage.setItem(TKEY, JSON.stringify(TOOLS.filter(T => T.custom && !T.gone).map(T => T.spec))); } catch (e) {}
+}
+renderRack();
+
+const TE = (() => {
+  let r = null, sc, cam, ctl, grp, raf = 0, open = false, sp = null, editIdx = -1, baseNo = '';
+  const DEF = { kind:'end', d:10, z:3, flute:22, stick:40, helix:38, corner:0, ang:0, tm:'carbide', coat:'altin', name:'' };
+  // yerleşik takımdan editör parametreleri (alın frezesi, kılavuz ve kenar bulucu parmak freze olarak açılır)
+  function specOf(T) {
+    if (T.spec) return Object.assign({}, T.spec);
+    const g = geoOf(T), kind = KIND[T.type] ? T.type : T.type === 'spot' ? 'chamfer' : 'end';
+    return fixSpec({ kind, d:T.d, z:T.z, flute:T.flute, stick:T.stick, helix:g.helix, corner:0, ang:T.type === 'spot' ? 90 : 0,
+      tm:T.tm, coat:{ tin:'tin', altin:'altin' }[g.coat] || 'none', name:'' });
+  }
+  function init() {
+    const cv = $('teC');
+    r = new THREE.WebGLRenderer({ canvas:cv, antialias:true });
+    r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); r.outputEncoding = THREE.sRGBEncoding;
+    r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.95;
+    sc = new THREE.Scene(); sc.background = new THREE.Color(0x1a1f22);
+    if (THREE.RoomEnvironment) { const pm = new THREE.PMREMGenerator(r); sc.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture; pm.dispose(); }
+    sc.add(new THREE.HemisphereLight(0xe8eef5, 0x2a2622, 0.4));
+    const l1 = new THREE.DirectionalLight(0xffffff, 0.9); l1.position.set(150, 220, 160); sc.add(l1);
+    const l2 = new THREE.DirectionalLight(0x9fc4ff, 0.35); l2.position.set(-200, 60, -120); sc.add(l2);
+    cam = new THREE.PerspectiveCamera(30, 1, 1, 3000);
+    ctl = new THREE.OrbitControls(cam, cv); ctl.enableDamping = true; ctl.autoRotate = true; ctl.autoRotateSpeed = 1.6;
+    cv.addEventListener('pointerdown', () => { ctl.autoRotate = false; });
+    grp = new THREE.Group(); sc.add(grp);
+    new ResizeObserver(resize).observe(cv.parentElement);
+    cam.position.set(1, 0.35, 1);
+  }
+  function resize() {
+    if (!r) return;
+    const el = $('teC').parentElement, w = el.clientWidth, h = el.clientHeight;
+    if (!w || !h) return;
+    r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+  }
+  function preview(T) {
+    grp.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+    while (grp.children.length) grp.remove(grp.children[0]);
+    buildToolInto(grp, T, false);
+    grp.position.y = T.len / 2;                                     // takım -boy..0 arasında; ortası merkeze
+    const dir = cam.position.clone().sub(ctl.target).normalize();
+    ctl.target.set(0, -T.len * 0.18, 0); cam.position.copy(dir.multiplyScalar(Math.max(70, T.len) * 2.5)).add(ctl.target);
+  }
+  function loop() {
+    if (!open) return;
+    ctl.update(); r.render(sc, cam);
+    raf = requestAnimationFrame(loop);
+  }
+  const rows = { d:'teD', z:'teZ', flute:'teFl', stick:'teSt', helix:'teHx', corner:'teCr' };
+  function sync() {
+    fixSpec(sp);
+    const K = KIND[sp.kind];
+    const lim = { d:[K.d[0], K.d[1], sp.kind === 'drill' ? 0.1 : 0.5], z:[K.z[0], K.z[1], 1], flute:[Math.ceil(tipHOf(sp) + 1), sp.kind === 'drill' ? 160 : 80, 1],
+      stick:[sp.flute + 5, 170, 1], helix:sp.kind === 'drill' ? [15, 40, 1] : [0, 55, 1], corner:[0, Math.max(0.1, Math.floor(sp.d * 3) / 10), 0.1] };
+    for (const k in rows) {
+      const el = $(rows[k]); [el.min, el.max, el.step] = lim[k]; el.value = sp[k];
+      $(rows[k] + 'v').textContent = k === 'z' ? sp.z : k === 'helix' ? sp.helix + '°' : k === 'corner' ? 'R' + sp.corner.toFixed(1) : sp[k] + ' mm';
+    }
+    $('teZ').closest('.sec-row').classList.toggle('off', sp.kind === 'drill');
+    $('teCr').closest('.sec-row').classList.toggle('off', sp.kind !== 'end');
+    $('teAngRow').classList.toggle('off', !K.ang);
+    $('teAng').innerHTML = (K.ang || [0]).map(a => `<button class="btn${a === sp.ang ? ' on' : ''}" data-ta="${a}">${a ? a + '°' : '—'}</button>`).join('');
+    for (const [box, key] of [['teKind', 'tk'], ['teTm', 'tm'], ['teCoat', 'tc']])
+      [...$(box).children].forEach(b => b.classList.toggle('on', b.dataset[key] === { tk:sp.kind, tm:sp.tm, tc:sp.coat }[key]));
+    $('teName').placeholder = K.name;
+    const T = toolDef(Object.assign({}, sp, { no:editIdx >= 0 ? TOOLS[editIdx].no : nextToolNo() }));
+    preview(T); stats(T);
+    $('teHint').textContent = `${T.no} · ${T.name} Ø${T.d} · ağız ${T.flute} mm · çıkıntı ${T.stick} mm · takım boyu ${T.len} mm`;
+    $('teMode').textContent = editIdx >= 0 ? `${T.no} düzenleniyor` : baseNo ? `${baseNo} temel alındı, yeni takım ${T.no} olacak` : `Yeni takım ${T.no}`;
+    $('teDel').hidden = editIdx < 0;
+    $('teSave').textContent = editIdx >= 0 ? 'Değişiklikleri kaydet' : 'Dolaba ekle';
+  }
+  function stats(T) {
+    const md = toolMods(T), LD = T.stick / T.d, ch = LD * md.chat;
+    const lv = (v, a, b, w) => v < a ? [w[0], ''] : v < b ? [w[1], 'warn'] : [w[2], 'bad'];
+    const li = [];
+    const add = (k, v, cls = '', note = '') => li.push(`<li class="${cls}"><span>${k}</span> <b>${v}</b>${note ? `<br><span>${note}</span>` : ''}</li>`);
+    add(`Önerilen (${mat.short})`, `${recRpm(T)} dev/dk · ${recFeed(T)} mm/dk`, '', T.fr ? `devir başına ${T.fr} mm, kesme hızı ${T.vc} m/dk` : `diş başına ${T.fz} mm, kesme hızı ${T.vc} m/dk`);
+    const [cw, cc] = lv(ch, 3.2, 4.6, ['düşük', 'orta', 'yüksek']);
+    if (!isDrill(T)) add('Tırlama riski', cw, cc, `çıkıntı/çap ${LD.toFixed(1)}×${md.chat > 1.05 ? ', düşük helis ya da HSS esnekliği artırıyor' : md.chat < 0.95 ? ', yüksek helis yumuşatıyor' : ''}`);
+    add('Takım ömrü', `×${(1 / md.wear).toFixed(2)}`, md.wear > 1.02 ? 'warn' : '', md.wear > 1.02 ? 'DLC kaplama çelikte uygun değil' : T.cr ? 'köşe radyüsü kesici köşeyi korur' : '');
+    add('Kırılma direnci', `×${md.tough.toFixed(2)}`, '', T.tm === 'hss' ? 'HSS esnek, aşırı yükte daha geç kırılır' : 'karbür sert ama gevrek');
+    if (T.type === 'end') add('Yüzey kalitesi', md.ra < 0.99 ? `Ra ×${md.ra.toFixed(2)}` : 'standart', '', md.ra < 0.99 ? 'radyüs taban izini yumuşatır' : '');
+    if (!isDrill(T) && T.z >= 4) add('Talaş cebi', 'dar', 'warn', 'alüminyum ve plastikte tam kanalda talaş sıkışır');
+    if (isDrill(T) && T.flute < T.stick - 30) add('Delik derinliği', `en çok ${T.flute} mm`, '', 'ağız boyu delme derinliğini sınırlar');
+    add('Fiyat', `${T.price.toLocaleString('tr-TR')} ₺`);
+    $('teStats').innerHTML = li.join('');
+  }
+  function fillBase() {
+    $('teBase').innerHTML = '<option value="-1">Varsayılan parmak freze</option>' +
+      TOOLS.map((T, i) => T.gone ? '' : `<option value="${i}">${T.no} · ${T.name} Ø${T.d}${T.custom ? ' (sizin)' : ''}</option>`).join('');
+  }
+  function load(i) {
+    if (i < 0 || !TOOLS[i]) { sp = Object.assign({}, DEF); editIdx = -1; baseNo = ''; }
+    else { sp = specOf(TOOLS[i]); editIdx = TOOLS[i].custom ? i : -1; baseNo = TOOLS[i].custom ? '' : TOOLS[i].no; }
+    $('teBase').value = i < 0 || !TOOLS[i] ? -1 : i;
+    $('teName').value = sp.name || '';
+    sync();
+  }
+  function show(i) {
+    initAudio();
+    if (!r) init();
+    open = true; $('tedit').hidden = false; resize();
+    fillBase(); load(i == null ? -1 : i);
+    ctl.autoRotate = true; cancelAnimationFrame(raf); loop();
+  }
+  function hide() { open = false; $('tedit').hidden = true; cancelAnimationFrame(raf); }
+  function commit(mount) {
+    let i = editIdx;
+    if (i >= 0 && i === S.tool && (S.spindle || S.changing)) { log('Takılı takımı değiştirmek için önce mili durdurun.', 'warn'); return; }
+    sp.name = $('teName').value.trim(); fixSpec(sp);
+    if (i >= 0) { sp.no = TOOLS[i].no; TOOLS[i] = toolDef(Object.assign({}, sp)); S.wear[i] = 0; }
+    else { sp.no = nextToolNo(); TOOLS.push(toolDef(Object.assign({}, sp))); S.wear.push(0); i = TOOLS.length - 1; }
+    const T = TOOLS[i];
+    saveTools(); renderRack(); updateToolUI();
+    if (i === S.tool) { buildToolVisual(); updateRec(); }
+    log(`${T.no} ${T.name} Ø${T.d} (${T.mat}) dolaba kaydedildi. Fiyatı ${T.price.toLocaleString('tr-TR')} ₺.`, 'ok');
+    fillBase(); load(i);
+    if (mount) { hide(); requestToolChange(i); }
+  }
+  function remove() {
+    if (editIdx < 0) return;
+    if (editIdx === S.tool) { log('Takılı takım silinemez; önce başka bir takım takın.', 'warn'); return; }
+    const T = TOOLS[editIdx]; T.gone = true;                       // dizin yerinde kalır (parçadaki iz kayıtları takım sırasına bağlı)
+    saveTools(); renderRack(); updateToolUI();
+    log(`${T.no} ${T.name} dolaptan çıkarıldı.`);
+    fillBase(); load(-1);
+  }
+  for (const k in rows) $(rows[k]).addEventListener('input', e => { sp[k] = +e.target.value; sync(); });
+  $('teKind').addEventListener('click', e => {
+    const b = e.target.closest('[data-tk]'); if (!b || b.dataset.tk === sp.kind) return;
+    sp.kind = b.dataset.tk; sp.ang = 0;
+    if (sp.kind === 'drill') { sp.coat = sp.tm === 'hss' ? 'tin' : sp.coat; sp.helix = 30; sp.flute = Math.max(sp.flute, Math.round(sp.d * 6)); sp.stick = Math.max(sp.stick, sp.flute + 10); }
+    if (sp.kind === 'chamfer') { sp.helix = 0; sp.z = Math.min(sp.z, 4); }
+    sync();
+  });
+  $('teAng').addEventListener('click', e => { const b = e.target.closest('[data-ta]'); if (b) { sp.ang = +b.dataset.ta; sync(); } });
+  $('teTm').addEventListener('click', e => { const b = e.target.closest('[data-tm]'); if (b) { sp.tm = b.dataset.tm; sync(); } });
+  $('teCoat').addEventListener('click', e => { const b = e.target.closest('[data-tc]'); if (b) { sp.coat = b.dataset.tc; sync(); } });
+  $('teName').addEventListener('change', () => { sp.name = $('teName').value.trim(); sync(); });
+  $('teBase').addEventListener('change', e => load(+e.target.value));
+  $('teSave').addEventListener('click', () => commit(false));
+  $('teMount').addEventListener('click', () => commit(true));
+  $('teDel').addEventListener('click', remove);
+  $('teClose').addEventListener('click', hide);
+  $('teOpen').addEventListener('click', () => show(S.tool));
+  window.addEventListener('keydown', e => {                       // editör açıkken tezgâh kısayolları çalışmaz
+    if (!open) return;
+    if (e.code === 'Escape') { e.stopImmediatePropagation(); hide(); }
+    else if (!(e.target instanceof Element && e.target.matches('input, select, textarea'))) e.stopImmediatePropagation();
+  }, true);
+  return { show, hide };
+})();
+
 // Başlangıç
 buildToolVisual(); updateToolUI(); updateRec(); updateSpindleUI();
 setRpm(4200); setFeed(500);
 renderJobs(); selectJob(-1);
 log('Tezgâh hazır. T3 Ø10 parmak freze takılı. Sıfır noktası parçanın sol-ön-üst köşesinde.', 'ok');
-for (const id of ['alarm', 'report', 'toast', 'bench']) document.body.append($(id));
+for (const id of ['alarm', 'report', 'toast', 'bench', 'tedit']) document.body.append($(id));
 setMaterial('al');
 PM.init();
 requestAnimationFrame(frame);
