@@ -347,7 +347,8 @@ table{color:inherit;font-size:inherit}
 .key.ax{background:linear-gradient(#5b6368,#3c4246);color:#f2f2ec;box-shadow:0 .5cqw 0 #1f2427,0 .7cqw 1.2cqw rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.25)}
 .key.ax.on{background:linear-gradient(#e7b434,#b88512);color:#2a1d02;box-shadow:0 .5cqw 0 #6e4f08,0 0 1.6cqw rgba(255,190,60,.5)}
 .key.amber{background:linear-gradient(#e8b36a,#c98a3a)}
-.key.wide{grid-column:span 2;aspect-ratio:auto;background:linear-gradient(#d9e8dc,#a9c6ae)}
+.key.ent{background:linear-gradient(#d9e8dc,#a9c6ae)}
+.key.go{background:linear-gradient(#8fe0a2,#3fa65c);color:#062a12}
 .cp-bottom{display:grid;grid-template-columns:auto auto minmax(24cqw,1fr) auto;grid-template-areas:'mil knobs mpg stop' 'jog jog mpg stop';gap:1.6cqw 2cqw;align-items:center;background:linear-gradient(#2a2f32,#202427);border-radius:1cqw;padding:1.8cqw;box-shadow:inset 0 2px 8px rgba(0,0,0,.55);flex-wrap:wrap}
 .cp-group{display:flex;flex-direction:column;align-items:center;gap:.8cqw;padding:0 1.2cqw;border-right:1px solid rgba(255,255,255,.08)}
 .cp-group.knobs,.cp-group.mpg-g{flex-direction:row;align-items:flex-end;gap:1.6cqw}
@@ -499,7 +500,7 @@ table{color:inherit;font-size:inherit}
             <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
             <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
             <button class="key" data-k="±">±</button><button class="key" data-k="0">0</button><button class="key" data-k=".">.</button>
-            <button class="key amber" data-k="clr">CLR</button><button class="key wide" data-k="ent">ENT</button>
+            <button class="key amber" data-k="clr">CLR</button><button class="key go" data-k="git" title="Yazılan değerlere git">GİT</button><button class="key ent" data-k="ent" title="Seçili eksene değeri ata">ENT</button>
           </div>
         </div>
         <div class="cp-bottom">
@@ -3396,7 +3397,7 @@ const FD = (() => {
 /* ---------------- Kumanda paneli: DRO ekranı, tuş takımı, topuzlar, el çarkı (MPG) ----------------
    Paneldeki tüm kumandalar mevcut işlevleri çağırır; böylece eski paneller ve makine üstü kumandalarla hep tutarlı kalır. */
 const CP = (() => {
-  const st = { sel:null, buf:'', page:1, axis:'x', mpgAcc:0, mpgAng:0, mpgLast:null };
+  const st = { sel:null, buf:'', tgt:{}, page:1, axis:'x', mpgAcc:0, mpgAng:0, mpgLast:null };
   const SVG = 'http://www.w3.org/2000/svg';
   // Topuz: −135°…+135° arası döner; sürükle (yukarı/aşağı ya da döndür) ya da tekerlek. steps verilirse kademeli
   function knob(el, o) {
@@ -3450,18 +3451,32 @@ const CP = (() => {
   mpg.addEventListener('pointerup', mup); mpg.addEventListener('pointercancel', mup);
   mpg.addEventListener('wheel', e => { e.preventDefault(); initAudio(); const t = e.deltaY < 0 ? 1 : -1; wheelTicks(st.axis, t); st.mpgAng += t * TICK * 3; mpg.firstElementChild.style.transform = `rotate(${st.mpgAng}rad)`; }, { passive:false });
   // tuş takımı: eksen seç, değer yaz, ENT ile ata; CLR siler
-  function selAxis(ax) { st.sel = st.sel === ax ? null : ax; st.buf = ''; }
+  // eksen değiştirirken yazılmış değer GİT hedefi olarak saklanır: X 20 → Y 30 → GİT
+  function keep() { if (st.sel && st.buf && isFinite(parseFloat(st.buf))) st.tgt[st.sel] = parseFloat(st.buf); }
+  function selAxis(ax) { keep(); st.sel = st.sel === ax && !st.buf ? null : ax; st.buf = ''; }
+  function goTo() {
+    keep();
+    const axes = Object.keys(st.tgt);
+    if (!axes.length) { log('GİT için eksen seçip hedef değeri yazın: örn. X 20, Y 30, GİT.', 'warn'); return; }
+    if (S.alarm || S.changing) return;
+    const d = droVals();
+    for (const ax of axes) S.pend[ax] = st.tgt[ax] - d[ax];
+    if ('z' in st.tgt && st.tgt.z < d.z) warnOnce('goZ', 'Dikkat: Z aşağı iniyor; takım yoluna parça ya da mengene girmesin.', 'warn');
+    log(`${axes.map(a => a.toUpperCase() + fmt(st.tgt[a])).join(' ')} konumuna ${rapid() ? 'hızlı' : S.feed + ' mm/dk ilerlemeyle'} gidiliyor.`);
+    st.tgt = {}; st.sel = null; st.buf = '';
+  }
   $('cpKeys').addEventListener('click', e => {
     const b = e.target.closest('[data-k]'); if (!b) return;
     initAudio(); thud(320, 0.04, 0.025);
     const k = b.dataset.k;
     if (k === 'x' || k === 'y' || k === 'z') selAxis(k);
-    else if (k === 'clr') { if (st.buf) st.buf = ''; else st.sel = null; }
+    else if (k === 'clr') { if (st.buf) st.buf = ''; else if (st.sel) st.sel = null; else st.tgt = {}; }
+    else if (k === 'git') goTo();
     else if (k === 'ent') {
       if (!st.sel) { log('Önce X, Y ya da Z eksen tuşuna basın.', 'warn'); return; }
       const v = parseFloat(st.buf || '0');
       if (isFinite(v)) setAxis(st.sel, v);
-      st.buf = ''; st.sel = null;
+      st.buf = ''; st.sel = null; st.tgt = {};
     } else if (k === '±') st.buf = st.buf.startsWith('-') ? st.buf.slice(1) : '-' + st.buf;
     else if (st.buf.length < 9 && !(k === '.' && st.buf.includes('.'))) { if (!st.sel) { log('Önce X, Y ya da Z eksen tuşuna basın.', 'warn'); return; } st.buf += k; }
     render();
@@ -3493,7 +3508,8 @@ const CP = (() => {
   function render() {
     for (const ax of ['x', 'y', 'z']) document.querySelector(`.lcd-ax[data-ax="${ax}"]`).classList.toggle('sel', st.sel === ax);
     document.querySelectorAll('.key.ax').forEach(b => b.classList.toggle('on', b.dataset.k === st.sel));
-    $('lcdSel').textContent = st.sel ? `${st.sel.toUpperCase()} =` : 'EKSEN SEÇ';
+    const tg = Object.keys(st.tgt).map(a => a.toUpperCase() + st.tgt[a]).join(' ');
+    $('lcdSel').textContent = (tg ? 'GİT ' + tg + ' · ' : '') + (st.sel ? `${st.sel.toUpperCase()} =` : tg ? '' : 'EKSEN SEÇ');
     $('lcdBuf').textContent = st.sel ? (st.buf || '_') : '';
   }
   // ekran ve ışıklar (updateHud içinden ~15 Hz)
