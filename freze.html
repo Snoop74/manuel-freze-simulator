@@ -389,6 +389,27 @@ table{color:inherit;font-size:inherit}
 .cp-estop::before{content:"";position:absolute;inset:16%;border-radius:50%;background:radial-gradient(circle at 40% 32%,#ff8a74,#c9241a 55%,#7a120c);box-shadow:0 .6cqw 1cqw rgba(0,0,0,.55),inset 0 -.6cqw 1cqw rgba(0,0,0,.35);transition:transform .08s}
 .cp-estop:active::before,.cp-estop.down::before{transform:scale(.93) translateY(.3cqw)}
 .cp-estop span{position:relative;font-size:1.1cqw;font-weight:700;color:#fff;letter-spacing:.06em;margin-top:7.6cqw;text-shadow:0 1px 2px #000}
+/* ---- Ham parça ölçüsü ve parça masası ---- */
+.stock-row{display:grid;grid-template-columns:repeat(3,1fr) auto;gap:6px;align-items:end}
+.stock-row label{display:grid;gap:2px;font-size:11px;color:var(--muted);font-family:var(--f-display);letter-spacing:.08em}
+.stock-row input{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:6px 7px;color:var(--fg);font-family:var(--f-dro)}
+.bench{position:fixed;inset:0;z-index:85;background:rgba(6,10,12,.72);display:grid;place-items:center;padding:16px}
+.bench-box{width:min(1280px,100%);height:min(820px,100%);background:var(--panel);border:1px solid var(--line);border-radius:10px;display:grid;grid-template-rows:auto 1fr;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.bench-head{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);font-family:var(--f-display)}
+.bench-head b{letter-spacing:.12em}.bench-head span{color:var(--muted);font-family:var(--f-dro);font-size:12.5px;flex:1}
+.bench-body{display:grid;grid-template-columns:minmax(0,1fr) 300px;min-height:0}
+.bench-view{position:relative;min-height:0}
+.bench-view canvas{width:100%;height:100%;display:block}
+.bench-hint{position:absolute;left:12px;bottom:12px;background:rgba(14,18,20,.85);border:1px solid var(--line);border-radius:5px;padding:6px 10px;font-size:12.5px;pointer-events:none}
+.bn-label{position:absolute;transform:translate(-50%,-130%);background:rgba(10,20,14,.9);border:1px solid #3c8a5c;color:#9dffc4;font-family:var(--f-dro);font-size:12.5px;padding:3px 7px;border-radius:4px;pointer-events:none;white-space:nowrap}
+.bench-side{border-left:1px solid var(--line);padding:12px;display:grid;gap:10px;align-content:start;overflow:auto}
+.bench-side .tools{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.bench-side ul{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:12.5px}
+.bench-side li{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:6px 8px;line-height:1.4}
+.bench-side li b{color:var(--vfd);font-family:var(--f-dro);font-size:14px}
+.sec-row{display:grid;grid-template-columns:auto 1fr 70px;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.sec-row output{font-family:var(--f-dro);color:var(--fg);text-align:right}
+@media (max-width:900px){.bench-body{grid-template-columns:1fr;grid-template-rows:1fr auto}.bench-side{border-left:0;border-top:1px solid var(--line);max-height:40vh}}
 </style>
 
 <div class="app">
@@ -439,6 +460,25 @@ table{color:inherit;font-size:inherit}
       <div class="dw-note">Ölçüler mm. Sıfır noktası: parçanın sol-ön köşesi. Sarı çizgiler parçadaki markalama izleridir.</div>
     </div>
     <div class="toast" id="toast"></div>
+    <div class="bench" id="bench" hidden>
+      <div class="bench-box" role="dialog" aria-label="Parça masası">
+        <div class="bench-head"><b>PARÇA MASASI</b><span id="bnInfo"></span><button class="btn" id="bnClose">Kapat</button></div>
+        <div class="bench-body">
+          <div class="bench-view" id="bnView"><canvas id="bnC" aria-label="Parçanın 3B görünümü"></canvas><div class="bench-hint" id="bnHint"></div></div>
+          <div class="bench-side">
+            <div class="sub">Ölçü aleti</div>
+            <div class="tools"><button class="btn on" data-bt="cal">Kumpas</button><button class="btn" data-bt="h">Yükseklik</button><button class="btn" data-bt="hole">Delik / cep</button></div>
+            <div class="sub">Kesit</div>
+            <div class="sec-row"><span>X</span><input type="range" id="bnSecX" min="0" max="150" step="0.5" value="150"><output id="bnSecXv">kapalı</output></div>
+            <div class="sec-row"><span>Y</span><input type="range" id="bnSecY" min="0" max="100" step="0.5" value="100"><output id="bnSecYv">kapalı</output></div>
+            <div class="sub">Ölçümler</div>
+            <ul id="bnList"></ul>
+            <button class="btn" id="bnClear">Ölçümleri temizle</button>
+            <div class="dro-note">Sol tık ölç, sağ tık sürükle döndür, tekerlek yakınlaştır. Kesit kaydırıcıları parçayı o düzlemden keser; iç cepler ve delikler görünür.</div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="report" id="report" hidden>
       <div class="box" role="dialog" aria-labelledby="rpTitle">
         <div class="rp-head"><span id="rpJob">İŞ 1</span><h2 id="rpTitle">Muayene raporu</h2></div>
@@ -632,10 +672,14 @@ table{color:inherit;font-size:inherit}
         <div class="stat"><span>Kaldırılan talaş</span><b id="stVol">0.00 cm³</b></div>
         <div class="stat"><span>Kesme süresi</span><b id="stTime">0:00</b></div>
       </div>
+      <div class="stock-row"><label>X GENİŞLİK<input id="stW" type="number" min="20" max="220" step="0.5" value="150"></label><label>Y DERİNLİK<input id="stD" type="number" min="20" max="135" step="0.5" value="100"></label><label>Z YÜKSEKLİK<input id="stH" type="number" min="10" max="80" step="0.5" value="40"></label><button class="btn" id="stApply" title="Bu ölçülerde yeni ham parça bağla">Uygula</button></div>
       <select id="matSel" aria-label="Malzeme"><option value="al">Al 6061 alüminyum</option><option value="s235">S235 (St37) yapı çeliği</option><option value="c45">C45 ıslah çeliği</option><option value="ss304">304 paslanmaz çelik</option><option value="brass">Pirinç (CuZn39Pb3)</option><option value="gg25">GG25 gri döküm</option><option value="pom">Delrin (POM) plastik</option><option value="pa6">PA6 polyamid (naylon)</option></select>
       <div class="row2">
         <button class="btn" id="clearChips">Talaşları süpür</button>
         <button class="btn" id="newPart">Yeni ham parça</button>
+      </div>
+      <button class="btn start" id="benchOpen" style="width:100%;margin-top:6px">Parça masası: incele, ölç, kesit al</button>
+      <div style="display:none">
       </div>
     </div>
 
@@ -669,11 +713,9 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const TAU = Math.PI * 2;
 
 /* ---------------- Ham parça (yükseklik haritası) ---------------- */
-const C = 0.5, PW = 150, PD = 100, PH = 40;
-const NX = Math.round(PW / C) + 1, NY = Math.round(PD / C) + 1;
-const H = new Float32Array(NX * NY).fill(PH);
-const CUT = new Uint8Array(NX * NY);   // hücreyi kesen takım (indeks + 1)
-const INSP = new Uint8Array(NX * NY);  // muayene: 1 = fazla kesilmiş
+const C = 0.5;
+let PW = 150, PD = 100, PH = 40;       // ham parça ölçüsü (X genişlik, Y derinlik, Z yükseklik); buildStock ile değişir
+let NX, NY, H, CUT, INSP;              // yükseklik haritası, hücreyi kesen takım (indeks + 1), muayene (1 = fazla kesilmiş)
 
 /* ---------------- Takım dolabı ---------------- */
 // len: mil burnundan uca boy, stick: tutucudan çıkan boy, flute: kesici ağız boyu
@@ -1351,37 +1393,12 @@ const yWheel = new THREE.Group(); yWheel.position.set(0, -235, 112); scene.add(y
 hwheel(yWheel, 48);
 // Mengene
 rbox(-40, 190, -60, -35, -160, 60, 3, M.paint, table);                    // gövde (-60..-35)
-rbox(-35, 185, -35, 22, -125, -100, 2, M.ground, table);                  // sabit çene (y 100..125)
-rbox(-35, 185, -35, 22, 0, 25, 2, M.ground, table);                       // hareketli çene (y -25..0)
-for (const [z0, z1] of [[-100.4, -99.9], [-0.1, 0.4]]) boxR(-30, 180, -20, 20, z0, z1, MX.chrome, table).castShadow = false;   // çene plakaları
-rbox(-5, 155, -35, 0, -13, -3, 1, M.steel, table);                        // paralel 1 (y 3..13)
-rbox(-5, 155, -35, 0, -97, -87, 1, M.steel, table);                       // paralel 2 (y 87..97)
 { const s = cyl(9, 9, 90, MX.chrome, 14); s.rotation.x = Math.PI / 2; s.position.set(75, -40, 70); table.add(s);
   const b = cyl(16, 16, 14, M.ground, 6); b.rotation.x = Math.PI / 2; b.position.set(75, -40, 112); table.add(b);
   const hd = cyl(5, 5, 110, MX.chrome, 10); hd.rotation.z = Math.PI / 2; hd.position.set(75, -40, 120); table.add(hd);
   for (const x of [20, 130]) { const k = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 8), M.black); k.position.set(x, -40, 120); table.add(k); } }
 
-/* ---- Parça mesh'i ---- */
-const nV = NX * NY;
-const pos = new Float32Array(nV * 3), nor = new Float32Array(nV * 3), col = new Float32Array(nV * 3);
-for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
-  const k = j * NX + i; pos[k*3] = i * C; pos[k*3+1] = PH; pos[k*3+2] = -j * C;
-}
-const idx = new Uint32Array((NX - 1) * (NY - 1) * 6);
-{ let p = 0;
-  for (let j = 0; j < NY - 1; j++) for (let i = 0; i < NX - 1; i++) {
-    const a = j * NX + i, b = a + 1, c = a + NX, d = c + 1;
-    idx[p++] = a; idx[p++] = b; idx[p++] = c; idx[p++] = b; idx[p++] = d; idx[p++] = c;
-  } }
-const topGeo = new THREE.BufferGeometry();
-topGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-topGeo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-topGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-topGeo.setIndex(new THREE.BufferAttribute(idx, 1));
-topGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(PW/2, PH/2, -PD/2), 120);
-const MK1 = new Float32Array(nV * 4), MK2 = new Float32Array(nV * 4), TINTC = new Float32Array(nV), TAPC = new Uint8Array(nV);
-topGeo.setAttribute('mk1', new THREE.BufferAttribute(MK1, 4));
-topGeo.setAttribute('mk2', new THREE.BufferAttribute(MK2, 4));
+/* ---- Parça mesh'i: ham parça ölçüsü değişince (buildStock) yükseklik haritası, mesh ve mengene yeniden kurulur ---- */
 const topMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.34, metalness:0.62 });
 topMat.envMapIntensity = 0.45; M.raw.envMapIntensity = 0.45;   // düz üst yüzey ortamın parlak tavanını yansıtıp beyaza dönmesin
 // Alın ve parmak frezenin taban izleri: takımın arka kenarının çizdiği yaylar, devir başına ilerleme aralığıyla ("balık pulu").
@@ -1407,9 +1424,7 @@ topMat.onBeforeCompile = sh => {
     .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
       roughnessFactor = clamp(roughnessFactor + mkAmp * (mkG - 0.35) * 0.45 + rip * 0.3, 0.05, 1.0);`);
 };
-const topMesh = new THREE.Mesh(topGeo, topMat);
-topMesh.castShadow = true; topMesh.receiveShadow = true; table.add(topMesh);
-
+let nV, pos, nor, col, topGeo, MK1, MK2, TINTC, TAPC, topMesh = null, walls = [], stockBase = null;
 function makeWall(n, place, normal) {
   const g = new THREE.BufferGeometry();
   const p = new Float32Array(n * 2 * 3), nn = new Float32Array(n * 2 * 3);
@@ -1419,20 +1434,69 @@ function makeWall(n, place, normal) {
   g.setAttribute('position', new THREE.BufferAttribute(p, 3));
   g.setAttribute('normal', new THREE.BufferAttribute(nn, 3));
   g.setIndex(ix);
-  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(PW/2, PH/2, -PD/2), 120);
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(PW/2, PH/2, -PD/2), Math.hypot(PW, PD, PH));
   const m = new THREE.Mesh(g, M.raw); m.castShadow = true; m.receiveShadow = true; table.add(m);
-  return { g, n };
+  return { g, n, m };
 }
-// Her duvar: üst sıra (0..n-1) yüksekliği izler, alt sıra y=0
-const walls = [
-  { w: makeWall(NX, (p, k) => { p.set([k*C, PH, 0], k*3); p.set([k*C, 0, 0], (NX+k)*3); }, [0,0,1]), at: k => H[k] },
-  { w: makeWall(NX, (p, k) => { p.set([k*C, PH, -PD], k*3); p.set([k*C, 0, -PD], (NX+k)*3); }, [0,0,-1]), at: k => H[(NY-1)*NX + k] },
-  { w: makeWall(NY, (p, k) => { p.set([0, PH, -k*C], k*3); p.set([0, 0, -k*C], (NY+k)*3); }, [-1,0,0]), at: k => H[k*NX] },
-  { w: makeWall(NY, (p, k) => { p.set([PW, PH, -k*C], k*3); p.set([PW, 0, -k*C], (NY+k)*3); }, [1,0,0]), at: k => H[k*NX + NX - 1] },
-];
-{ const b = new THREE.Mesh(new THREE.PlaneGeometry(PW, PD), M.raw); b.rotation.x = Math.PI / 2; b.position.set(PW/2, 0.01, -PD/2); table.add(b); }
-
-let dirty = { i0:0, i1:NX-1, j0:0, j1:NY-1 }, isDirty = true;
+function buildStock(w, d, h) {
+  PW = w; PD = d; PH = h;
+  NX = Math.round(PW / C) + 1; NY = Math.round(PD / C) + 1; nV = NX * NY;
+  H = new Float32Array(nV).fill(PH); CUT = new Uint8Array(nV); INSP = new Uint8Array(nV);
+  if (topMesh) { table.remove(topMesh); topGeo.dispose(); }
+  for (const w of walls) { table.remove(w.w.m); w.w.g.dispose(); }
+  if (stockBase) { table.remove(stockBase); stockBase.geometry.dispose(); }
+  pos = new Float32Array(nV * 3); nor = new Float32Array(nV * 3); col = new Float32Array(nV * 3);
+  for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const k = j * NX + i; pos[k*3] = i * C; pos[k*3+1] = PH; pos[k*3+2] = -j * C; }
+  const idx = new Uint32Array((NX - 1) * (NY - 1) * 6);
+  { let p = 0;
+    for (let j = 0; j < NY - 1; j++) for (let i = 0; i < NX - 1; i++) {
+      const a = j * NX + i, b = a + 1, c = a + NX, dd = c + 1;
+      idx[p++] = a; idx[p++] = b; idx[p++] = c; idx[p++] = b; idx[p++] = dd; idx[p++] = c;
+    } }
+  topGeo = new THREE.BufferGeometry();
+  topGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  topGeo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  topGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  topGeo.setIndex(new THREE.BufferAttribute(idx, 1));
+  topGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(PW/2, PH/2, -PD/2), Math.hypot(PW, PD, PH));
+  MK1 = new Float32Array(nV * 4); MK2 = new Float32Array(nV * 4); TINTC = new Float32Array(nV); TAPC = new Uint8Array(nV);
+  topGeo.setAttribute('mk1', new THREE.BufferAttribute(MK1, 4));
+  topGeo.setAttribute('mk2', new THREE.BufferAttribute(MK2, 4));
+  topMesh = new THREE.Mesh(topGeo, topMat); topMesh.castShadow = true; topMesh.receiveShadow = true; table.add(topMesh);
+  // Her duvar: üst sıra (0..n-1) yüksekliği izler, alt sıra y=0
+  walls = [
+    { w: makeWall(NX, (p, k) => { p.set([k*C, PH, 0], k*3); p.set([k*C, 0, 0], (NX+k)*3); }, [0,0,1]), at: k => H[k] },
+    { w: makeWall(NX, (p, k) => { p.set([k*C, PH, -PD], k*3); p.set([k*C, 0, -PD], (NX+k)*3); }, [0,0,-1]), at: k => H[(NY-1)*NX + k] },
+    { w: makeWall(NY, (p, k) => { p.set([0, PH, -k*C], k*3); p.set([0, 0, -k*C], (NY+k)*3); }, [-1,0,0]), at: k => H[k*NX] },
+    { w: makeWall(NY, (p, k) => { p.set([PW, PH, -k*C], k*3); p.set([PW, 0, -k*C], (NY+k)*3); }, [1,0,0]), at: k => H[k*NX + NX - 1] },
+  ];
+  stockBase = new THREE.Mesh(new THREE.PlaneGeometry(PW, PD), M.raw); stockBase.rotation.x = Math.PI / 2; stockBase.position.set(PW/2, 0.01, -PD/2); table.add(stockBase);
+  dirty = { i0:0, i1:NX - 1, j0:0, j1:NY - 1 }; isDirty = true;
+  buildVise();
+}
+// Mengene çeneleri parçaya göre: arka çene parçanın arkasına dayanır, çene yüksekliği parçanın 5 mm altında biter
+const viseG = new THREE.Group(); table.add(viseG);
+let jawTop = 22;
+function buildVise() {
+  while (viseG.children.length) { const o = viseG.children[0]; viseG.remove(o); if (o.geometry) o.geometry.dispose(); }
+  jawTop = clamp(PH - 5, 4, 22);
+  rbox(-35, 185, -35, jawTop, -PD - 25, -PD, 2, M.ground, viseG);           // arka çene (y PD..PD+25)
+  rbox(-35, 185, -35, jawTop, 0, 25, 2, M.ground, viseG);                    // ön (hareketli) çene (y -25..0)
+  const ph = Math.min(20, jawTop - 2);
+  for (const [z0, z1] of [[-PD - 0.4, -PD + 0.1], [-0.1, 0.4]]) boxR(-30, 180, Math.max(-20, -ph), ph, z0, z1, MX.chrome, viseG).castShadow = false;   // çene plakaları
+  rbox(-5, 155, -35, 0, -13, -3, 1, M.steel, viseG);                         // paralel 1 (y 3..13)
+  rbox(-5, 155, -35, 0, -PD + 3, -PD + 13, 1, M.steel, viseG);               // paralel 2
+  if (stockReady) syncFixtures();
+}
+// çarpışma kutuları çenelerle birlikte taşınır (FIXTURES dosyada daha aşağıda tanımlı; başlangıçta bir kez eşitlenir)
+let stockReady = false;
+function syncFixtures() {
+  FIXTURES[0].top = FIXTURES[1].top = jawTop;
+  FIXTURES[1].b = [-35, 185, PD, PD + 25];
+  FIXTURES[3].b = [-10, 160, PD - 13, PD - 3];
+}
+let dirty = { i0:0, i1:0, j0:0, j1:0 }, isDirty = true;
+buildStock(PW, PD, PH);
 function markDirty(i0, i1, j0, j1) {
   if (!isDirty) { dirty = { i0, i1, j0, j1 }; isDirty = true; return; }
   dirty.i0 = Math.min(dirty.i0, i0); dirty.i1 = Math.max(dirty.i1, i1);
@@ -1649,7 +1713,7 @@ function ambientParticles(dt, tip) {
 }
 function groundAt(x, y) {
   if (x >= 0 && x <= PW && y >= 0 && y <= PD) return H[Math.round(y / C) * NX + Math.round(x / C)];
-  if (x >= -35 && x <= 185 && ((y >= -25 && y < 0) || (y > PD && y <= 125))) return 22;
+  if (x >= -35 && x <= 185 && ((y >= -25 && y < 0) || (y > PD && y <= PD + 25))) return jawTop;
   if (x >= -40 && x <= 190 && y >= -60 && y <= 160) return -35;
   if (x >= -400 && x <= 550 && y >= -60 && y <= 160) return -60;
   return -9999;
@@ -2552,12 +2616,12 @@ $('newPart').addEventListener('click', () => {
   if (now - newPartArm > 3000) { newPartArm = now; $('newPart').textContent = 'Onayla: parçayı değiştir'; setTimeout(() => $('newPart').textContent = 'Yeni ham parça', 3000); return; }
   newPartArm = 0; $('newPart').textContent = 'Yeni ham parça';
   resetPart($('matSel').value);
-  log(`Mengeneye yeni ham parça bağlandı: ${mat.name}, 150×100×40 mm.`, 'ok');
+  log(`Mengeneye yeni ham parça bağlandı: ${mat.name}, ${PW}×${PD}×${PH} mm.`, 'ok');
 });
 function setMaterial(k) {
   mat = MATS[k] || MATS.al; S.mat = MATS[k] ? k : 'al';
   $('matSel').value = S.mat;
-  $('brandMat').textContent = $('tbMat').textContent = `${mat.short} · 150×100×40`;
+  $('brandMat').textContent = $('tbMat').textContent = `${mat.short} · ${PW}×${PD}×${PH}`;
   topMat.metalness = mat.nonMetal ? 0 : 0.62; topMat.roughness = mat.nonMetal ? 0.5 : 0.34;
   M.raw.color.setRGB(...mat.rawL); M.raw.metalness = mat.nonMetal ? 0 : 0.55; M.raw.roughness = mat.nonMetal ? 0.6 : 0.55;
   chipMat.metalness = mat.nonMetal ? 0 : 0.8; chipMat.roughness = mat.nonMetal ? 0.55 : 0.28;
@@ -2833,6 +2897,7 @@ function selectJob(i) {
 function startJob() {
   initAudio();
   if (selJob < 0) return;
+  if (PW !== 150 || PD !== 100 || PH !== 40) setStock(150, 100, 40, true);   // iş emirleri standart ham parçayla
   resetPart(JOBS[selJob].mat || 'al');
   S.job = { idx:selJob, J:JOBS[selJob], time:0, done:false, stats:{ breaks:0, load:0, spot:0, peck:0, rub:0 } };
   $('report').hidden = true;
@@ -3539,12 +3604,168 @@ const CP = (() => {
   return { update };
 })();
 
+stockReady = true; syncFixtures();
+/* ---------------- Ham parça ölçüsü ---------------- */
+function setStock(w, d, h, quiet) {
+  w = clamp(Math.round(w * 2) / 2, 20, 220); d = clamp(Math.round(d * 2) / 2, 20, 135); h = clamp(Math.round(h * 2) / 2, 10, 80);
+  if (S.spindle) spindle(false);
+  buildStock(w, d, h);
+  resetPart(S.mat);
+  S.zn = PH + tool().len; S.nose = Math.max(S.nose, PH + 20 + tool().len);
+  $('stW').value = w; $('stD').value = d; $('stH').value = h;
+  $('brandMat').textContent = $('tbMat').textContent = `${mat.short} · ${w}×${d}×${h}`;
+  if (!quiet) log(`Yeni ham parça: ${w} × ${d} × ${h} mm. Sıfır noktası sol-ön-üst köşede; Z0 yeni üst yüzeyde.`, 'ok');
+}
+$('stApply').addEventListener('click', () => setStock(+$('stW').value, +$('stD').value, +$('stH').value));
+
+/* ---------------- Parça masası: incele, ölç, kesit al ----------------
+   Parça ayrı bir sahnede granit pleyt üstünde durur; aynı geometri paylaşılır, kesilen her şey burada da görünür.
+   Ölçüm: kumpas (iki nokta arası), yükseklik ölçer (tabandan yükseklik, üstten derinlik), delik/cep (taban alanından eşdeğer çap). */
+const BN = (() => {
+  let r = null, sc, cam, ctl, grp, raf = 0, tool = 'cal', pts = [], marks = [], open = false;
+  const clipX = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 1e4), clipY = new THREE.Plane(new THREE.Vector3(0, 0, 1), 1e4);
+  const mats = {};
+  function init() {
+    const cv = $('bnC');
+    r = new THREE.WebGLRenderer({ canvas:cv, antialias:true });
+    r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); r.outputEncoding = THREE.sRGBEncoding;
+    r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.9; r.localClippingEnabled = true; r.shadowMap.enabled = true;
+    sc = new THREE.Scene(); sc.background = new THREE.Color(0x1a1f22);
+    if (THREE.RoomEnvironment) { const pm = new THREE.PMREMGenerator(r); sc.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture; pm.dispose(); }
+    sc.add(new THREE.HemisphereLight(0xe8eef5, 0x2a2622, 0.35));
+    const l1 = new THREE.DirectionalLight(0xffffff, 0.8); l1.position.set(120, 260, 180); l1.castShadow = true; l1.shadow.mapSize.set(2048, 2048);
+    Object.assign(l1.shadow.camera, { left:-200, right:200, top:200, bottom:-200, near:10, far:800 }); sc.add(l1);
+    const l2 = new THREE.DirectionalLight(0x9fc4ff, 0.3); l2.position.set(-200, 80, -120); sc.add(l2);
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(520, 30, 380), new THREE.MeshStandardMaterial({ color:new THREE.Color(0x2c3235).convertSRGBToLinear(), roughness:0.85 }));
+    plate.position.y = -15.2; plate.receiveShadow = true; plate.material.envMapIntensity = 0.25; sc.add(plate);
+    cam = new THREE.PerspectiveCamera(38, 1, 2, 4000);
+    ctl = new THREE.OrbitControls(cam, cv); ctl.enableDamping = true; ctl.maxPolarAngle = Math.PI * 0.49;
+    grp = new THREE.Group(); sc.add(grp);
+    // parçanın üst yüzeyi işleme izleriyle; kesit için malzemeler kopyalanır (ana görünüm kesilmesin)
+    mats.top = topMat.clone(); mats.top.onBeforeCompile = topMat.onBeforeCompile; mats.top.customProgramCacheKey = () => 'benchTop';
+    mats.raw = M.raw.clone();
+    for (const m of [mats.top, mats.raw]) { m.clippingPlanes = [clipX, clipY]; m.side = THREE.DoubleSide; }
+    cv.addEventListener('pointerdown', e => { if (e.button === 0) down = { x:e.clientX, y:e.clientY }; });
+    cv.addEventListener('pointerup', e => { if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) pick(e); down = null; });
+    new ResizeObserver(resize).observe(cv.parentElement);
+  }
+  let down = null;
+  function build() {
+    while (grp.children.length) grp.remove(grp.children[0]);
+    mats.raw.color.copy(M.raw.color); mats.raw.metalness = M.raw.metalness; mats.raw.roughness = M.raw.roughness;
+    mats.top.metalness = topMat.metalness; mats.top.roughness = topMat.roughness;
+    const add = (g, m) => { const o = new THREE.Mesh(g, m); o.castShadow = o.receiveShadow = true; grp.add(o); return o; };
+    flushMesh();
+    add(topGeo, mats.top); for (const w of walls) add(w.w.g, mats.raw); add(stockBase.geometry, mats.raw).rotation.x = Math.PI / 2;
+    grp.children[grp.children.length - 1].position.set(PW / 2, 0.01, -PD / 2);
+    grp.position.set(-PW / 2, 0, PD / 2);
+    $('bnSecX').max = PW; $('bnSecY').max = PD; $('bnSecX').value = PW; $('bnSecY').value = PD; section();
+    clearMarks();
+  }
+  function resize() {
+    if (!r) return;
+    const el = $('bnC').parentElement, w = el.clientWidth, h = el.clientHeight;
+    r.setSize(w, h, false); cam.aspect = w / Math.max(1, h); cam.updateProjectionMatrix();
+  }
+  function section() {
+    const x = +$('bnSecX').value, y = +$('bnSecY').value;
+    clipX.constant = x - PW / 2;                      // grp −PW/2 kaydırılmış: dünya x = parça x − PW/2
+    clipY.constant = y - PD / 2;                      // dünya z = PD/2 − parça y; z ≥ PD/2 − y tarafı görünür
+    $('bnSecXv').textContent = x >= PW ? 'kapalı' : 'X ' + x.toFixed(1);
+    $('bnSecYv').textContent = y >= PD ? 'kapalı' : 'Y ' + y.toFixed(1);
+  }
+  // tıklanan noktayı parça koordinatına çevir (x, y, z = yükseklik)
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  function pick(e) {
+    const rc = $('bnC').getBoundingClientRect();
+    ndc.set((e.clientX - rc.left) / rc.width * 2 - 1, -(e.clientY - rc.top) / rc.height * 2 + 1);
+    ray.setFromCamera(ndc, cam);
+    const hits = ray.intersectObjects(grp.children, false).filter(h => clipX.distanceToPoint(h.point) >= -0.01 && clipY.distanceToPoint(h.point) >= -0.01);
+    if (!hits.length) return;
+    const w = hits[0].point, p = { x:w.x + PW / 2, y:PD / 2 - w.z, z:w.y, w:w.clone() };
+    thud(900, 0.03, 0.03);
+    if (tool === 'h') { marker(p); line(p.w, new THREE.Vector3(p.w.x, 0, p.w.z), 0xffd36a); result(`Yükseklik: <b>${p.z.toFixed(2)}</b> mm tabandan · üstten derinlik <b>${(PH - p.z).toFixed(2)}</b> mm · konum X${p.x.toFixed(1)} Y${p.y.toFixed(1)}`, p.w); return; }
+    if (tool === 'hole') { holeAt(p); return; }
+    pts.push(p); marker(p);
+    if (pts.length === 2) {
+      const [a, b] = pts, dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+      line(a.w, b.w, 0x7dffb2);
+      result(`Mesafe: <b>${Math.hypot(dx, dy, dz).toFixed(2)}</b> mm · ΔX ${Math.abs(dx).toFixed(2)} · ΔY ${Math.abs(dy).toFixed(2)} · ΔZ ${Math.abs(dz).toFixed(2)}`, a.w.clone().lerp(b.w, 0.5));
+      pts = [];
+    } else hint('İkinci noktayı tıklayın.');
+  }
+  // delik ya da cep: tıklanan hücrenin yüksekliğindeki bağlı taban alanı → eşdeğer çap, merkez, derinlik
+  function holeAt(p) {
+    const i0 = clamp(Math.round(p.x / C), 0, NX - 1), j0 = clamp(Math.round(p.y / C), 0, NY - 1), h0 = H[j0 * NX + i0];
+    if (h0 > PH - 0.05) { hint('Üst yüzeye tıkladınız; delik ya da cebin tabanına tıklayın.'); return; }
+    const seen = new Uint8Array(NX * NY), st = [j0 * NX + i0]; seen[st[0]] = 1;
+    let n = 0, sx = 0, sy = 0, mnx = 1e9, mxx = -1e9, mny = 1e9, mxy = -1e9;
+    while (st.length && n < 200000) {
+      const k = st.pop(), i = k % NX, j = (k - i) / NX; n++; sx += i; sy += j;
+      mnx = Math.min(mnx, i); mxx = Math.max(mxx, i); mny = Math.min(mny, j); mxy = Math.max(mxy, j);
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= NX || b >= NY) continue;
+        const kk = b * NX + a; if (!seen[kk] && H[kk] < PH - 0.05 && Math.abs(H[kk] - h0) < 0.35) { seen[kk] = 1; st.push(kk); }
+      }
+    }
+    const area = n * C * C, dEq = 2 * Math.sqrt(area / Math.PI), dExt = ((mxx - mnx) + (mxy - mny)) / 2 * C + C, cx = sx / n * C, cy = sy / n * C, wx = (mxx - mnx) * C, wy = (mxy - mny) * C;
+    const round = Math.abs(wx - wy) < Math.max(1, 0.12 * Math.max(wx, wy)) && Math.abs(dEq - (wx + wy) / 2) < Math.max(1, 0.1 * dEq);
+    const c = new THREE.Vector3(cx - PW / 2, h0 + 0.3, PD / 2 - cy);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(Math.max(0.5, (round ? dEq : Math.max(wx, wy)) / 2 - 0.4), (round ? dEq : Math.max(wx, wy)) / 2 + 0.4, 48), new THREE.MeshBasicMaterial({ color:0x7dffb2, side:THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2; ring.position.copy(c); sc.add(ring); marks.push(ring);
+    result(round ? `Delik: <b>Ø${dExt.toFixed(2)}</b> mm · merkez X${cx.toFixed(2)} Y${cy.toFixed(2)} · derinlik ${(PH - h0).toFixed(2)} mm`
+      : `Cep: <b>${(wx + C).toFixed(1)} × ${(wy + C).toFixed(1)}</b> mm · taban alanı ${area.toFixed(0)} mm² · derinlik ${(PH - h0).toFixed(2)} mm`, c);
+  }
+  function marker(p) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 8), new THREE.MeshBasicMaterial({ color:0xff5a4a })); m.position.copy(p.w); sc.add(m); marks.push(m); }
+  function line(a, b, color) { const g = new THREE.BufferGeometry().setFromPoints([a, b]); const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color, depthTest:false })); l.renderOrder = 5; sc.add(l); marks.push(l); }
+  const labels = [];
+  function result(html, at) {
+    const li = document.createElement('li'); li.innerHTML = html; $('bnList').prepend(li);
+    while ($('bnList').children.length > 8) $('bnList').lastChild.remove();
+    const lb = document.createElement('div'); lb.className = 'bn-label'; lb.innerHTML = html.replace(/ · .*/, ''); $('bnView').append(lb); labels.push({ el:lb, at:at.clone() });
+    hint('Ölçüm eklendi.');
+  }
+  function hint(t) { $('bnHint').textContent = t; }
+  function clearMarks() {
+    for (const m of marks) { sc.remove(m); if (m.geometry) m.geometry.dispose(); }
+    marks = []; pts = []; labels.forEach(l => l.el.remove()); labels.length = 0;
+  }
+  function setTool(t) {
+    tool = t; pts = [];
+    document.querySelectorAll('[data-bt]').forEach(b => b.classList.toggle('on', b.dataset.bt === t));
+    hint({ cal:'Kumpas: iki noktaya tıklayın (köşe, kenar, cep tabanı…).', h:'Yükseklik ölçer: bir noktaya tıklayın.', hole:'Delik/cep: tabanına tıklayın; çap ya da ölçüler hesaplanır.' }[t]);
+  }
+  const _v = new THREE.Vector3();
+  function loop() {
+    if (!open) return;
+    ctl.update(); r.render(sc, cam);
+    const rc = $('bnC').getBoundingClientRect();
+    for (const l of labels) { _v.copy(l.at).project(cam); l.el.style.left = ((_v.x + 1) / 2 * rc.width) + 'px'; l.el.style.top = ((1 - _v.y) / 2 * rc.height) + 'px'; l.el.style.display = _v.z < 1 ? '' : 'none'; }
+    raf = requestAnimationFrame(loop);
+  }
+  function show() {
+    if (!r) init();
+    open = true; $('bench').hidden = false; build(); resize();
+    cam.position.set(PW * 0.6, Math.max(PW, PD) * 0.9 + PH, PD * 1.4 + 60); ctl.target.set(0, PH * 0.4, 0); ctl.update();
+    $('bnInfo').textContent = `${mat.short} · ${PW}×${PD}×${PH} mm · kaldırılan talaş ${(S.removed / 1000).toFixed(1)} cm³`;
+    setTool(tool); cancelAnimationFrame(raf); loop();
+  }
+  function hide() { open = false; $('bench').hidden = true; cancelAnimationFrame(raf); }
+  $('benchOpen').addEventListener('click', () => { initAudio(); if (S.spindle) { log('Parçayı masaya almak için önce mili durdurun.', 'warn'); return; } show(); });
+  $('bnClose').addEventListener('click', hide);
+  document.querySelectorAll('[data-bt]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.bt)));
+  $('bnClear').addEventListener('click', () => { clearMarks(); $('bnList').innerHTML = ''; hint('Ölçümler temizlendi.'); });
+  $('bnSecX').addEventListener('input', section); $('bnSecY').addEventListener('input', section);
+  window.addEventListener('keydown', e => { if (open && e.code === 'Escape') { e.stopImmediatePropagation(); hide(); } }, true);
+  return { show, hide };
+})();
+
 // Başlangıç
 buildToolVisual(); updateToolUI(); updateRec(); updateSpindleUI();
 setRpm(4200); setFeed(500);
 renderJobs(); selectJob(-1);
 log('Tezgâh hazır. T3 Ø10 parmak freze takılı. Sıfır noktası parçanın sol-ön-üst köşesinde.', 'ok');
-for (const id of ['alarm', 'report', 'toast']) document.body.append($(id));
+for (const id of ['alarm', 'report', 'toast', 'bench']) document.body.append($(id));
 setMaterial('al');
 PM.init();
 requestAnimationFrame(frame);

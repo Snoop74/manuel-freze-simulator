@@ -8,7 +8,8 @@ Tarayıcıda çalışan, 3B bir manuel freze tezgâhı simülasyonu ve oyunu. Te
 
 ## Özellikler
 
-- **Talaş kaldırma:** 150×100×40 mm alüminyum blok, mengene ve paralel altlıklar üzerinde. 0.5 mm çözünürlüklü yükseklik haritasıyla kesme.
+- **Talaş kaldırma:** ölçüsü ayarlanabilen blok (X 20–220, Y 20–135, Z 10–80 mm; varsayılan 150×100×40), mengene ve paralel altlıklar üzerinde. Mengene çeneleri parçaya göre ayarlanır. 0.5 mm çözünürlüklü yükseklik haritasıyla kesme. İş emirleri standart 150×100×40 parçayla başlar.
+- **Parça masası:** işlenen parça ayrı bir sahnede granit pleyt üstünde döndürülerek incelenir. Kumpas (iki nokta arası mesafe, ΔX ΔY ΔZ), yükseklik ölçer (tabandan yükseklik, üstten derinlik), delik/cep ölçümü (delik çapı ve merkezi, cep ölçüsü ve derinliği) ve X/Y kesit düzlemleri.
 - **Kumanda paneli (konsol):** endüstriyel kumanda konsolu görünümünde tek panel (SNOOP3000). Yeşil DRO ekranı (X/Y/Z, devir, ilerleme, takım; ikinci sayfada yük, güç, sıcaklık, aşınma, Ra, talaş), yazılım tuşları (X0, Y0, Z0, 1/2 orta bulma, sayfa), DRO tuş takımı (eksen seç, değer yaz, ENT ile ata; birden fazla eksene değer yazıp GİT ile o noktaya git), ışıklı mil ve soğutma düğmeleri, yön anahtarı, devir ve ilerleme topuzları, eksen ve adım seçicili el çarkı (MPG), hareket tuşları, durum ışıkları ve acil stop mantarı. Üst çubuktaki "Kumanda" düzeni.
 - **Kumanda panelleri:** her bölüm ayrı bir pencere; başlığından sürüklenir, köşesinden büyütülür (içerik pencereyle birlikte büyür), küçültülür ya da kapatılır, düzen hatırlanır. Üst çubukta panel düğmeleri, hazır düzenler (Temel, Tam, İş emri), kamera ve ACİL STOP. Mil panelinde devir göstergesi, takım kartlarında simgeler; takım kırılınca alarmdan tek tuşla yeni takım takılır.
 - **Makine üstünde kumanda:** tabla (X), kızak (Y) çarkları, kovan kolu ve ince ilerleme çarkı (Z) fareyle sürüklenerek ya da tekerlekle çevrilir; motor şalterine, START'a, acil stop mantarına ve soğutma vanasına tıklanır.
