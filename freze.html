@@ -458,6 +458,10 @@ table{color:inherit;font-size:inherit}
 .holder-row{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center}
 .hl-lab{font-family:var(--f-display);font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
 .holder-row.off{opacity:.4;pointer-events:none}
+.vac-g{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px;font-size:11.5px;color:var(--muted)}
+.vac-g[hidden]{display:none}
+.vac-g b{display:block;font-family:var(--f-dro);color:var(--fg);font-size:13px}
+.vac-g .meter{grid-column:1/-1}
 .probe-box{display:grid;gap:6px;border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--panel-2)}
 .probe-box[hidden]{display:none}
 .pr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
@@ -787,6 +791,10 @@ table{color:inherit;font-size:inherit}
         <div class="stat"><span>Kesme süresi</span><b id="stTime">0:00</b></div>
       </div>
       <div class="stock-row"><label>X GENİŞLİK<input id="stW" type="number" min="20" max="220" step="0.5" value="150"></label><label>Y DERİNLİK<input id="stD" type="number" min="20" max="135" step="0.5" value="100"></label><label>Z YÜKSEKLİK<input id="stH" type="number" min="10" max="80" step="0.5" value="40"></label><button class="btn" id="stApply" title="Bu ölçülerde yeni ham parça bağla">Uygula</button></div>
+      <div class="holder-row"><span class="hl-lab">Bağlama</span><div class="seg" id="fixSeg"><button data-fx="vise" class="on">Mengene</button><button data-fx="clamp">Pabuç</button><button data-fx="vac">Vakum</button></div></div>
+      <div class="seg" id="clampLay" hidden><button data-cl="fb" class="on">Pabuç ön-arka</button><button data-cl="lr">Pabuç sol-sağ</button></div>
+      <div class="vac-g" id="vacG" hidden><span>Vakum <b id="vgP">—</b></span><span>Tutma <b id="vgH">—</b></span><span>Kesme <b id="vgF">0 N</b></span><div class="meter"><i id="vgM"></i></div></div>
+      <div class="dro-note" id="fixNote">Mengene: X 20–220, Y 20–135 mm parça. Çeneler üstten 5 mm aşağıda biter.</div>
       <select id="matSel" aria-label="Malzeme"><option value="al">Al 6061 alüminyum</option><option value="s235">S235 (St37) yapı çeliği</option><option value="c45">C45 ıslah çeliği</option><option value="ss304">304 paslanmaz çelik</option><option value="brass">Pirinç (CuZn39Pb3)</option><option value="gg25">GG25 gri döküm</option><option value="pom">Delrin (POM) plastik</option><option value="pa6">PA6 polyamid (naylon)</option></select>
       <div class="row2">
         <button class="btn" id="clearChips">Talaşları süpür</button>
@@ -1509,12 +1517,13 @@ for (const sx of [-410, 560]) {
 // Y el çarkı (konsolun önünde, sabit)
 const yWheel = new THREE.Group(); yWheel.position.set(0, -235, 112); scene.add(yWheel);
 hwheel(yWheel, 48);
-// Mengene
-rbox(-40, 190, -60, -35, -160, 60, 3, M.paint, table);                    // gövde (-60..-35)
-{ const s = cyl(9, 9, 90, MX.chrome, 14); s.rotation.x = Math.PI / 2; s.position.set(75, -40, 70); table.add(s);
-  const b = cyl(16, 16, 14, M.ground, 6); b.rotation.x = Math.PI / 2; b.position.set(75, -40, 112); table.add(b);
-  const hd = cyl(5, 5, 110, MX.chrome, 10); hd.rotation.z = Math.PI / 2; hd.position.set(75, -40, 120); table.add(hd);
-  for (const x of [20, 130]) { const k = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 8), M.black); k.position.set(x, -40, 120); table.add(k); } }
+// Mengene (gövde ve vida; pabuç ya da vakum tabla bağlanınca gizlenir)
+const viseBase = new THREE.Group(); table.add(viseBase);
+rbox(-40, 190, -60, -35, -160, 60, 3, M.paint, viseBase);                 // gövde (-60..-35)
+{ const s = cyl(9, 9, 90, MX.chrome, 14); s.rotation.x = Math.PI / 2; s.position.set(75, -40, 70); viseBase.add(s);
+  const b = cyl(16, 16, 14, M.ground, 6); b.rotation.x = Math.PI / 2; b.position.set(75, -40, 112); viseBase.add(b);
+  const hd = cyl(5, 5, 110, MX.chrome, 10); hd.rotation.z = Math.PI / 2; hd.position.set(75, -40, 120); viseBase.add(hd);
+  for (const x of [20, 130]) { const k = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 8), M.black); k.position.set(x, -40, 120); viseBase.add(k); } }
 
 /* ---- Parça mesh'i: ham parça ölçüsü değişince (buildStock) yükseklik haritası, mesh ve mengene yeniden kurulur ---- */
 const topMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.34, metalness:0.62 });
@@ -1591,11 +1600,49 @@ function buildStock(w, d, h) {
   dirty = { i0:0, i1:NX - 1, j0:0, j1:NY - 1 }; isDirty = true;
   buildVise();
 }
-// Mengene çeneleri parçaya göre: arka çene parçanın arkasına dayanır, çene yüksekliği parçanın 5 mm altında biter
+/* ---- Bağlama: mengene, pabuç ya da vakum tabla ----
+   Mengene: çeneler parçaya göre; arka çene parçanın arkasına dayanır, çene yüksekliği parçanın 5 mm altında biter.
+   Pabuç: parça iki altlık üstünde tablaya bağlanır; dört pabuç kenarın 12 mm'sini kapatır (takım çarparsa kırılır).
+   Vakum tabla: kurban plakası üstünde, parçanın her yeri açık; tutma kuvveti alan ve hava kaçağına bağlı (VAC). */
+const FIXLIM = { vise:{ x:[20, 220], y:[20, 135], z:[10, 80] }, clamp:{ x:[40, 260], y:[40, 140], z:[5, 80] }, vac:{ x:[30, 260], y:[30, 150], z:[3, 40] } };
+const FIXNAME = { vise:'Mengene', clamp:'Pabuç', vac:'Vakum tabla' };
+let FIX = 'vise', clampLay = 'fb', straps = [];
 const viseG = new THREE.Group(); table.add(viseG);
+const MDF = smat(0x8a6a48, 0.85, 0, 0.1), ALU = smat(0xa7aeb3, 0.4, 0.75);
 let jawTop = 22;
+// pabuç: kenara basan lama, kademeli destek, saplama ve somun; side f/b (ön/arka) ya da l/r (sol/sağ), c kenar boyunca konum
+function strap(c, side) {
+  const t = PH, X = side === 'l' || side === 'r';
+  const o = side === 'f' ? -1 : side === 'b' ? 1 : side === 'l' ? -1 : 1;   // dışarı yönü
+  const e = side === 'f' || side === 'l' ? 0 : X ? PW : PD;                 // kenar
+  const a0 = e - o * 12, a1 = e + o * 26, h0 = e + o * 30, h1 = e + o * 40, sd = e + o * 8;
+  const R = (u0, u1, y0, y1, r, m) => X ? rbox(Math.min(u0, u1), Math.max(u0, u1), y0, y1, -(c + 8), -(c - 8), r, m, viseG)
+                                        : rbox(c - 8, c + 8, y0, y1, -Math.max(u0, u1), -Math.min(u0, u1), r, m, viseG);
+  R(a0, a1, t, t + 10, 1, M.ground);                                        // lama
+  R(h0, h1, -60, t + 1, 1, M.paintDark);                                    // kademeli destek
+  const st = cyl(5.5, 5.5, t + 80, MX.chrome, 12); st.position.set(X ? sd : c, (t + 20 - 60) / 2, X ? -c : -sd); viseG.add(st);
+  const nut = cyl(10, 10, 8, M.ground, 6); nut.position.set(X ? sd : c, t + 14, X ? -c : -sd); viseG.add(nut);
+  const lo = Math.min(a0, h1), hi = Math.max(a0, h1);
+  straps.push({ n:'pabuca', b:X ? [lo, hi, c - 10, c + 10] : [c - 10, c + 10, lo, hi], top:t + 18, strapTop:t + 10, cover:X ? [Math.min(a0, e), Math.max(a0, e), c - 8, c + 8] : [c - 8, c + 8, Math.min(a0, e), Math.max(a0, e)] });
+}
 function buildVise() {
   while (viseG.children.length) { const o = viseG.children[0]; viseG.remove(o); if (o.geometry) o.geometry.dispose(); }
+  viseBase.visible = FIX === 'vise'; straps = [];
+  if (FIX === 'clamp') {
+    for (const [a, b] of [[8, 28], [PD - 28, PD - 8]]) rbox(4, PW - 4, -60, 0, -b, -a, 1, M.steel, viseG);   // altlıklar
+    const pts = clampLay === 'fb' ? [[PW * 0.22, 'f'], [PW * 0.78, 'f'], [PW * 0.22, 'b'], [PW * 0.78, 'b']] : [[PD * 0.25, 'l'], [PD * 0.75, 'l'], [PD * 0.25, 'r'], [PD * 0.75, 'r']];
+    for (const [c, sd] of pts) strap(c, sd);
+    if (stockReady) syncFixtures();
+    return;
+  }
+  if (FIX === 'vac') {
+    rbox(-30, 290, -60, -8, -165, 25, 3, ALU, viseG);                       // vakum tablası gövdesi
+    for (let z = -150; z <= 10; z += 20) boxR(-28, 288, -8.6, -7.9, z - 0.6, z + 0.6, M.black, viseG).castShadow = false;   // vakum kanalları
+    rbox(-26, 286, -8, 0, -161, 21, 1, MDF, viseG);                          // kurban plakası (MDF)
+    const hs = cyl(8, 8, 60, M.black, 12); hs.rotation.x = Math.PI / 2; hs.position.set(260, -34, -185); viseG.add(hs);   // vakum hortumu
+    if (stockReady) syncFixtures();
+    return;
+  }
   jawTop = clamp(PH - 5, 4, 22);
   rbox(-35, 185, -35, jawTop, -PD - 25, -PD, 2, M.ground, viseG);           // arka çene (y PD..PD+25)
   rbox(-35, 185, -35, jawTop, 0, 25, 2, M.ground, viseG);                    // ön (hareketli) çene (y -25..0)
@@ -1623,9 +1670,12 @@ function rebuildIndex() {
   throughDirty = false;
 }
 function syncFixtures() {
-  FIXTURES[0].top = FIXTURES[1].top = jawTop;
-  FIXTURES[1].b = [-35, 185, PD, PD + 25];
-  FIXTURES[3].b = [-10, 160, PD - 13, PD - 3];
+  FIXTURES.length = 0;
+  if (FIX === 'vise') FIXTURES.push({ n:'mengene ön çenesine', b:[-35, 185, -25, 0], top:jawTop }, { n:'mengene arka çenesine', b:[-35, 185, PD, PD + 25], top:jawTop },
+    { n:'paralel altlığa', b:[-10, 160, 3, 13], top:0 }, { n:'paralel altlığa', b:[-10, 160, PD - 13, PD - 3], top:0 }, { n:'mengene gövdesine', b:[-40, 190, -60, 160], top:-35 });
+  else if (FIX === 'clamp') FIXTURES.push(...straps, { n:'altlığa', b:[4, PW - 4, 8, 28], top:0 }, { n:'altlığa', b:[4, PW - 4, PD - 28, PD - 8], top:0 });
+  else FIXTURES.push({ n:'vakum tablasına (kurban plakasını geçti)', b:[-30, 290, -25, 165], top:-5 });
+  FIXTURES.push({ n:'tablaya', b:[-400, 550, -50, 150], top:-60 });
 }
 let dirty = { i0:0, i1:0, j0:0, j1:0 }, isDirty = true;
 buildStock(PW, PD, PH);
@@ -1845,9 +1895,13 @@ function ambientParticles(dt, tip) {
   }
 }
 function groundAt(x, y) {
+  for (const f of straps) if (x >= f.b[0] && x <= f.b[1] && y >= f.b[2] && y <= f.b[3]) return f.strapTop;
   if (x >= 0 && x <= PW && y >= 0 && y <= PD) return H[Math.round(y / C) * NX + Math.round(x / C)];
-  if (x >= -35 && x <= 185 && ((y >= -25 && y < 0) || (y > PD && y <= PD + 25))) return jawTop;
-  if (x >= -40 && x <= 190 && y >= -60 && y <= 160) return -35;
+  if (FIX === 'vac') { if (x >= -26 && x <= 286 && y >= -21 && y <= 161) return 0; }
+  else if (FIX === 'vise') {
+    if (x >= -35 && x <= 185 && ((y >= -25 && y < 0) || (y > PD && y <= PD + 25))) return jawTop;
+    if (x >= -40 && x <= 190 && y >= -60 && y <= 160) return -35;
+  }
   if (x >= -400 && x <= 550 && y >= -60 && y <= 160) return -60;
   return -9999;
 }
@@ -2199,14 +2253,7 @@ function rectDist(x, y, x0, x1, y0, y1) {
   const dx = Math.max(x0 - x, 0, x - x1), dy = Math.max(y0 - y, 0, y - y1);
   return Math.hypot(dx, dy);
 }
-const FIXTURES = [
-  { n:'mengene ön çenesine', b:[-35,185,-25,0], top:22 },
-  { n:'mengene arka çenesine', b:[-35,185,100,125], top:22 },
-  { n:'paralel altlığa', b:[-10,160,3,13], top:0 },
-  { n:'paralel altlığa', b:[-10,160,87,97], top:0 },
-  { n:'mengene gövdesine', b:[-40,190,-60,160], top:-35 },
-  { n:'tablaya', b:[-400,550,-50,150], top:-60 },
-];
+const FIXTURES = [];                       // bağlamaya göre syncFixtures doldurur
 function fixtureHit(x, y, tip, T) {
   const r = T.d / 2, rh = holderR(T);
   for (const f of FIXTURES) {
@@ -2300,6 +2347,7 @@ function tryStep(nx, ny, nn, dtStep) {
   const fh = fixtureHit(nx, ny, tip, T);
   if (fh) { crash(fh); return false; }
   const it = interfere(nx, ny, tip, T);
+  if (S.loose && it.any) { warnOnce('loose', 'Parça bağlı değil, tabladan kopmuş. Yeni ham parça bağlayın.', 'bad'); return false; }
   if (T.type === 'tap') return tapStep(nx, ny, nn, T, it, horiz);
   if (isDrill(T) && S.peck.active && !it.any && tip > S.peck.top + 0.3) S.peck.active = false;
   if (!it.any) {
@@ -2404,6 +2452,7 @@ function tryStep(nx, ny, nn, dtStep) {
   // mil gücü: kc · talaş debisi; 1000 dev/dk altında sabit tork, aşırı yükte devir düşer, çok aşırıda mil boğulur
   const Pc = mat.kc * (W.vol / Math.max(1e-3, winT)) * 1e-6, Pav = P_MAX * Math.min(1, S.rpm / 1000);
   S.power = Pc / Pav;
+  if (FIX === 'vac' && VAC.check(Pc, vcNow)) return false;
   if (S.power > 1.5) { crash(`Mil boğuldu: kesme ${Pc.toFixed(1)} kW istiyor, motor bu devirde ${Pav.toFixed(1)} kW verebiliyor. Talaş derinliğini ya da ilerlemeyi azaltın.`); return false; }
   if (S.power > 1) warnOnce('power', `Mil zorlanıyor: güç %${Math.round(S.power * 100)}, devir düşüyor.`, 'warn', 5000);
   // tırlama: uzun ve ince takımda (çıkıntı/çap) ve ağır kesmede başlar; devre göre loblar halinde kararlı bölgeler var
@@ -2873,6 +2922,7 @@ function resetPart(k) {
   H.fill(PH); CUT.fill(0); INSP.fill(0); MK1.fill(0); MK2.fill(0); TINTC.fill(0); TAPC.fill(0); S.tap = null; markDirty(0, NX - 1, 0, NY - 1);
   S.temp = 0; S.power = 0; S.chatNow = 0; S.lastRa = null;
   S.removed = 0; S.cutTime = 0; S.peck.active = false; clearChips();
+  S.loose = null; for (const m of partMeshes()) { m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); }
   stopMotion();
   if (tipZ() < PH + 5) S.nose = PH + 20 + tool().len;
 }
@@ -3149,6 +3199,7 @@ function startJob() {
 }
 function submitJob() {
   if (!S.job || S.job.done) { log('Önce "İşe başla" ile işi başlatın.', 'warn'); return; }
+  if (S.loose) { log('Parça tabladan koptu, hurda oldu. İşi yeniden başlatın.', 'warn'); return; }
   if (S.spindle) { log('Parçayı teslim etmeden önce mili durdurun.', 'warn'); return; }
   const run = S.job, J = run.J;
   const items = inspect(J);
@@ -3260,7 +3311,7 @@ function frame(now) {
   if ((S.hcT = (S.hcT || 0) + dt) > 0.5) { S.hcT = 0; let v = 0; for (let k = 0; k < nV; k++) v += H[k]; S.heatCap = v * C * C * mat.rho * 1e-3 * mat.c; }
   S.cutting += ((S.cutAcc > 0 ? Math.min(0.3, 0.05 + S.cutAcc / (dt * 4000)) : 0) - S.cutting) * Math.min(1, dt * 12);
   flushMesh();
-  updateChips(dt); AG.update(dt); PR.update(dt);
+  updateChips(dt); AG.update(dt); PR.update(dt); VAC.update(dt);
 
   const T = tool(), tip = tipZ();
   saddle.position.z = S.py;
@@ -3935,6 +3986,77 @@ const PR = (() => {
   document.querySelectorAll('[data-pr]').forEach(b => b.addEventListener('click', () => { initAudio(); ACTS[b.dataset.pr](); }));
   return { touch, update, get busy() { return !!seq; } };
 })();
+/* ---------------- Vakum tabla: tutma kuvveti ve kopma ----------------
+   Tutma = vakum basıncı × parçanın oturduğu alan. Boydan boya açılan her delik hava kaçırır, basınç düşer.
+   Yanal tutma sürtünmeyle sınırlı (μ ≈ 0.35); kesme kuvveti ≈ kesme gücü / kesme hızı. Aşılırsa parça kopup fırlar. */
+function partMeshes() { return [topMesh, stockBase, ...walls.map(w => w.w.m)].filter(Boolean); }
+const VAC = (() => {
+  let p = 0.8, lat = 0, force = 0, t = 1;
+  function measure() {
+    let n = 0;
+    for (let k = 0; k < nV; k++) if (H[k] > 0.02) n++;
+    const A = n * C * C, leak = (nV - n) * C * C;
+    p = 0.8 / (1 + leak / 250);                                    // 1 bar = 0.1 N/mm²
+    lat = p * 0.1 * A * 0.35;
+  }
+  function ui() {
+    $('vgP').textContent = '−' + p.toFixed(2) + ' bar'; $('vgH').textContent = Math.round(lat) + ' N'; $('vgF').textContent = Math.round(force) + ' N';
+    const u = force / Math.max(1, lat);
+    $('vgM').style.width = Math.min(100, u * 100) + '%';
+    $('vgM').style.background = u > 0.8 ? 'var(--bad)' : u > 0.55 ? 'var(--warn)' : 'var(--ok)';
+  }
+  function update(dt) {
+    if (S.loose && S.loose.t < 1) {                                // kopan parça: kalkar ve yana devrilir
+      S.loose.t = Math.min(1, S.loose.t + dt * 2.5);
+      const k = 1 - Math.pow(1 - S.loose.t, 3);
+      for (const m of partMeshes()) { m.position.set(14 * k, 9 * k, 0); m.rotation.set(0.2 * k, 0, -0.06 * k); }
+    }
+    if (FIX !== 'vac') return;
+    force *= Math.max(0, 1 - dt * 2);
+    if ((t += dt) > 0.3) { t = 0; measure(); ui(); }
+  }
+  function check(Pc, vc) {
+    force = Math.max(force, Pc * 1000 / Math.max(0.3, vc / 60));
+    if (force > lat) {
+      S.loose = { t:0 };
+      burst('debris', 30, 0, tipZ() + 2, 0, 300, 500, 2); thud(60, 0.4, 0.4);
+      crash(`Parça vakum tablasından koptu ve fırladı! Kesme kuvveti ${Math.round(force)} N, vakumun yanal tutması ${Math.round(lat)} N idi. Küçük ve çok delikli parçada tutma azalır; hafif paso alın.`);
+      return true;
+    }
+    if (force > lat * 0.75) warnOnce('vac', `Vakum zorlanıyor: kesme kuvveti ${Math.round(force)} N, tutma ${Math.round(lat)} N. Paso derinliğini ya da ilerlemeyi azaltın.`, 'warn', 5000);
+    return false;
+  }
+  return { update, check, measure, ui };
+})();
+const FIXNOTE = {
+  vise:'Mengene: X 20–220, Y 20–135 mm parça. Çeneler üst yüzeyin 5 mm altında biter; altta iki paralel altlık var.',
+  clamp:'Pabuç: X 40–260, Y 40–140 mm. Parça iki altlık üstünde; dört pabuç kenarın 12 mm\'sini kapatır, takım ya da tutucu çarparsa kırılır. Delerken altlıkların üstüne dikkat.',
+  vac:'Vakum tabla: X 30–260, Y 30–150, Z 3–40 mm. Parçanın her yeri açık; kurban plakasına 5 mm kadar inilebilir. Tutma alanla orantılı, delikler hava kaçırır: ağır pasoda parça kopar.',
+};
+function setFix(k, quiet) {
+  if (!FIXLIM[k]) return false;
+  if (k !== 'vise' && !CR.hasEq(k)) { log(`${FIXNAME[k]} atölyede yok: dükkândan alabilirsiniz.`, 'warn'); CR.openShop(); return false; }
+  if (!quiet && S.job && !S.job.done) { log('İş sürerken bağlama değiştirilmez.', 'warn'); return false; }
+  if (S.spindle) spindle(false);
+  FIX = k;
+  [...$('fixSeg').children].forEach(b => b.classList.toggle('on', b.dataset.fx === k));
+  $('clampLay').hidden = k !== 'clamp'; $('vacG').hidden = k !== 'vac';
+  const L = FIXLIM[k];
+  for (const [id, r] of [['stW', L.x], ['stD', L.y], ['stH', L.z]]) { $(id).min = r[0]; $(id).max = r[1]; }
+  $('fixNote').textContent = FIXNOTE[k];
+  setStock(PW, PD, PH, true);
+  if (k === 'vac') { VAC.measure(); VAC.ui(); }
+  if (!quiet) log(`Bağlama: ${FIXNAME[k]}. ${PW}×${PD}×${PH} mm ham parça bağlandı.`, 'ok');
+  return true;
+}
+$('fixSeg').addEventListener('click', e => { const b = e.target.closest('[data-fx]'); if (b && b.dataset.fx !== FIX) { initAudio(); setFix(b.dataset.fx); } });
+$('clampLay').addEventListener('click', e => {
+  const b = e.target.closest('[data-cl]'); if (!b || b.dataset.cl === clampLay) return;
+  if (S.spindle) { log('Pabuçları sökmek için önce mili durdurun.', 'warn'); return; }
+  clampLay = b.dataset.cl; [...$('clampLay').children].forEach(q => q.classList.toggle('on', q === b));
+  buildVise(); thud(150, 0.15, 0.12);
+  log(`Pabuçlar ${clampLay === 'fb' ? 'ön ve arka' : 'sol ve sağ'} kenarlara bağlandı.`, 'ok');
+});
 // parçanın üstünde yatan talaş sayısı (temiz teslim primi için)
 function chipsOnPart() {
   let n = 0;
@@ -4090,7 +4212,8 @@ const CP = (() => {
 stockReady = true; syncFixtures();
 /* ---------------- Ham parça ölçüsü ---------------- */
 function setStock(w, d, h, quiet) {
-  w = clamp(Math.round(w * 2) / 2, 20, 220); d = clamp(Math.round(d * 2) / 2, 20, 135); h = clamp(Math.round(h * 2) / 2, 10, 80);
+  const L = FIXLIM[FIX];
+  w = clamp(Math.round(w * 2) / 2, ...L.x); d = clamp(Math.round(d * 2) / 2, ...L.y); h = clamp(Math.round(h * 2) / 2, ...L.z);
   if (S.spindle) spindle(false);
   buildStock(w, d, h);
   resetPart(S.mat);
@@ -4499,8 +4622,8 @@ const CR = (() => {
     { id:'h_weldon', n:'Weldon tutucu', t:HOLDERS.weldon.t, p:HOLDERS.weldon.p, ready:true },
     { id:'h_shrink', n:'Shrink-fit tutucu', t:HOLDERS.shrink.t, p:HOLDERS.shrink.p, ready:true },
     { id:'h_hydro', n:'Hidrolik tutucu', t:HOLDERS.hydro.t, p:HOLDERS.hydro.p, ready:true },
-    { id:'clamp', n:'Pabuç takımı', t:'Mengeneye sığmayan plakaları tablaya bağla', p:900 },
-    { id:'vac', n:'Vakum tabla', t:'İnce plakalar ve gravür işleri', p:6500 },
+    { id:'clamp', n:'Pabuç takımı', t:'Mengeneye sığmayan plakaları tablaya bağla (Y 140 mm’ye kadar)', p:900, ready:true },
+    { id:'vac', n:'Vakum tabla', t:'Parçanın her yeri açık; ince ve büyük plakalar. Ağır pasoda parça kopar', p:6500, ready:true },
     { id:'rot', n:'Döner tabla', t:'Cıvata daireleri ve yay kanallar', p:8000 },
     { id:'div', n:'Divizör', t:'Yuvarlak parçaya altıgen, kare, kama kanalı', p:12000 },
   ];
@@ -4534,8 +4657,9 @@ const CR = (() => {
   function genOrder(free) {
     const lv = level();
     const m = pick([['al', 'pom', 'brass', 'al'], ['al', 'brass', 's235', 'pom'], ['s235', 'c45', 'al', 'gg25', 'brass'], ['c45', 'ss304', 's235', 'brass']][lv]);
-    const [w, d, h] = pick([[100, 60, 20], [120, 80, 25], [150, 100, 30], [150, 100, 40], [180, 120, 30]].slice(0, 2 + lv));
-    const J = { pockets:[], holes:[], w, d, h, mat:m };
+    const big = lv >= 1 && Math.random() < 0.25;                   // büyük plaka: mengene en fazla 135 mm açılır
+    const [w, d, h] = big ? pick([[200, 140, 15], [220, 140, 12], [180, 140, 10], [240, 140, 20]]) : pick([[100, 60, 20], [120, 80, 25], [150, 100, 30], [150, 100, 40], [180, 120, 30]].slice(0, 2 + lv));
+    const J = { pockets:[], holes:[], w, d, h, mat:m, big };
     if (Math.random() < 0.3 + lv * 0.1) J.face = { depth:pick([0.5, 1]), tol:0.1 };
     if (Math.random() < 0.3 + lv * 0.15) {
       const pw = r5(rnd(0.25, 0.45) * w), pd = r5(rnd(0.3, 0.5) * d), cx = r5(w / 2 + rnd(-0.1, 0.1) * w), cy = r5(d / 2 + rnd(-0.08, 0.08) * d);
@@ -4567,8 +4691,8 @@ const CR = (() => {
     J.pockets.forEach(p => f.push(`${p.x1 - p.x0}×${p.y1 - p.y0}×${p.depth} cep`));
     if (J.holes.length) f.push(`${J.holes.length > 1 ? J.holes.length + '×' : ''}Ø${hd} boydan boya delik`);
     J.brief = `${cn} (${ck}) ${J.title.toLocaleLowerCase('tr')} istiyor: ${MATS[m].short} ${w}×${d}×${h}, ${f.join(', ')}. ` +
-      (free ? 'Malzemeyi müşteri getirdi.' : `Ham parça ${tl(cost)}, iş başlayınca kasadan çıkar.`);
-    return { id:st.seq++, cust:cn, mat:m, J, pay:Math.round((val + cost * 1.25) / 10) * 10, cost, free, lv };
+      (big ? 'Mengeneye sığmaz: pabuç ya da vakum tabla gerekir. ' : '') + (free ? 'Malzemeyi müşteri getirdi.' : `Ham parça ${tl(cost)}, iş başlayınca kasadan çıkar.`);
+    return { id:st.seq++, cust:cn, mat:m, J, pay:Math.round((val * (big ? 1.25 : 1) + cost * 1.25) / 10) * 10, cost, free, lv };
   }
   function fillBoard() {
     while (st.orders.length < 3) st.orders.push(genOrder(false));
@@ -4627,7 +4751,7 @@ const CR = (() => {
   function select(o) {
     sel = o; selJob = -2;                                         // iş emri listesindeki seçim kalkar
     $('jcNo').textContent = 'SİPARİŞ #' + o.id; $('jcTitle').textContent = `${o.J.title} · ${o.cust}`; $('jcBrief').textContent = o.J.brief;
-    $('jcMeta').innerHTML = `<span>Ödeme <b>${tl(o.pay)}</b></span><span>Hedef süre <b>${mmss(o.J.target)}</b></span><span>Ham parça <b>${o.free ? 'müşteriden' : tl(o.cost)}</b></span>`;
+    $('jcMeta').innerHTML = `<span>Ödeme <b>${tl(o.pay)}</b></span><span>Hedef süre <b>${mmss(o.J.target)}</b></span><span>Ham parça <b>${o.free ? 'müşteriden' : tl(o.cost)}</b></span>${o.J.big ? '<span>Bağlama <b>pabuç / vakum</b></span>' : ''}`;
     $('jcBtns').hidden = false; $('vDraw').hidden = false;
     $('dwTitle').textContent = `TEKNİK RESİM · SİPARİŞ #${o.id} · ${o.J.title.toLocaleUpperCase('tr')}`;
     $('dwSvg').innerHTML = drawingSVG(o.J); $('dwTable').innerHTML = drawingTable(o.J);
@@ -4641,6 +4765,13 @@ const CR = (() => {
     if (!sel) { log('Önce panodan bir sipariş seçin.', 'warn'); return; }
     const o = sel;
     if (o.cost > st.money) { log(`Kasada ham parça için yeterli para yok (${tl(o.cost)}). Malzemesi müşteriden gelen bir iş seçin ya da panoyu yenileyin.`, 'warn'); return; }
+    // bağlama: büyük plaka mengeneye sığmaz; kurulu bağlama parçayı almıyorsa uygun olana geçilir
+    const fits = k => o.J.w >= FIXLIM[k].x[0] && o.J.w <= FIXLIM[k].x[1] && o.J.d >= FIXLIM[k].y[0] && o.J.d <= FIXLIM[k].y[1] && o.J.h >= FIXLIM[k].z[0] && o.J.h <= FIXLIM[k].z[1];
+    if (!fits(FIX)) {
+      const k = ['vise', 'clamp', 'vac'].find(q => fits(q) && (q === 'vise' || hasEq(q)));
+      if (!k) { log('Bu parça mengeneye sığmaz: pabuç takımı ya da vakum tabla gerekir (dükkân).', 'warn'); openShop(); return; }
+      setFix(k, true);
+    }
     st.money -= o.cost; save();
     if (PW !== o.J.w || PD !== o.J.d || PH !== o.J.h) setStock(o.J.w, o.J.d, o.J.h, true);
     resetPart(o.mat);
