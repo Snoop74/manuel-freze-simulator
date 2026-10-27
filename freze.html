@@ -326,7 +326,7 @@ table{color:inherit;font-size:inherit}
 .lcd-head{border-bottom:1px solid rgba(131,255,190,.25);padding-bottom:.4cqw}
 .lcd-ax{display:flex;align-items:baseline;gap:2cqw;padding:.1cqw .8cqw;border-radius:.5cqw}
 .lcd-ax b{font-size:3.6cqw;color:#c8ffd9;width:3cqw}
-.lcd-ax span{font-size:6cqw;letter-spacing:.06em;flex:1;text-align:right;font-variant-numeric:tabular-nums}
+.lcd-ax span{font-size:5.4cqw;letter-spacing:.06em;flex:1;text-align:right;font-variant-numeric:tabular-nums}
 .lcd-ax.sel{background:rgba(131,255,190,.14);box-shadow:inset 0 0 0 1px rgba(131,255,190,.45)}
 .lcd-info{display:flex;justify-content:space-between;font-size:2.1cqw;color:#a6ffcf;border-top:1px solid rgba(131,255,190,.2);padding-top:.5cqw}
 .lcd-row{display:grid;grid-template-columns:9cqw 1fr 9cqw;align-items:center;gap:1cqw;font-size:2.1cqw}
@@ -343,17 +343,17 @@ table{color:inherit;font-size:inherit}
 .cp-softkeys button{height:3cqw}
 .cp-softkeys button:active,.key:active,.cp-jog button:active,.cp-jog button.hold{transform:translateY(.4cqw);box-shadow:0 .1cqw 0 #8c877a,0 .2cqw .4cqw rgba(0,0,0,.45),inset 0 1px 0 #fff}
 .cp-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:1.3cqw;align-content:start;background:#1e2224;border-radius:1cqw;padding:1.6cqw;box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
-.key{font-size:2.8cqw;aspect-ratio:1.25;display:grid;place-items:center}
+.key{font-size:2.8cqw;aspect-ratio:1.5;display:grid;place-items:center}
 .key.ax{background:linear-gradient(#5b6368,#3c4246);color:#f2f2ec;box-shadow:0 .5cqw 0 #1f2427,0 .7cqw 1.2cqw rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.25)}
 .key.ax.on{background:linear-gradient(#e7b434,#b88512);color:#2a1d02;box-shadow:0 .5cqw 0 #6e4f08,0 0 1.6cqw rgba(255,190,60,.5)}
 .key.amber{background:linear-gradient(#e8b36a,#c98a3a)}
 .key.wide{grid-column:span 2;aspect-ratio:auto;background:linear-gradient(#d9e8dc,#a9c6ae)}
-.cp-bottom{display:grid;grid-template-columns:auto auto 1fr auto;grid-template-areas:'mil knobs mpg stop' 'jog jog mpg stop';gap:1.6cqw 2cqw;align-items:center;background:linear-gradient(#2a2f32,#202427);border-radius:1cqw;padding:1.8cqw;box-shadow:inset 0 2px 8px rgba(0,0,0,.55);flex-wrap:wrap}
+.cp-bottom{display:grid;grid-template-columns:auto auto minmax(24cqw,1fr) auto;grid-template-areas:'mil knobs mpg stop' 'jog jog mpg stop';gap:1.6cqw 2cqw;align-items:center;background:linear-gradient(#2a2f32,#202427);border-radius:1cqw;padding:1.8cqw;box-shadow:inset 0 2px 8px rgba(0,0,0,.55);flex-wrap:wrap}
 .cp-group{display:flex;flex-direction:column;align-items:center;gap:.8cqw;padding:0 1.2cqw;border-right:1px solid rgba(255,255,255,.08)}
 .cp-group.knobs,.cp-group.mpg-g{flex-direction:row;align-items:flex-end;gap:1.6cqw}
 .cp-group.last{border-right:0;grid-area:stop;align-self:stretch;justify-content:space-between}
-.cp-bottom > .cp-group:nth-child(1){grid-area:mil}.cp-bottom > .cp-group:nth-child(2){grid-area:knobs}.cp-bottom > .cp-group:nth-child(3){grid-area:mpg;flex-wrap:wrap;justify-content:center}.cp-bottom > .cp-group:nth-child(4){grid-area:jog;flex-direction:row;gap:2cqw;border-right:0;border-top:1px solid rgba(255,255,255,.08);padding-top:1.2cqw}
-.cp-group.mpg-g .cp-k:last-child{flex-basis:100%}
+.cp-bottom > .cp-group:nth-child(1){grid-area:mil}.cp-bottom > .cp-group:nth-child(2){grid-area:knobs}.cp-bottom > .cp-group:nth-child(3){grid-area:mpg;display:grid;grid-template-columns:auto auto;justify-items:center;align-content:center;gap:1cqw 2.4cqw}.cp-bottom > .cp-group:nth-child(4){grid-area:jog;flex-direction:row;gap:2cqw;border-right:0;border-top:1px solid rgba(255,255,255,.08);padding-top:1.2cqw}
+.cp-group.mpg-g .cp-k:last-child{grid-column:1 / span 2}
 .cp-cap{font-size:1.6cqw;letter-spacing:.14em;color:#aab3b0}
 .cp-btns{display:grid;grid-template-columns:repeat(2,auto);gap:1cqw 1.6cqw}
 .cp-b,.cp-k{display:grid;justify-items:center;gap:.5cqw;font-size:1.5cqw;letter-spacing:.06em;color:#cfd5d1}
@@ -366,13 +366,15 @@ table{color:inherit;font-size:inherit}
 .toggle{width:5.4cqw;height:5.4cqw;border-radius:50%;border:.5cqw solid #c7ccce;background:radial-gradient(circle at 40% 35%,#4c5357,#1b1e20 70%);position:relative;cursor:pointer;box-shadow:0 .5cqw 1cqw rgba(0,0,0,.6)}
 .toggle i{position:absolute;left:50%;top:50%;width:1.2cqw;height:4cqw;background:linear-gradient(#e9ecec,#9aa2a6);border-radius:.6cqw;transform:translate(-50%,-50%) rotate(-35deg);transition:transform .15s}
 .toggle.rev i{transform:translate(-50%,-50%) rotate(35deg)}
-.knob{width:10.5cqw;aspect-ratio:1;cursor:grab;touch-action:none;outline:none}
-.knob.small{width:8cqw}
+.knob{width:14cqw;aspect-ratio:1;cursor:grab;touch-action:none;outline:none}
+.knob.small{width:11cqw}
 .knob:focus-visible{filter:drop-shadow(0 0 .6cqw #f0b429)}
 .knob svg,.mpg svg{width:100%;height:100%;display:block;overflow:visible}
-.mpg{width:15cqw;aspect-ratio:1;border-radius:50%;cursor:grab;touch-action:none;position:relative;background:radial-gradient(circle at 40% 35%,#6f777b,#2b3033 62%,#1b1e20);box-shadow:0 .6cqw 1.4cqw rgba(0,0,0,.65),inset 0 0 0 .5cqw #8e979b}
-.mpg i{position:absolute;inset:18%;border-radius:50%;background:radial-gradient(circle at 40% 35%,#c9cfd2,#7f878b 70%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4)}
-.mpg i::after{content:"";position:absolute;width:22%;height:22%;border-radius:50%;left:39%;top:6%;background:radial-gradient(circle at 40% 35%,#2b2f31,#0e1011);box-shadow:inset 0 1px 2px rgba(0,0,0,.8)}
+.mpg{width:20cqw;aspect-ratio:1;border-radius:50%;cursor:grab;touch-action:none;position:relative;background:radial-gradient(circle,#15181a 0 70%,#3b4245 71%,#1b1e20 100%);box-shadow:0 .8cqw 1.8cqw rgba(0,0,0,.7),inset 0 0 0 .4cqw #8e979b}
+/* tırtıllı çark: dış halka tırtıllı, ortası çanak, tutamak çukuru; hepsi birlikte döner */
+.mpg i{position:absolute;inset:5%;border-radius:50%;background:radial-gradient(circle,transparent 0 76%,rgba(0,0,0,.45) 77%,transparent 80%),repeating-conic-gradient(#b4bcc0 0 3deg,#4a5256 3deg 6deg);box-shadow:inset 0 0 0 .3cqw rgba(0,0,0,.5),0 .2cqw .6cqw rgba(0,0,0,.6)}
+.mpg i::before{content:"";position:absolute;inset:15%;border-radius:50%;background:radial-gradient(circle at 40% 35%,#d6dbde,#858d91 70%,#5d6569);box-shadow:inset 0 0 0 1px rgba(0,0,0,.45),0 0 0 .35cqw #2a2f32}
+.mpg i::after{content:"";position:absolute;width:15%;height:15%;border-radius:50%;left:42.5%;top:19%;background:radial-gradient(circle at 40% 35%,#2b2f31,#0e1011);box-shadow:inset 0 1px 2px rgba(0,0,0,.8)}
 .cp-jog{display:grid;grid-template-columns:repeat(3,4.6cqw) 4.6cqw;grid-template-rows:repeat(3,4.6cqw);gap:.9cqw}
 .cp-jog button{font-size:1.7cqw;touch-action:none}
 .cp-jog button.rapid{background:linear-gradient(#5b6368,#3c4246);color:#f2f2ec;font-size:1.3cqw;box-shadow:0 .5cqw 0 #1f2427,0 .7cqw 1.2cqw rgba(0,0,0,.45)}
@@ -468,7 +470,7 @@ table{color:inherit;font-size:inherit}
       <div class="cp">
         <div class="cp-top">
           <div class="cp-left">
-            <div class="cp-label"><b>ATÖLYE</b> DRO-3 · MANUEL FREZE KUMANDASI</div>
+            <div class="cp-label"><b>SNOOP3000</b> · MANUEL FREZE KUMANDASI</div>
             <div class="cp-screen" id="cpScreen" aria-live="polite">
               <div class="lcd-head"><span id="lcdMode">DRO · MUTLAK</span><span id="lcdState">HAZIR</span></div>
               <div class="lcd-page" id="lcdP1">
