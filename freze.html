@@ -1447,17 +1447,10 @@ function buildStock(w, d, h) {
   if (stockBase) { table.remove(stockBase); stockBase.geometry.dispose(); }
   pos = new Float32Array(nV * 3); nor = new Float32Array(nV * 3); col = new Float32Array(nV * 3);
   for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const k = j * NX + i; pos[k*3] = i * C; pos[k*3+1] = PH; pos[k*3+2] = -j * C; }
-  const idx = new Uint32Array((NX - 1) * (NY - 1) * 6);
-  { let p = 0;
-    for (let j = 0; j < NY - 1; j++) for (let i = 0; i < NX - 1; i++) {
-      const a = j * NX + i, b = a + 1, c = a + NX, dd = c + 1;
-      idx[p++] = a; idx[p++] = b; idx[p++] = c; idx[p++] = b; idx[p++] = dd; idx[p++] = c;
-    } }
   topGeo = new THREE.BufferGeometry();
   topGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   topGeo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   topGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  topGeo.setIndex(new THREE.BufferAttribute(idx, 1));
   topGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(PW/2, PH/2, -PD/2), Math.hypot(PW, PD, PH));
   MK1 = new Float32Array(nV * 4); MK2 = new Float32Array(nV * 4); TINTC = new Float32Array(nV); TAPC = new Uint8Array(nV);
   topGeo.setAttribute('mk1', new THREE.BufferAttribute(MK1, 4));
@@ -1470,7 +1463,13 @@ function buildStock(w, d, h) {
     { w: makeWall(NY, (p, k) => { p.set([0, PH, -k*C], k*3); p.set([0, 0, -k*C], (NY+k)*3); }, [-1,0,0]), at: k => H[k*NX] },
     { w: makeWall(NY, (p, k) => { p.set([PW, PH, -k*C], k*3); p.set([PW, 0, -k*C], (NY+k)*3); }, [1,0,0]), at: k => H[k*NX + NX - 1] },
   ];
-  stockBase = new THREE.Mesh(new THREE.PlaneGeometry(PW, PD), M.raw); stockBase.rotation.x = Math.PI / 2; stockBase.position.set(PW/2, 0.01, -PD/2); table.add(stockBase);
+  // alt yüz: üst yüzle aynı ızgara, y = 0'da ve aşağı bakar; delinip geçilen hücreler ikisinden de çıkarılır
+  const bp = new Float32Array(nV * 3), bn = new Float32Array(nV * 3);
+  for (let k = 0; k < nV; k++) { bp[k*3] = pos[k*3]; bp[k*3+1] = 0.01; bp[k*3+2] = pos[k*3+2]; bn[k*3+1] = -1; }
+  const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(bp, 3)); bg.setAttribute('normal', new THREE.BufferAttribute(bn, 3));
+  bg.boundingSphere = topGeo.boundingSphere.clone();
+  stockBase = new THREE.Mesh(bg, M.raw); stockBase.receiveShadow = true; table.add(stockBase);
+  throughDirty = true; rebuildIndex();
   dirty = { i0:0, i1:NX - 1, j0:0, j1:NY - 1 }; isDirty = true;
   buildVise();
 }
@@ -1489,7 +1488,22 @@ function buildVise() {
   if (stockReady) syncFixtures();
 }
 // çarpışma kutuları çenelerle birlikte taşınır (FIXTURES dosyada daha aşağıda tanımlı; başlangıçta bir kez eşitlenir)
-let stockReady = false;
+let stockReady = false, throughDirty = false;
+// Üçgenler: dört köşesi de tabana inmiş (boydan boya delinmiş) dörtgen çizilmez; böylece delikten karşısı görünür
+function rebuildIndex() {
+  const thr = 0.02, n = (NX - 1) * (NY - 1) * 6, ti = new Uint32Array(n), bi = new Uint32Array(n);
+  let p = 0;
+  for (let j = 0; j < NY - 1; j++) for (let i = 0; i < NX - 1; i++) {
+    const a = j * NX + i, b = a + 1, c = a + NX, d = c + 1;
+    if (H[a] <= thr && H[b] <= thr && H[c] <= thr && H[d] <= thr) continue;
+    ti[p] = a; ti[p+1] = b; ti[p+2] = c; ti[p+3] = b; ti[p+4] = d; ti[p+5] = c;
+    bi[p] = a; bi[p+1] = c; bi[p+2] = b; bi[p+3] = b; bi[p+4] = c; bi[p+5] = d;
+    p += 6;
+  }
+  topGeo.setIndex(new THREE.BufferAttribute(ti.slice(0, p), 1));
+  stockBase.geometry.setIndex(new THREE.BufferAttribute(bi.slice(0, p), 1));
+  throughDirty = false;
+}
 function syncFixtures() {
   FIXTURES[0].top = FIXTURES[1].top = jawTop;
   FIXTURES[1].b = [-35, 185, PD, PD + 25];
@@ -1536,6 +1550,7 @@ function flushMesh() {
     for (let k = 0; k < w.w.n; k++) p[k*3+1] = w.at(k);
     w.w.g.attributes.position.needsUpdate = true;
   }
+  if (throughDirty) rebuildIndex();
   isDirty = false;
 }
 
@@ -2078,6 +2093,7 @@ function applyCut(x, y, tip, T, mx = 1, my = 0, mk = null) {
       if (d2 > r2) continue;
       const k = j * NX + i, p = Math.max(0, profile(T, Math.sqrt(d2), tip));
       if (H[k] > p) {
+        if (p <= 0.02) throughDirty = true;
         vol += H[k] - p; H[k] = p; CUT[k] = S.tool + 1;
         if (mk) { const o = k * 4; MK1[o] = x; MK1[o+1] = y; MK1[o+2] = mx / ml; MK1[o+3] = my / ml; MK2[o] = mk.f; MK2[o+1] = r; MK2[o+2] = mk.ra; MK2[o+3] = mk.chat; TINTC[k] = mk.tint; }
       }
@@ -3656,8 +3672,7 @@ const BN = (() => {
     mats.top.metalness = topMat.metalness; mats.top.roughness = topMat.roughness;
     const add = (g, m) => { const o = new THREE.Mesh(g, m); o.castShadow = o.receiveShadow = true; grp.add(o); return o; };
     flushMesh();
-    add(topGeo, mats.top); for (const w of walls) add(w.w.g, mats.raw); add(stockBase.geometry, mats.raw).rotation.x = Math.PI / 2;
-    grp.children[grp.children.length - 1].position.set(PW / 2, 0.01, -PD / 2);
+    add(topGeo, mats.top); for (const w of walls) add(w.w.g, mats.raw); add(stockBase.geometry, mats.raw);
     grp.position.set(-PW / 2, 0, PD / 2);
     $('bnSecX').max = PW; $('bnSecY').max = PD; $('bnSecX').value = PW; $('bnSecY').value = PD; section();
     clearMarks();
