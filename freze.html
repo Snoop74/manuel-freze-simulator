@@ -1539,12 +1539,30 @@ function settle(c, g) {
   const yaw = Math.random() * TAU, tilt = (Math.random() - .5) * 0.35;
   if (c.V.rest === 'side') c.q.setFromEuler(_e3.set(Math.PI / 2 + tilt, yaw, (Math.random() - .5) * 0.3, 'YXZ'));
   else c.q.setFromEuler(_e3.set(tilt, yaw, (Math.random() - .5) * 0.35, 'YXZ'));
-  const key = pileKey(c.p.x, c.p.z), hgt = c.s * (c.V.rest === 'side' ? 2.6 : 1.2);
+  const key = pileKey(c.p.x, c.p.z), hgt = chipH(c);
   const ph = pile.get(key) || 0;
   c.p.y = g + ph + hgt * 0.45; pile.set(key, ph + hgt * 0.35);
   c.rest = true; c.pileKey = key; c.v.set(0, 0, 0);
 }
+const chipH = c => c.s * (c.V.rest === 'side' ? 2.6 : 1.2);
+// Yatan talaşları denetle: altındaki malzeme kesildiyse ya da altındaki talaş savrulduysa düşsün.
+// Yığın yüksekliği her seferinde yalnızca gerçekten yatan talaşlardan yeniden kurulur, eski değer birikmez.
+let restCheckT = 0;
+function checkResting(dt) {
+  if ((restCheckT += dt) < 0.2) return;
+  restCheckT = 0;
+  const np = new Map();
+  for (const c of liveChips) {
+    if (!c.alive || !c.rest) continue;
+    const g = groundAt(c.p.x, -c.p.z), key = pileKey(c.p.x, c.p.z), hgt = chipH(c);
+    const base = g < -9000 ? -1e9 : g + (np.get(key) || 0);
+    if (c.p.y > base + hgt * 0.45 + 0.8) { c.rest = false; c.bounces = 2; c.v.set((Math.random() - .5) * 20, 0, (Math.random() - .5) * 20); continue; }   // havada kaldı: düşer
+    np.set(key, (np.get(key) || 0) + hgt * 0.35);
+  }
+  pile.clear(); for (const [k, v] of np) pile.set(k, v);
+}
 function updateChips(dt) {
+  checkResting(dt);
   let dead = 0;
   for (const c of liveChips) {
     if (!c.alive) { dead++; continue; }
@@ -1580,7 +1598,6 @@ function kickChips(x, y, r, tip) {
     if (!c.alive || !c.rest) continue;
     const dx = c.p.x - cx, dz = c.p.z - cz, d = Math.hypot(dx, dz);
     if (d > r + 2.5 || c.p.y < tip - 3) continue;
-    const ph = pile.get(c.pileKey) || 0; pile.set(c.pileKey, Math.max(0, ph - c.s * 0.4));
     const a = Math.atan2(dz, dx), sp = 250 + Math.random() * 350;
     c.rest = false; c.bounces = 0;
     c.v.set(Math.cos(a) * sp - Math.sin(a) * 200, 150 + Math.random() * 200, Math.sin(a) * sp + Math.cos(a) * 200);
