@@ -313,6 +313,79 @@ table{color:inherit;font-size:inherit}
 .pb .jog button{font-size:clamp(13px,4.2cqw,24px);border-radius:8px}
 .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 #drawMode{width:100%;margin-top:4px}
+/* ---- Kumanda paneli: endüstriyel konsol; ölçüler panel genişliğine göre (cqw) ---- */
+.cp{position:relative;background:linear-gradient(#41474b,#2c3134 55%,#25292c);border-radius:1.4cqw;padding:2.4cqw;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -2px 6px rgba(0,0,0,.5);display:grid;gap:2cqw;color:#e3e6e2;font-family:var(--f-display)}
+.cp::before,.cp::after{content:"";position:absolute;width:1.6cqw;height:1.6cqw;border-radius:50%;background:radial-gradient(circle at 35% 35%,#9aa2a6,#3b4245);top:.8cqw;left:.8cqw;box-shadow:calc(100cqw - 6.4cqw) 0 0 #6c7478}
+.cp-top{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:2.2cqw}
+.cp-left{display:grid;gap:1.2cqw;min-width:0}
+.cp-label{background:linear-gradient(#f4c43a,#d9a417);color:#2a1d02;border-radius:.6cqw;padding:.5cqw 1.4cqw;font-size:1.9cqw;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:inset 0 -1px 0 rgba(0,0,0,.25)}
+.cp-label b{color:#9b1c10;margin-right:.6cqw}
+.cp-screen{position:relative;border-radius:1cqw;border:1.1cqw solid #15191b;box-shadow:inset 0 0 2.5cqw rgba(0,0,0,.85),0 1px 0 rgba(255,255,255,.1);background:radial-gradient(130% 120% at 50% 35%,#12301f,#06120c);color:#83ffbe;font-family:var(--f-dro);padding:1.2cqw 1.6cqw;display:grid;gap:.6cqw;overflow:hidden;text-shadow:0 0 .8cqw rgba(110,255,180,.55)}
+.cp-screen::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);pointer-events:none}
+.lcd-head,.lcd-input,.lcd-soft{display:flex;justify-content:space-between;font-size:1.9cqw;color:#58d991}
+.lcd-head{border-bottom:1px solid rgba(131,255,190,.25);padding-bottom:.4cqw}
+.lcd-ax{display:flex;align-items:baseline;gap:2cqw;padding:.1cqw .8cqw;border-radius:.5cqw}
+.lcd-ax b{font-size:3.6cqw;color:#c8ffd9;width:3cqw}
+.lcd-ax span{font-size:6cqw;letter-spacing:.06em;flex:1;text-align:right;font-variant-numeric:tabular-nums}
+.lcd-ax.sel{background:rgba(131,255,190,.14);box-shadow:inset 0 0 0 1px rgba(131,255,190,.45)}
+.lcd-info{display:flex;justify-content:space-between;font-size:2.1cqw;color:#a6ffcf;border-top:1px solid rgba(131,255,190,.2);padding-top:.5cqw}
+.lcd-row{display:grid;grid-template-columns:9cqw 1fr 9cqw;align-items:center;gap:1cqw;font-size:2.1cqw}
+.lcd-row .lcd-wide{grid-column:2 / span 2;text-align:right}
+.lcd-bar{height:1.4cqw;border:1px solid rgba(131,255,190,.5);border-radius:.3cqw;position:relative;overflow:hidden}
+.lcd-bar i{position:absolute;inset:0 auto 0 0;width:0;background:#83ffbe;box-shadow:0 0 .8cqw #83ffbe}
+.lcd-bar i.hi{background:#ffd36a;box-shadow:0 0 .8cqw #ffd36a}.lcd-bar i.bad{background:#ff6a5a;box-shadow:0 0 .8cqw #ff6a5a}
+.lcd-input{background:rgba(131,255,190,.08);padding:.3cqw .8cqw;border-radius:.4cqw;color:#c8ffd9}
+.lcd-soft{border-top:1px solid rgba(131,255,190,.25);padding-top:.4cqw}
+.lcd-soft span{flex:1;text-align:center;border-left:1px solid rgba(131,255,190,.2)}
+.lcd-soft span:first-child{border-left:0}
+.cp-softkeys{display:grid;grid-template-columns:repeat(5,1fr);gap:1.4cqw;padding:0 1.6cqw}
+.cp-softkeys button,.key,.cp-jog button{border:0;cursor:pointer;font-family:var(--f-display);font-weight:700;color:#2b2b2b;background:linear-gradient(#efece3,#c9c4b6);border-radius:.8cqw;box-shadow:0 .5cqw 0 #8c877a,0 .7cqw 1.2cqw rgba(0,0,0,.45),inset 0 1px 0 #fff;transition:transform .05s,box-shadow .05s}
+.cp-softkeys button{height:3cqw}
+.cp-softkeys button:active,.key:active,.cp-jog button:active,.cp-jog button.hold{transform:translateY(.4cqw);box-shadow:0 .1cqw 0 #8c877a,0 .2cqw .4cqw rgba(0,0,0,.45),inset 0 1px 0 #fff}
+.cp-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:1.3cqw;align-content:start;background:#1e2224;border-radius:1cqw;padding:1.6cqw;box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
+.key{font-size:2.8cqw;aspect-ratio:1.25;display:grid;place-items:center}
+.key.ax{background:linear-gradient(#5b6368,#3c4246);color:#f2f2ec;box-shadow:0 .5cqw 0 #1f2427,0 .7cqw 1.2cqw rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.25)}
+.key.ax.on{background:linear-gradient(#e7b434,#b88512);color:#2a1d02;box-shadow:0 .5cqw 0 #6e4f08,0 0 1.6cqw rgba(255,190,60,.5)}
+.key.amber{background:linear-gradient(#e8b36a,#c98a3a)}
+.key.wide{grid-column:span 2;aspect-ratio:auto;background:linear-gradient(#d9e8dc,#a9c6ae)}
+.cp-bottom{display:grid;grid-template-columns:auto auto 1fr auto;grid-template-areas:'mil knobs mpg stop' 'jog jog mpg stop';gap:1.6cqw 2cqw;align-items:center;background:linear-gradient(#2a2f32,#202427);border-radius:1cqw;padding:1.8cqw;box-shadow:inset 0 2px 8px rgba(0,0,0,.55);flex-wrap:wrap}
+.cp-group{display:flex;flex-direction:column;align-items:center;gap:.8cqw;padding:0 1.2cqw;border-right:1px solid rgba(255,255,255,.08)}
+.cp-group.knobs,.cp-group.mpg-g{flex-direction:row;align-items:flex-end;gap:1.6cqw}
+.cp-group.last{border-right:0;grid-area:stop;align-self:stretch;justify-content:space-between}
+.cp-bottom > .cp-group:nth-child(1){grid-area:mil}.cp-bottom > .cp-group:nth-child(2){grid-area:knobs}.cp-bottom > .cp-group:nth-child(3){grid-area:mpg;flex-wrap:wrap;justify-content:center}.cp-bottom > .cp-group:nth-child(4){grid-area:jog;flex-direction:row;gap:2cqw;border-right:0;border-top:1px solid rgba(255,255,255,.08);padding-top:1.2cqw}
+.cp-group.mpg-g .cp-k:last-child{flex-basis:100%}
+.cp-cap{font-size:1.6cqw;letter-spacing:.14em;color:#aab3b0}
+.cp-btns{display:grid;grid-template-columns:repeat(2,auto);gap:1cqw 1.6cqw}
+.cp-b,.cp-k{display:grid;justify-items:center;gap:.5cqw;font-size:1.5cqw;letter-spacing:.06em;color:#cfd5d1}
+.cp-k b{color:#ffd36a;font-family:var(--f-dro);font-weight:400}
+.rb{width:5.4cqw;height:5.4cqw;border-radius:50%;border:.5cqw solid #c7ccce;cursor:pointer;box-shadow:0 .5cqw 1cqw rgba(0,0,0,.6),inset 0 -.6cqw 1cqw rgba(0,0,0,.35);transition:transform .05s,box-shadow .2s}
+.rb:active{transform:scale(.94)}
+.rb.green{background:radial-gradient(circle at 40% 35%,#7be38f,#1f8a3b 70%)} .rb.green.lit{box-shadow:0 0 2.4cqw #3dff7a,0 .5cqw 1cqw rgba(0,0,0,.6);background:radial-gradient(circle at 40% 35%,#c8ffd3,#33d661 70%)}
+.rb.red{background:radial-gradient(circle at 40% 35%,#ff8a7a,#a8221a 70%)}
+.rb.blue{background:radial-gradient(circle at 40% 35%,#8ac4ff,#1f5a9c 70%)} .rb.blue.lit{box-shadow:0 0 2.4cqw #59b6ff,0 .5cqw 1cqw rgba(0,0,0,.6);background:radial-gradient(circle at 40% 35%,#d4ecff,#3a96f0 70%)}
+.toggle{width:5.4cqw;height:5.4cqw;border-radius:50%;border:.5cqw solid #c7ccce;background:radial-gradient(circle at 40% 35%,#4c5357,#1b1e20 70%);position:relative;cursor:pointer;box-shadow:0 .5cqw 1cqw rgba(0,0,0,.6)}
+.toggle i{position:absolute;left:50%;top:50%;width:1.2cqw;height:4cqw;background:linear-gradient(#e9ecec,#9aa2a6);border-radius:.6cqw;transform:translate(-50%,-50%) rotate(-35deg);transition:transform .15s}
+.toggle.rev i{transform:translate(-50%,-50%) rotate(35deg)}
+.knob{width:10.5cqw;aspect-ratio:1;cursor:grab;touch-action:none;outline:none}
+.knob.small{width:8cqw}
+.knob:focus-visible{filter:drop-shadow(0 0 .6cqw #f0b429)}
+.knob svg,.mpg svg{width:100%;height:100%;display:block;overflow:visible}
+.mpg{width:15cqw;aspect-ratio:1;border-radius:50%;cursor:grab;touch-action:none;position:relative;background:radial-gradient(circle at 40% 35%,#6f777b,#2b3033 62%,#1b1e20);box-shadow:0 .6cqw 1.4cqw rgba(0,0,0,.65),inset 0 0 0 .5cqw #8e979b}
+.mpg i{position:absolute;inset:18%;border-radius:50%;background:radial-gradient(circle at 40% 35%,#c9cfd2,#7f878b 70%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4)}
+.mpg i::after{content:"";position:absolute;width:22%;height:22%;border-radius:50%;left:39%;top:6%;background:radial-gradient(circle at 40% 35%,#2b2f31,#0e1011);box-shadow:inset 0 1px 2px rgba(0,0,0,.8)}
+.cp-jog{display:grid;grid-template-columns:repeat(3,4.6cqw) 4.6cqw;grid-template-rows:repeat(3,4.6cqw);gap:.9cqw}
+.cp-jog button{font-size:1.7cqw;touch-action:none}
+.cp-jog button.rapid{background:linear-gradient(#5b6368,#3c4246);color:#f2f2ec;font-size:1.3cqw;box-shadow:0 .5cqw 0 #1f2427,0 .7cqw 1.2cqw rgba(0,0,0,.45)}
+.cp-jog button.rapid.on{background:linear-gradient(#f0b429,#c98a12);color:#2a1d02}
+.cp-lamps{display:flex;gap:1.4cqw}
+.cp-lampl{display:flex;gap:1.4cqw;font-size:1.2cqw;color:#aab3b0}
+.cp-lampl span{width:2.2cqw;text-align:center}
+.lamp2{width:2.2cqw;height:2.2cqw;border-radius:50%;background:#2a2f31;box-shadow:inset 0 1px 2px rgba(0,0,0,.8)}
+.lamp2.on.g{background:#4dff82;box-shadow:0 0 1.4cqw #4dff82}.lamp2.on.a{background:#ffbf3a;box-shadow:0 0 1.4cqw #ffbf3a}.lamp2.on.r{background:#ff4a3a;box-shadow:0 0 1.4cqw #ff4a3a}
+.cp-estop{margin-top:auto;width:11cqw;aspect-ratio:1;border-radius:50%;border:none;cursor:pointer;background:radial-gradient(circle,#f0b429 0 62%,#a77a10 63% 66%,#f0b429 67%);display:grid;place-items:center;position:relative;box-shadow:0 .6cqw 1.4cqw rgba(0,0,0,.6)}
+.cp-estop::before{content:"";position:absolute;inset:16%;border-radius:50%;background:radial-gradient(circle at 40% 32%,#ff8a74,#c9241a 55%,#7a120c);box-shadow:0 .6cqw 1cqw rgba(0,0,0,.55),inset 0 -.6cqw 1cqw rgba(0,0,0,.35);transition:transform .08s}
+.cp-estop:active::before,.cp-estop.down::before{transform:scale(.93) translateY(.3cqw)}
+.cp-estop span{position:relative;font-size:1.1cqw;font-weight:700;color:#fff;letter-spacing:.06em;margin-top:7.6cqw;text-shadow:0 1px 2px #000}
 </style>
 
 <div class="app">
@@ -321,7 +394,7 @@ table{color:inherit;font-size:inherit}
     <span class="tb-sep"></span>
     <div class="tb-group"><span class="tb-label">Paneller</span><div class="tb-group tb-panels"></div></div>
     <span class="tb-sep"></span>
-    <div class="tb-group tb-layouts"><span class="tb-label">Düzen</span><button class="chip" data-l="temel">Temel</button><button class="chip" data-l="tam">Tam</button><button class="chip" data-l="is">İş emri</button></div>
+    <div class="tb-group tb-layouts"><span class="tb-label">Düzen</span><button class="chip" data-l="kumanda">Kumanda</button><button class="chip" data-l="temel">Temel</button><button class="chip" data-l="tam">Tam</button><button class="chip" data-l="is">İş emri</button></div>
     <span class="tb-sep"></span>
     <div class="tb-group tb-views"></div>
     <button class="estop" id="estopBtn" title="Mili ve tüm hareketleri durdur (Esc)">ACİL STOP</button>
@@ -389,6 +462,79 @@ table{color:inherit;font-size:inherit}
 
   <aside class="pendant">
     <div class="brand"><h1>Manuel Freze</h1><span id="brandMat">Al 6061 · 150×100×40</span></div>
+
+    <div class="sec" data-panel="console">
+      <h2><span>Kumanda paneli</span></h2>
+      <div class="cp">
+        <div class="cp-top">
+          <div class="cp-left">
+            <div class="cp-label"><b>ATÖLYE</b> DRO-3 · MANUEL FREZE KUMANDASI</div>
+            <div class="cp-screen" id="cpScreen" aria-live="polite">
+              <div class="lcd-head"><span id="lcdMode">DRO · MUTLAK</span><span id="lcdState">HAZIR</span></div>
+              <div class="lcd-page" id="lcdP1">
+                <div class="lcd-ax" data-ax="x"><b>X</b><span id="lcdX">+0.000</span></div>
+                <div class="lcd-ax" data-ax="y"><b>Y</b><span id="lcdY">+0.000</span></div>
+                <div class="lcd-ax" data-ax="z"><b>Z</b><span id="lcdZ">+0.000</span></div>
+                <div class="lcd-info"><span id="lcdS">S 0</span><span id="lcdF">F 0</span><span id="lcdT">T3</span></div>
+              </div>
+              <div class="lcd-page" id="lcdP2" hidden>
+                <div class="lcd-row"><span>YÜK</span><span class="lcd-bar"><i id="lcdLoad"></i></span><span id="lcdLoadV">—</span></div>
+                <div class="lcd-row"><span>GÜÇ</span><span class="lcd-bar"><i id="lcdPow"></i></span><span id="lcdPowV">—</span></div>
+                <div class="lcd-row"><span>MALZ.</span><span id="lcdMat" class="lcd-wide">—</span></div>
+                <div class="lcd-row"><span>SICAK.</span><span id="lcdTemp" class="lcd-wide">—</span></div>
+                <div class="lcd-row"><span>AŞINMA</span><span id="lcdWear" class="lcd-wide">—</span></div>
+                <div class="lcd-row"><span>Ra</span><span id="lcdRa" class="lcd-wide">—</span></div>
+                <div class="lcd-row"><span>TALAŞ</span><span id="lcdChip" class="lcd-wide">—</span></div>
+              </div>
+              <div class="lcd-input"><span id="lcdSel">EKSEN SEÇ</span><span id="lcdBuf"></span></div>
+              <div class="lcd-soft"><span>X0</span><span>Y0</span><span>Z0</span><span>1/2</span><span id="lcdPgK">DURUM</span></div>
+            </div>
+            <div class="cp-softkeys" id="cpSoft"><button data-sk="0" aria-label="X sıfırla"></button><button data-sk="1" aria-label="Y sıfırla"></button><button data-sk="2" aria-label="Z sıfırla"></button><button data-sk="3" aria-label="Seçili ekseni yarıya böl"></button><button data-sk="4" aria-label="Ekran sayfası"></button></div>
+          </div>
+          <div class="cp-keypad" id="cpKeys">
+            <button class="key ax" data-k="x">X</button><button class="key ax" data-k="y">Y</button><button class="key ax" data-k="z">Z</button>
+            <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+            <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+            <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+            <button class="key" data-k="±">±</button><button class="key" data-k="0">0</button><button class="key" data-k=".">.</button>
+            <button class="key amber" data-k="clr">CLR</button><button class="key wide" data-k="ent">ENT</button>
+          </div>
+        </div>
+        <div class="cp-bottom">
+          <div class="cp-group">
+            <div class="cp-cap">MİL</div>
+            <div class="cp-btns">
+              <div class="cp-b"><button class="rb green" id="cpStart" aria-label="Mil start"></button><span>START</span></div>
+              <div class="cp-b"><button class="rb red" id="cpStop" aria-label="Mil stop"></button><span>STOP</span></div>
+              <div class="cp-b"><button class="toggle" id="cpDir" aria-label="Mil yönü"><i></i></button><span id="cpDirL">İLERİ</span></div>
+              <div class="cp-b"><button class="rb blue" id="cpCool" aria-label="Soğutma sıvısı"></button><span>SOĞUTMA</span></div>
+            </div>
+          </div>
+          <div class="cp-group knobs">
+            <div class="cp-k"><div class="knob" id="kRpm" tabindex="0" aria-label="Devir topuzu"></div><span>DEVİR <b id="kRpmV"></b></span></div>
+            <div class="cp-k"><div class="knob" id="kFeed" tabindex="0" aria-label="İlerleme topuzu"></div><span>İLERLEME <b id="kFeedV"></b></span></div>
+          </div>
+          <div class="cp-group mpg-g">
+            <div class="cp-k"><div class="knob small" id="kAxis" tabindex="0" aria-label="El çarkı ekseni"></div><span>EKSEN</span></div>
+            <div class="cp-k"><div class="knob small" id="kMul" tabindex="0" aria-label="El çarkı adımı"></div><span>ADIM</span></div>
+            <div class="cp-k"><div class="mpg" id="cpMpg" aria-label="El çarkı (MPG)"><i></i></div><span>EL ÇARKI <b id="cpMpgL">X ×1</b></span></div>
+          </div>
+          <div class="cp-group">
+            <div class="cp-cap">HAREKET</div>
+            <div class="cp-jog" id="cpJog">
+              <span></span><button data-j="y1">Y+</button><span></span><button data-j="z1">Z+</button>
+              <button data-j="x-1">X−</button><button class="rapid" id="cpRapid">HIZLI</button><button data-j="x1">X+</button><span></span>
+              <span></span><button data-j="y-1">Y−</button><span></span><button data-j="z-1">Z−</button>
+            </div>
+          </div>
+          <div class="cp-group last">
+            <div class="cp-lamps"><span class="lamp2 on g" title="Güç"></span><span class="lamp2 a" id="lpSpin" title="Mil"></span><span class="lamp2 r" id="lpAlarm" title="Alarm"></span></div>
+            <div class="cp-lampl"><span>GÜÇ</span><span>MİL</span><span>ALARM</span></div>
+            <button class="cp-estop" id="cpEstop" aria-label="Acil stop"><span>ACİL STOP</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="sec" data-panel="jobs">
       <h2><span>İş emirleri</span><span id="starTotal">0 / 15 yıldız</span></h2>
@@ -2834,7 +2980,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 function updateHud(T, tip) {
-  updateLamps();
+  updateLamps(); CP.update(T);
   { const vc = Math.PI * T.d * (S.spindle ? S.rpmEff : S.rpm) / 1000, rec = T.vc * mat.vcf;
     $('hMat').textContent = mat.short;
     $('hVc').textContent = T.type === 'edge' ? '—' : `${Math.round(vc)} m/dk (öneri ${Math.round(rec)})`;
@@ -2911,8 +3057,9 @@ function toolIcon(T) {
 
 /* ---------------- Paneller: taşınabilir, ölçeklenebilir kumanda pencereleri ---------------- */
 const PM = (() => {
-  const TOP = 46, KEY = 'freze-panels-v1';
+  const TOP = 46, KEY = 'freze-panels-v2';
   const CFG = [
+    { id:'console', title:'Kumanda paneli',   col:'B', w:760 },
     { id:'hud',     title:'Durum',            col:'L', w:290 },
     { id:'jobs',    title:'İş emirleri',      col:'L', w:340 },
     { id:'part',    title:'Parça',            col:'L', w:320 },
@@ -2926,6 +3073,7 @@ const PM = (() => {
     { id:'keys',    title:'Kısayollar',       col:'C', w:300 },
   ];
   const PRESETS = {
+    kumanda: ['console', 'tools', 'hud'],
     temel: ['hud', 'spindle', 'dro', 'tools', 'wheels', 'jog'],
     tam:   ['hud', 'jobs', 'log', 'spindle', 'dro', 'tools', 'wheels', 'jog'],
     is:    ['hud', 'jobs', 'spindle', 'dro', 'tools', 'wheels'],
@@ -2997,9 +3145,10 @@ const PM = (() => {
   function autoLayout() {
     const W = window.innerWidth, H = vh();
     // önce alttaki çark ve hareket panelleri; sütunlar onların üstünde biter
-    const wh = P.wheels, jg = P.jog, low = [];
+    const wh = P.wheels, jg = P.jog, cs = P.console, low = [];
     let wx = W / 2;
-    if (wh && wh.vis) { wh.w = Math.min(wh.cfg.w, W - 40); wh.h = 0; place(wh); wh.x = (W - wh.w) / 2; wh.y = H - wh.el.offsetHeight - 10; place(wh); wx = wh.x; low.push(wh); }
+    if (cs && cs.vis) { cs.w = Math.min(cs.cfg.w, W - 40); cs.h = 0; place(cs); cs.x = (W - cs.w) / 2; cs.y = Math.max(10, H - cs.el.offsetHeight - 10); place(cs); wx = cs.x; low.push(cs); }
+    if (wh && wh.vis) { wh.w = Math.min(wh.cfg.w, W - 40); wh.h = 0; place(wh); wh.x = cs && cs.vis ? Math.max(10, wx - wh.w - 10) : (W - wh.w) / 2; wh.y = H - wh.el.offsetHeight - 10; place(wh); wx = wh.x; low.push(wh); }
     if (jg && jg.vis) { jg.w = jg.cfg.w; jg.h = 0; place(jg); jg.x = Math.max(10, wx - jg.w - 10); jg.y = H - jg.el.offsetHeight - 10; place(jg); low.push(jg); }
     const floor = (x0, x1) => low.reduce((f, q) => (x1 > q.x && x0 < q.x + q.w) ? Math.min(f, q.y - 10) : f, H - 10);
     const cols = { L:{ x:10, y:10, dir:1, wm:0 }, R:{ x:W - 10, y:10, dir:-1, wm:0 } };
@@ -3026,7 +3175,7 @@ const PM = (() => {
     for (const id in P) if (id !== 'drawing') setVis(id, set.includes(id), true);
     for (const id in P) { P[id].collapsed = false; P[id].el.classList.remove('collapsed'); P[id].el.querySelector('.pcol').textContent = '–'; }
     autoLayout();
-    log(`Panel düzeni: ${{ temel:'Temel', tam:'Tam', is:'İş emri' }[name] || 'Temel'}.`);
+    log(`Panel düzeni: ${{ kumanda:'Kumanda', temel:'Temel', tam:'Tam', is:'İş emri' }[name] || 'Temel'}.`);
   }
   function init() {
     CFG.forEach(build);
@@ -3041,7 +3190,7 @@ const PM = (() => {
     for (const id in P) {
       const s = store[id], p = P[id];
       if (s) { Object.assign(p, { x:s.x, y:s.y, w:s.w || p.w, h:s.h || 0, collapsed:!!s.col }); p.el.classList.toggle('collapsed', p.collapsed); p.el.querySelector('.pcol').textContent = p.collapsed ? '+' : '–'; }
-      if (id !== 'drawing') setVis(id, has ? !!(s && s.vis) : PRESETS.temel.includes(id), true);
+      if (id !== 'drawing') setVis(id, has ? !!(s && s.vis) : PRESETS.kumanda.includes(id), true);
     }
     if (!has) requestAnimationFrame(() => autoLayout()); else for (const id in P) if (P[id].vis) place(P[id]);
     // teknik resim paneli, resmin kendi görünürlüğünü izler
@@ -3116,6 +3265,7 @@ function updateLamps() {
   PM.lamp('tools', S.broken ? 'bad' : S.changing ? 'warn' : S.wear[S.tool] > 0.3 ? 'warn' : '');
   PM.lamp('hud', S.alarm ? 'bad' : S.lastStress > 1.2 || S.damage > 0.5 ? 'warn' : S.spindle ? 'on' : '');
   PM.lamp('jobs', S.job && !S.job.done ? 'on' : '');
+  PM.lamp('console', S.alarm ? 'bad' : S.spindle ? 'on' : '');
   PM.lamp('jog', S.autoX ? 'warn' : FD.on ? 'on' : '');
   PM.lamp('spindle', S.spindle ? (S.dir < 0 ? 'warn' : 'on') : '');
 }
@@ -3239,6 +3389,136 @@ const FD = (() => {
   const end = () => { if (drag) { drag = false; controls.enabled = true; canvas.style.cursor = on ? 'crosshair' : ''; } };
   canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
   return { setOn, get on() { return on; } };
+})();
+
+/* ---------------- Kumanda paneli: DRO ekranı, tuş takımı, topuzlar, el çarkı (MPG) ----------------
+   Paneldeki tüm kumandalar mevcut işlevleri çağırır; böylece eski paneller ve makine üstü kumandalarla hep tutarlı kalır. */
+const CP = (() => {
+  const st = { sel:null, buf:'', page:1, axis:'x', mpgAcc:0, mpgAng:0, mpgLast:null };
+  const SVG = 'http://www.w3.org/2000/svg';
+  // Topuz: −135°…+135° arası döner; sürükle (yukarı/aşağı ya da döndür) ya da tekerlek. steps verilirse kademeli
+  function knob(el, o) {
+    const svg = document.createElementNS(SVG, 'svg'); svg.setAttribute('viewBox', '-60 -60 120 120'); el.append(svg);
+    const n = o.steps ? o.steps.length : 11;
+    for (let k = 0; k < n; k++) {
+      const a = (-135 + 270 * k / (n - 1)) * Math.PI / 180, r0 = 43, r1 = o.steps ? 49 : (k % 5 === 0 ? 50 : 47);
+      const l = document.createElementNS(SVG, 'line');
+      l.setAttribute('x1', Math.sin(a) * r0); l.setAttribute('y1', -Math.cos(a) * r0); l.setAttribute('x2', Math.sin(a) * r1); l.setAttribute('y2', -Math.cos(a) * r1);
+      l.setAttribute('stroke', '#cfd5d1'); l.setAttribute('stroke-width', o.steps || k % 5 === 0 ? 2.4 : 1.4); svg.append(l);
+      if (o.steps) { const t = document.createElementNS(SVG, 'text'); t.textContent = o.labels[k]; t.setAttribute('x', Math.sin(a) * 58); t.setAttribute('y', -Math.cos(a) * 58 + 4); t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', '11'); t.setAttribute('fill', '#cfd5d1'); t.setAttribute('font-family', 'Chakra Petch, sans-serif'); svg.append(t); }
+    }
+    svg.insertAdjacentHTML('beforeend', `<defs><radialGradient id="kg${el.id}" cx="40%" cy="35%"><stop offset="0" stop-color="#5e666a"/><stop offset=".7" stop-color="#1c1f21"/></radialGradient></defs>
+      <circle r="38" fill="#0f1112"/><g class="kr"><circle r="34" fill="url(#kg${el.id})" stroke="#0a0b0c" stroke-width="2"/>
+      ${Array.from({ length:24 }, (_, k) => { const a = k / 24 * Math.PI * 2; return `<line x1="${Math.sin(a) * 30}" y1="${-Math.cos(a) * 30}" x2="${Math.sin(a) * 34}" y2="${-Math.cos(a) * 34}" stroke="#3a4044" stroke-width="2"/>`; }).join('')}
+      <circle r="22" fill="#2a2e31"/><line x1="0" y1="-8" x2="0" y2="-31" stroke="#f2f2ec" stroke-width="4" stroke-linecap="round"/></g>`);
+    const g = svg.querySelector('.kr');
+    const toU = () => o.steps ? o.steps.indexOf(o.get()) / (n - 1) : (o.get() - o.min) / (o.max - o.min);
+    const draw = () => g.setAttribute('transform', `rotate(${-135 + 270 * clamp(toU(), 0, 1)})`);
+    const setU = u => {
+      u = clamp(u, 0, 1);
+      if (o.steps) o.set(o.steps[Math.round(u * (n - 1))]);
+      else o.set(Math.round((o.min + u * (o.max - o.min)) / o.step) * o.step);
+      draw();
+    };
+    let drag = null;
+    el.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); el.setPointerCapture(e.pointerId); drag = { y:e.clientY, u:toU() }; el.style.cursor = 'grabbing'; });
+    el.addEventListener('pointermove', e => { if (!drag) return; const u = drag.u + (drag.y - e.clientY) / 180; if (o.steps) { const k = Math.round(clamp(u, 0, 1) * (n - 1)); if (k !== o.steps.indexOf(o.get())) { setU(k / (n - 1)); thud(260, 0.05, 0.03); } } else setU(u); });
+    const up = () => { drag = null; el.style.cursor = ''; };
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    el.addEventListener('wheel', e => { e.preventDefault(); initAudio(); const d = e.deltaY < 0 ? 1 : -1; setU(toU() + d / (o.steps ? n - 1 : 40)); if (o.steps) thud(260, 0.05, 0.03); }, { passive:false });
+    el.addEventListener('keydown', e => { if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { setU(toU() + 1 / (o.steps ? n - 1 : 40)); e.preventDefault(); } if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { setU(toU() - 1 / (o.steps ? n - 1 : 40)); e.preventDefault(); } });
+    draw(); return { draw };
+  }
+  const kRpm = knob($('kRpm'), { min:100, max:4200, step:10, get:() => S.rpm, set:v => setRpm(v) });
+  const kFeed = knob($('kFeed'), { min:10, max:1600, step:5, get:() => S.feed, set:v => setFeed(v) });
+  const kAxis = knob($('kAxis'), { steps:['x', 'y', 'z'], labels:['X', 'Y', 'Z'], get:() => st.axis, set:v => { st.axis = v; } });
+  const kMul = knob($('kMul'), { steps:[0.01, 0.1, 1], labels:['×1', '×10', '×100'], get:() => S.wheelMul, set:v => { S.wheelMul = v; [...$('muls').children].forEach(b => b.classList.toggle('on', +b.dataset.mul === v)); } });
+  // El çarkı (MPG): sürükleyerek döndür ya da tekerlek; her çentik seçili eksende bir adım
+  const mpg = $('cpMpg');
+  const mpgAng = e => { const r = mpg.getBoundingClientRect(); return Math.atan2(e.clientY - r.top - r.height / 2, e.clientX - r.left - r.width / 2); };
+  mpg.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); mpg.setPointerCapture(e.pointerId); st.mpgLast = mpgAng(e); st.mpgAcc = 0; mpg.style.cursor = 'grabbing'; });
+  mpg.addEventListener('pointermove', e => {
+    if (st.mpgLast === null) return;
+    const a = mpgAng(e); let d = a - st.mpgLast; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU;
+    st.mpgLast = a; st.mpgAcc += d; st.mpgAng += d;
+    const t = Math.trunc(st.mpgAcc / TICK); if (t) { st.mpgAcc -= t * TICK; wheelTicks(st.axis, t); }
+    mpg.firstElementChild.style.transform = `rotate(${st.mpgAng}rad)`;
+  });
+  const mup = () => { st.mpgLast = null; mpg.style.cursor = ''; };
+  mpg.addEventListener('pointerup', mup); mpg.addEventListener('pointercancel', mup);
+  mpg.addEventListener('wheel', e => { e.preventDefault(); initAudio(); const t = e.deltaY < 0 ? 1 : -1; wheelTicks(st.axis, t); st.mpgAng += t * TICK * 3; mpg.firstElementChild.style.transform = `rotate(${st.mpgAng}rad)`; }, { passive:false });
+  // tuş takımı: eksen seç, değer yaz, ENT ile ata; CLR siler
+  function selAxis(ax) { st.sel = st.sel === ax ? null : ax; st.buf = ''; }
+  $('cpKeys').addEventListener('click', e => {
+    const b = e.target.closest('[data-k]'); if (!b) return;
+    initAudio(); thud(320, 0.04, 0.025);
+    const k = b.dataset.k;
+    if (k === 'x' || k === 'y' || k === 'z') selAxis(k);
+    else if (k === 'clr') { if (st.buf) st.buf = ''; else st.sel = null; }
+    else if (k === 'ent') {
+      if (!st.sel) { log('Önce X, Y ya da Z eksen tuşuna basın.', 'warn'); return; }
+      const v = parseFloat(st.buf || '0');
+      if (isFinite(v)) setAxis(st.sel, v);
+      st.buf = ''; st.sel = null;
+    } else if (k === '±') st.buf = st.buf.startsWith('-') ? st.buf.slice(1) : '-' + st.buf;
+    else if (st.buf.length < 9 && !(k === '.' && st.buf.includes('.'))) { if (!st.sel) { log('Önce X, Y ya da Z eksen tuşuna basın.', 'warn'); return; } st.buf += k; }
+    render();
+  });
+  // yazılım tuşları: X0, Y0, Z0, 1/2 (seçili ekseni ortala), sayfa
+  $('cpSoft').addEventListener('click', e => {
+    const b = e.target.closest('[data-sk]'); if (!b) return;
+    initAudio(); thud(320, 0.04, 0.025);
+    const k = +b.dataset.sk, d = droVals();
+    if (k < 3) setAxis('xyz'[k], 0);
+    else if (k === 3) { if (!st.sel) { log('1/2 için önce eksen seçin (X, Y ya da Z).', 'warn'); return; } setAxis(st.sel, d[st.sel] / 2); log(`Orta bulma: ${st.sel.toUpperCase()} değeri yarıya bölündü; ${st.sel.toUpperCase()}=0'a giderseniz iki kenarın ortasındasınız.`, 'ok'); st.sel = null; }
+    else { st.page = st.page === 1 ? 2 : 1; $('lcdP1').hidden = st.page !== 1; $('lcdP2').hidden = st.page !== 2; $('lcdPgK').textContent = st.page === 1 ? 'DURUM' : 'DRO'; $('lcdMode').textContent = st.page === 1 ? 'DRO · MUTLAK' : 'DURUM'; }
+    render();
+  });
+  // mil, yön, soğutma, acil stop: mevcut düğmeleri çağırır
+  $('cpStart').addEventListener('click', () => $('spStart').click());
+  $('cpStop').addEventListener('click', () => $('spStop').click());
+  $('cpDir').addEventListener('click', () => $('spDir').click());
+  $('cpCool').addEventListener('click', () => $('coolant').click());
+  $('cpEstop').addEventListener('click', () => { $('cpEstop').classList.add('down'); setTimeout(() => $('cpEstop').classList.remove('down'), 300); estop(); });
+  // hareket tuşları: tıkla bir adım, basılı tut sürekli; HIZLI basılıyken hızlı hareket
+  $('cpJog').querySelectorAll('[data-j]').forEach(b => {
+    const ax = b.dataset.j[0], dir = +b.dataset.j.slice(1), id = 'cp-' + b.dataset.j;
+    b.addEventListener('pointerdown', e => { e.preventDefault(); b.setPointerCapture(e.pointerId); b.classList.add('hold'); press(id, ax, dir); });
+    const up = () => { b.classList.remove('hold'); release(id); };
+    b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
+  });
+  $('cpRapid').addEventListener('click', () => $('rapidBtn').click());
+  function render() {
+    for (const ax of ['x', 'y', 'z']) document.querySelector(`.lcd-ax[data-ax="${ax}"]`).classList.toggle('sel', st.sel === ax);
+    document.querySelectorAll('.key.ax').forEach(b => b.classList.toggle('on', b.dataset.k === st.sel));
+    $('lcdSel').textContent = st.sel ? `${st.sel.toUpperCase()} =` : 'EKSEN SEÇ';
+    $('lcdBuf').textContent = st.sel ? (st.buf || '_') : '';
+  }
+  // ekran ve ışıklar (updateHud içinden ~15 Hz)
+  function update(T) {
+    const d = droVals();
+    $('lcdX').textContent = fmt(d.x); $('lcdY').textContent = fmt(d.y); $('lcdZ').textContent = fmt(d.z);
+    $('lcdS').textContent = `S ${Math.round(S.spindle ? S.rpmEff : 0)}${S.spindle && S.dir < 0 ? ' GERİ' : ''}`;
+    $('lcdF').textContent = `F ${Math.round(S.curFeed && performance.now() - S.lastMove < 200 ? S.curFeed : S.feed)}`;
+    $('lcdT').textContent = `${T.no} Ø${T.d}`;
+    $('lcdState').textContent = S.alarm ? 'ALARM' : S.changing ? 'TAKIM DEĞ.' : S.tap ? 'KILAVUZ' : S.autoX ? 'OTO. İLERLEME' : S.spindle ? 'MİL DÖNÜYOR' : 'HAZIR';
+    const cutting = performance.now() - S.lastCut < 400, ld = cutting ? S.lastStress : 0;
+    const bar = (id, v) => { const e = $(id); e.style.width = clamp(v * 100, 0, 100) + '%'; e.className = v > 1 ? 'bad' : v > 0.8 ? 'hi' : ''; };
+    bar('lcdLoad', ld / 1.5); $('lcdLoadV').textContent = cutting ? ld.toFixed(2) + '×' : '—';
+    bar('lcdPow', S.power || 0); $('lcdPowV').textContent = S.power > 0.02 ? '%' + Math.round(S.power * 100) : '—';
+    $('lcdMat').textContent = mat.short.toUpperCase(); $('lcdTemp').textContent = (20 + S.temp).toFixed(1) + ' °C';
+    $('lcdWear').textContent = `VB ${S.wear[S.tool].toFixed(2)} mm`; $('lcdRa').textContent = S.lastRa === null ? '—' : S.lastRa.toFixed(2) + ' µm';
+    $('lcdChip').textContent = S.chipForm && performance.now() - S.chipT < 800 ? CHIP_TXT[S.chipForm].toUpperCase() : '—';
+    $('cpStart').classList.toggle('lit', S.spindle); $('cpCool').classList.toggle('lit', S.coolant);
+    $('cpDir').classList.toggle('rev', S.dir < 0); $('cpDirL').textContent = S.dir < 0 ? 'GERİ' : 'İLERİ';
+    $('lpSpin').classList.toggle('on', S.spindle); $('lpAlarm').classList.toggle('on', S.alarm);
+    $('cpRapid').classList.toggle('on', S.rapidBtn);
+    $('kRpmV').textContent = S.rpm; $('kFeedV').textContent = S.feed;
+    $('cpMpgL').textContent = `${st.axis.toUpperCase()} ×${Math.round(S.wheelMul * 100)}`;
+    kRpm.draw(); kFeed.draw(); kMul.draw();
+  }
+  render();
+  return { update };
 })();
 
 // Başlangıç
