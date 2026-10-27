@@ -455,6 +455,9 @@ table{color:inherit;font-size:inherit}
 .sh-item.own,.sh-item.soon{opacity:.6}
 .sh-item .btn{white-space:nowrap}
 .rack button.locked{opacity:.6;border-style:dashed}
+.holder-row{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center}
+.hl-lab{font-family:var(--f-display);font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.holder-row.off{opacity:.4;pointer-events:none}
 .probe-box{display:grid;gap:6px;border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--panel-2)}
 .probe-box[hidden]{display:none}
 .pr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
@@ -758,6 +761,8 @@ table{color:inherit;font-size:inherit}
       <h2><span>Takım</span><span>dolap</span></h2>
       <div class="cur-tool" id="curTool"><span class="tno" id="ctNo">T3</span><span class="tname" id="ctName">—</span><span class="tmeta" id="ctMeta">—</span></div>
       <div class="stopline" style="grid-template-columns:1fr auto"><span class="dro-note" id="ctWear">VB 0.00 mm</span><button class="btn" id="renewTool">Takımı yenile</button></div>
+      <div class="holder-row" id="holderRow"><span class="hl-lab">Tutucu</span><div class="seg" id="holderSeg"><button data-h="er">ER</button><button data-h="weldon">Weldon</button><button data-h="shrink">Shrink</button><button data-h="hydro">Hidrolik</button></div></div>
+      <div class="dro-note" id="holderNote"></div>
       <button class="btn" id="teOpen" style="width:100%">Takım editörü: bu takımı kopyala ya da düzenle</button>
       <button class="btn" id="airBtn" style="width:100%">Hava tabancası: KAPALI</button>
       <div class="probe-box" id="probeBox" hidden>
@@ -901,6 +906,7 @@ S.nose = 70 + TOOLS[S.tool].len;
 S.zn = PH + TOOLS[S.tool].len;
 const tool = () => TOOLS[S.tool];
 const tipZ = () => S.nose - tool().len;
+function unslip(T) { if (T.slipped) { T.len -= T.slipped; T.stick -= T.slipped; T.slipped = 0; } }
 const rapid = () => S.rapidKey || S.rapidBtn;
 
 /* ---------------- Mesaj / kayıt ---------------- */
@@ -2009,6 +2015,21 @@ const TMAT = {
   led:     new THREE.MeshStandardMaterial({ color:0x111a14, emissive:0x0b3a12, roughness:0.3 }),
   red:     smat(0xb8442e, 0.4, 0.5, 0.6),
 };
+/* ---- Takım tutucular: parmak, küresel ve pah frezeleri için ----
+   ro: salgı (mm) · slip: ağır yükte takımın kayma eğilimi · damp: tırlama çarpanı · rh: tutucu burnunun çarpışma yarıçapı.
+   Salgıda bir ağız ötekilerden fazla keser: küçük diş başına ilerlemede yük, aşınma ve yüzey bundan çok etkilenir. */
+const HOLDERS = {
+  er:     { n:'ER pens',    ro:0.015, slip:1,   damp:1.05, rh:22, p:0,    t:'standart; ağır yükte takım kayabilir' },
+  weldon: { n:'Weldon',     ro:0.008, slip:0,   damp:1,    rh:24, p:600,  t:'yan vidalı, kaymaz; kaba işe' },
+  shrink: { n:'Shrink-fit', ro:0.003, slip:0,   damp:0.9,  rh:14, p:1800, t:'ısıyla sıkma, ince burun, salgı neredeyse yok' },
+  hydro:  { n:'Hidrolik',   ro:0.003, slip:0.4, damp:0.72, rh:20, p:2400, t:'yağ basınçlı, titreşimi söndürür' },
+};
+const HKEY = 'freze-holders';
+let HSEL = {};
+try { HSEL = JSON.parse(localStorage.getItem(HKEY) || '{}') || {}; } catch (e) { HSEL = {}; }
+const holds = T => T.type === 'end' || T.type === 'ball' || T.type === 'chamfer';
+const holderOf = T => holds(T) ? (HOLDERS[HSEL[T.no]] ? HSEL[T.no] : 'er') : null;
+const holderR = T => T.type === 'face' ? 25 : holds(T) ? HOLDERS[holderOf(T)].rh : 22;
 // Takım tipine göre varsayılan geometri; T.geo ile tek tek değiştirilebilir
 function geoOf(T) {
   const base = {
@@ -2094,6 +2115,20 @@ function holderMesh(T, hl) {
     g.add(latheMesh(p, TMAT.holder));
     for (let k = 0; k < 3; k++) { const a = k * TAU / 3, j = box(3, 9, 3, TMAT.bright, Math.cos(a) * (rs + 1.6), 3, Math.sin(a) * (rs + 1.6), g); j.rotation.y = -a; }
     for (let k = 0; k < 22; k++) { const a = k / 22 * TAU, kh = sl - 6 - 20, kn = box(1.2, kh, 1.4, TMAT.bright, Math.cos(a) * 22.3, 20 + kh / 2, Math.sin(a) * 22.3, g); kn.rotation.y = -a; kn.castShadow = false; }   // tırtıllı kovan
+  } else if (holderOf(T) && holderOf(T) !== 'er') {
+    // V kanallı flanş ortak; burun tutucuya göre
+    const F = [[24, hl - fl], [31, hl - fl + 1], [31, hl - fl + 5], [27, hl - fl + 7], [27, hl - fl + 9], [31, hl - fl + 11], [31, hl - 1], [27, hl]];
+    const k = holderOf(T);
+    if (k === 'shrink') {                                         // ince, uzun konik burun (4.5°), çıplak çelik
+      g.add(latheMesh([[rs + 0.3, 0], [rs + 2.6, 0.8], [rs + 2.6 + hl * 0.05, hl * 0.45], [13, hl * 0.62], [17, hl * 0.72], [22, hl - fl - 2], ...F], TMAT.bright));
+      g.add(latheMesh([[rs + 2.62, 2], [rs + 2.62, 4]], TMAT.holder, 40));   // ısı halkası izi
+    } else if (k === 'hydro') {                                   // silindirik gövde, sıkma vidası
+      g.add(latheMesh([[rs + 0.4, 0], [rs + 4, 0.6], [15, 2], [16, 4], [16, hl * 0.6], [19, hl * 0.66], [20, hl - fl - 2], ...F], TMAT.holder));
+      const sc = cyl(2.6, 2.6, 4, TMAT.bright, 12); sc.rotation.z = Math.PI / 2; sc.position.set(16.5, hl * 0.4, 0); g.add(sc);
+    } else {                                                      // Weldon: kalın gövde, yan vida
+      g.add(latheMesh([[rs + 0.4, 0], [rs + 6, 0.8], [19, 2.5], [19, hl * 0.62], [22, hl * 0.68], [22, hl - fl - 2], ...F], TMAT.holder));
+      const sc = cyl(3.4, 3.4, 5, TMAT.bright, 6); sc.rotation.z = Math.PI / 2; sc.position.set(19.5, hl * 0.3, 0); g.add(sc);
+    }
   } else {
     // ER pens tutucu: somun, konik gövde, V kanallı flanş
     const nutH = Math.min(14, hl * 0.3);
@@ -2173,7 +2208,7 @@ const FIXTURES = [
   { n:'tablaya', b:[-400,550,-50,150], top:-60 },
 ];
 function fixtureHit(x, y, tip, T) {
-  const r = T.d / 2, rh = T.type === 'face' ? 25 : 22;
+  const r = T.d / 2, rh = holderR(T);
   for (const f of FIXTURES) {
     const d = rectDist(x, y, ...f.b);
     if ((tip < f.top && d < r) || (tip + T.stick < f.top && d < rh)) return 'Takım ' + f.n + ' çarptı!';
@@ -2201,7 +2236,7 @@ function interfere(x, y, tip, T) {
   out.any = out.over > 0.002;
   if (out.any && out.maxH - tip > T.flute + 0.3) out.shank = true;
   if (tip + T.stick < PH) {
-    const rh = T.type === 'face' ? 25 : 22, rh2 = rh * rh;
+    const rh = holderR(T), rh2 = rh * rh;
     const a0 = Math.max(0, Math.floor((x - rh) / C)), a1 = Math.min(NX - 1, Math.ceil((x + rh) / C));
     const b0 = Math.max(0, Math.floor((y - rh) / C)), b1 = Math.min(NY - 1, Math.ceil((y + rh) / C));
     for (let j = b0; j <= b1 && !out.holder; j++) for (let i = a0; i <= a1; i++) {
@@ -2356,7 +2391,15 @@ function tryStep(nx, ny, nn, dtStep) {
   S.win = { vol:0, h:0, v:0, ap:0, idle:0 };
   const winT = (W.h + W.v) / Math.max(1, S.feedNow / 60);
   const kcR = Math.pow(mat.kc / 700, 0.25) * (1 + S.wear[S.tool] * 1.5);
-  L.stress *= kcR;
+  L.stress *= kcR * md.load;
+  // ER pens ağır yükte takımı tutamayabilir: takım pensten dışarı kayar, parça resimden derin kesilir
+  const hk = holderOf(T);
+  if (hk && HOLDERS[hk].slip && L.stress > 1.6 && !T.slipped && Math.random() < (L.stress - 1.6) * 0.25 * HOLDERS[hk].slip) {
+    const a = +(0.3 + Math.random() * 0.5).toFixed(2);
+    T.slipped = a; T.len += a; T.stick += a; buildToolVisual(); updateToolUI();
+    beep(500, 0.1); thud(90, 0.2, 0.2);
+    log(`Takım ${HOLDERS[hk].n} tutucusundan ${a} mm dışarı kaydı! Uç artık DRO'nun gösterdiğinden derinde, parça fazla kesiliyor. Mili durdurup Tutucu satırındaki düğmeye basarak takımı yeniden bağlayın.`, 'bad');
+  }
   S.lastChip = L.chip; S.lastStress = L.stress;
   // mil gücü: kc · talaş debisi; 1000 dev/dk altında sabit tork, aşırı yükte devir düşer, çok aşırıda mil boğulur
   const Pc = mat.kc * (W.vol / Math.max(1e-3, winT)) * 1e-6, Pav = P_MAX * Math.min(1, S.rpm / 1000);
@@ -2492,6 +2535,7 @@ function motion(dt) {
       c.t += dt;
       if (c.t > 0.8) {
         const old = tool();
+        unslip(old);
         S.tool = c.to; S.broken = false; S.changing = null; S.peck.active = false; S.spotHint = false;
         S.damage = 0; S.lastStress = 0; S.lastChip = 0; S.win = { vol:0, h:0, v:0, ap:0, idle:0 };
         buildToolVisual(); updateToolUI(); updateRec();
@@ -2566,6 +2610,11 @@ function updateToolUI() {
   $('ctNo').textContent = T.no;
   $('ctName').textContent = `${T.name} Ø${T.d}${S.broken ? ' · KIRIK' : ''}`;
   $('ctMeta').textContent = `${T.mat} · ağız boyu ${T.flute} mm · takım boyu ${T.len} mm`;
+  const hk = holderOf(T), H0 = hk && HOLDERS[hk];
+  $('holderRow').classList.toggle('off', !hk);
+  [...$('holderSeg').children].forEach(b => b.classList.toggle('on', b.dataset.h === hk));
+  $('holderNote').textContent = H0 ? `${H0.n}: salgı ${Math.round(H0.ro * 1000)} µm · ${H0.t}${T.slipped ? ` · TAKIM ${T.slipped} mm KAYDI: düğmeye basıp yeniden bağlayın` : ''}`
+    : T.type === 'face' ? 'Kabuk freze malafası' : isDrill(T) || T.type === 'tap' ? 'Matkap aynası' : 'Sabit tutucu';
   $('curTool').classList.toggle('broken', S.broken);
   $('probeBox').hidden = !isProbe(T);
   [...$('rack').children].forEach(b => b.classList.toggle('active', b.dataset.i !== undefined && +b.dataset.i === S.tool));
@@ -2595,6 +2644,21 @@ function renderRack() {
   nb.innerHTML = '<span class="ico">+</span><span class="nm"><b>Yeni</b>Takım tasarla</span><span class="d">editör</span>';
   nb.addEventListener('click', () => TE.show(null)); rk.append(nb);
 }
+// tutucu değişimi: takılı takım yeni tutucuya bağlanır (mil durmalı); kayan takım da böylece yeniden bağlanır
+$('holderSeg').addEventListener('click', e => {
+  const b = e.target.closest('[data-h]'); if (!b) return;
+  initAudio();
+  const T = tool(), k = b.dataset.h;
+  if (!holds(T)) return;
+  if (S.spindle || S.changing) { log('Tutucu değiştirmek için önce mili durdurun.', 'warn'); return; }
+  if (!CR.hasEq('h_' + k) && k !== 'er') { log(`${HOLDERS[k].n} tutucu atölyede yok: dükkândan alabilirsiniz.`, 'warn'); CR.openShop(); return; }
+  if (holderOf(T) === k && !T.slipped) return;
+  const was = T.slipped;
+  unslip(T); HSEL[T.no] = k;
+  try { localStorage.setItem(HKEY, JSON.stringify(HSEL)); } catch (_) {}
+  buildToolVisual(); updateToolUI(); thud(200, 0.12, 0.1);
+  log(was ? `${T.no} ${HOLDERS[k].n} tutucuya yeniden bağlandı; takım boyu düzeldi. Z'yi kontrol edin.` : `${T.no} artık ${HOLDERS[k].n} tutucuda: salgı ${Math.round(HOLDERS[k].ro * 1000)} µm.`, 'ok');
+});
 function requestToolChange(i) {
   initAudio();
   if (S.alarm) { log('Önce alarmı sıfırlayın.', 'warn'); return; }
@@ -4238,11 +4302,13 @@ function toolMods(T) {
   const g = geoOf(T), hss = T.tm === 'hss', r = T.d / 2, cr = T.cr || 0;
   const nonFe = !!(mat.nonMetal || S.mat === 'al' || S.mat === 'brass');
   const coatW = { tin:0.8, altin:nonFe ? 0.85 : 0.65, dlc:nonFe ? 0.55 : 1.1 }[g.coat] || 1;
+  const H0 = HOLDERS[holderOf(T) || 'er'], hr = k => (1 + H0.ro / 0.01 * k) / (1 + HOLDERS.er.ro / 0.01 * k);
   return {
-    wear: coatW * (1 - Math.min(0.35, cr / r)),                     // köşe radyüsü kesici köşeyi korur
+    wear: coatW * (1 - Math.min(0.35, cr / r)) * hr(0.25),                     // köşe radyüsü kesici köşeyi korur
     tough: (hss ? 1.25 : 1) * (1 + 0.15 * Math.min(1, cr / (0.1 * T.d))),   // HSS kırılmaz, bükülür; karbür gevrek
-    chat: T.type === 'face' || isDrill(T) ? 1 : (hss ? 1.25 : 1) * (T.type === 'chamfer' ? 1 : clamp(1 + (35 - g.helix) / 70, 0.75, 1.4)),   // düşük helis vuruntulu, HSS daha esnek
-    ra: T.type === 'end' ? 1 - Math.min(0.4, cr / r * 0.8) : 1,
+    chat: T.type === 'face' || isDrill(T) ? 1 : (hss ? 1.25 : 1) * (T.type === 'chamfer' ? 1 : clamp(1 + (35 - g.helix) / 70, 0.75, 1.4)) * H0.damp / HOLDERS.er.damp,   // düşük helis vuruntulu, HSS daha esnek
+    ra: (T.type === 'end' ? 1 - Math.min(0.4, cr / r * 0.8) : 1) * hr(0.3),
+    load: T.fz ? (1 + H0.ro / T.fz * 0.5) / (1 + HOLDERS.er.ro / T.fz * 0.5) : 1,   // salgı: bir ağız fazla keser
   };
 }
 TOOLS.forEach(T => { T.tm = /HSS/.test(T.mat) ? 'hss' : 'carbide'; });
@@ -4430,6 +4496,9 @@ const CR = (() => {
   const EQUIP = [
     { id:'air', n:'Hava tabancası', t:'Talaşı üfleyerek temizle (B). Talaşsız teslim %5 prim', p:350, ready:true },
     { id:'probe', n:'3B taster', t:'Kenar, köşe ve delik merkezini bul, sıfırı yaz. Dönerken çarparsa kırılır!', p:2500, ready:true },
+    { id:'h_weldon', n:'Weldon tutucu', t:HOLDERS.weldon.t, p:HOLDERS.weldon.p, ready:true },
+    { id:'h_shrink', n:'Shrink-fit tutucu', t:HOLDERS.shrink.t, p:HOLDERS.shrink.p, ready:true },
+    { id:'h_hydro', n:'Hidrolik tutucu', t:HOLDERS.hydro.t, p:HOLDERS.hydro.p, ready:true },
     { id:'clamp', n:'Pabuç takımı', t:'Mengeneye sığmayan plakaları tablaya bağla', p:900 },
     { id:'vac', n:'Vakum tabla', t:'İnce plakalar ve gravür işleri', p:6500 },
     { id:'rot', n:'Döner tabla', t:'Cıvata daireleri ve yay kanallar', p:8000 },
