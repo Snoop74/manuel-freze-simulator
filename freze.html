@@ -458,6 +458,10 @@ table{color:inherit;font-size:inherit}
 .holder-row{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center}
 .hl-lab{font-family:var(--f-display);font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
 .holder-row.off{opacity:.4;pointer-events:none}
+.par-box{display:grid;gap:6px}
+.par-box[hidden]{display:none}
+.par-off{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.par-off output{font-family:var(--f-dro);font-size:12px;color:var(--muted);white-space:nowrap}
 .rot-box{display:grid;gap:6px;border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--panel-2)}
 .rot-box[hidden]{display:none}
 .rot-head{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
@@ -812,6 +816,10 @@ table{color:inherit;font-size:inherit}
       </div>
       <div class="stock-row"><label>X GENİŞLİK<input id="stW" type="number" min="20" max="220" step="0.5" value="150"></label><label>Y DERİNLİK<input id="stD" type="number" min="20" max="135" step="0.5" value="100"></label><label>Z YÜKSEKLİK<input id="stH" type="number" min="10" max="80" step="0.5" value="40"></label><button class="btn" id="stApply" title="Bu ölçülerde yeni ham parça bağla">Uygula</button></div>
       <div class="holder-row"><span class="hl-lab">Bağlama</span><div class="seg" id="fixSeg"><button data-fx="vise" class="on">Mengene</button><button data-fx="clamp">Pabuç</button><button data-fx="vac">Vakum</button><button data-fx="rot">Döner</button><button data-fx="div">Divizör</button></div></div>
+      <div class="par-box" id="parBox">
+        <div class="holder-row"><span class="hl-lab">Paraleller</span><div class="par-off"><input type="range" id="parOff" min="0" max="35" step="1" value="3" aria-label="Paralellerin kenardan uzaklığı"><output id="parOffV">kenardan 3 mm</output></div></div>
+        <div class="seg" id="parW"><button data-pw="10" class="on">10 mm</button><button data-pw="6">6 mm</button><button data-pw="3">3 mm</button><button data-pw="sac">Kurban plaka</button></div>
+      </div>
       <div class="seg" id="clampLay" hidden><button data-cl="fb" class="on">Pabuç ön-arka</button><button data-cl="lr">Pabuç sol-sağ</button></div>
       <div class="vac-g" id="vacG" hidden><span>Vakum <b id="vgP">—</b></span><span>Tutma <b id="vgH">—</b></span><span>Kesme <b id="vgF">0 N</b></span><div class="meter"><i id="vgM"></i></div></div>
       <div class="rot-box" id="rotBox" hidden>
@@ -1836,6 +1844,24 @@ const viseG = new THREE.Group(); rotIn.add(viseG);
 const rotBase = new THREE.Group(); table.add(rotBase);   // döner tablanın sabit gövdesi
 let rotCrank = null;
 const MDF = smat(0x8a6a48, 0.85, 0, 0.1), ALU = smat(0xa7aeb3, 0.4, 0.75);
+/* Paraleller (mengene, pabuç, döner tabla): kenardan içeri uzaklık (off) ve genişlik (w) ayarlanır; delik paralelin üstüne denk
+   gelirse kaydırılır, ince paralel seçilir ya da parça kurban plakasına (MDF, 6 mm; döner tablada 4 mm) oturtulur. Kurban plakada
+   paraleller plakanın altında kalır: matkap plakaya girebilir. Mengene ve pabuçta bantlar Y'de (ön/arka), döner tablada X'te (sol/sağ). */
+const PAR = { off:3, w:10, sac:false };
+const parAxis = () => FIX === 'rot' ? 'x' : 'y';
+const parBands = () => { const n = parAxis() === 'x' ? PW : PD; return [[PAR.off, PAR.off + PAR.w], [n - PAR.off - PAR.w, n - PAR.off]]; };
+const sacT = () => !PAR.sac ? 0 : FIX === 'rot' ? 4 : 6;
+// boydan boya deliklerden paralel bandına denk gelenler (kurban plakada sorun yok)
+function parConflicts(J) {
+  if (PAR.sac || !['vise', 'clamp', 'rot'].includes(FIX)) return [];
+  const ax = parAxis(), out = [];
+  J.holes.forEach((h, i) => { const c = ax === 'x' ? h.x : h.y; if (parBands().some(([a, b]) => c + h.d / 2 > a - 0.5 && c - h.d / 2 < b + 0.5)) out.push('D' + (i + 1)); });
+  return out;
+}
+function warnParallels(J) {
+  const c = parConflicts(J);
+  if (c.length) log(`${c.join(', ')} paralel altlığın üstüne denk geliyor: delip geçerken matkap paralele çarpar. Parça panelinde paralelleri kaydırın, ince paralel seçin ya da kurban plaka kullanın.`, 'warn');
+}
 let jawTop = 22;
 // pabuç: kenara basan lama, kademeli destek, saplama ve somun; side f/b (ön/arka) ya da l/r (sol/sağ), c kenar boyunca konum
 function strap(c, side) {
@@ -1856,6 +1882,7 @@ function buildVise() {
   while (viseG.children.length) { const o = viseG.children[0]; viseG.remove(o); if (o.geometry) o.geometry.dispose(); }
   while (rotBase.children.length) { const o = rotBase.children[0]; rotBase.remove(o); if (o.geometry) o.geometry.dispose(); }
   viseBase.visible = FIX === 'vise'; straps = []; rotCrank = null;
+  if (stockReady) syncParUI();
   divG.visible = FIX === 'div'; rotIn.visible = FIX !== 'div';
   if (FIX === 'div') { buildDivBody(); buildDivJaws(PD / 2); }
   ROT.on = FIX === 'rot'; ROT.a = ROT.a0 = ROT.pend = ROT.hold = ROT.z0 = 0; ROT.cx = PW / 2; ROT.cy = PD / 2;
@@ -1876,13 +1903,15 @@ function buildVise() {
       tk.rotation.y = a + Math.PI / 2;
     }
     // parça iki ince paralel üstünde (X yanlarında; ortadan boydan boya delik açılabilsin) ve dört pabuçla bağlı
-    for (const [a, b] of [[8, 28], [PW - 28, PW - 8]]) rbox(a, b, -4, 0, -(PD - 4), -4, 0.5, M.steel, viseG);
+    if (PAR.sac) rbox(0, PW, -4, -0.05, -PD, 0, 0.5, MDF, viseG);            // kurban plaka paralellerin yerine
+    else for (const [a, b] of parBands()) rbox(a, b, -4, 0, -(PD - 4), -4, 0.5, M.steel, viseG);
     for (const [c, sd] of [[PW * 0.5, 'f'], [PW * 0.5, 'b']]) strap(c, sd);
     if (stockReady) syncFixtures();
     return;
   }
   if (FIX === 'clamp') {
-    for (const [a, b] of [[8, 28], [PD - 28, PD - 8]]) rbox(4, PW - 4, -60, 0, -b, -a, 1, M.steel, viseG);   // altlıklar
+    for (const [a, b] of parBands()) rbox(4, PW - 4, -60, -sacT(), -b, -a, 1, M.steel, viseG);   // altlıklar
+    if (PAR.sac) rbox(0, PW, -6, -0.05, -PD, 0, 0.5, MDF, viseG);
     const pts = clampLay === 'fb' ? [[PW * 0.22, 'f'], [PW * 0.78, 'f'], [PW * 0.22, 'b'], [PW * 0.78, 'b']] : [[PD * 0.25, 'l'], [PD * 0.75, 'l'], [PD * 0.25, 'r'], [PD * 0.75, 'r']];
     for (const [c, sd] of pts) strap(c, sd);
     if (stockReady) syncFixtures();
@@ -1901,8 +1930,8 @@ function buildVise() {
   rbox(-35, 185, -35, jawTop, 0, 25, 2, M.ground, viseG);                    // ön (hareketli) çene (y -25..0)
   const ph = Math.min(20, jawTop - 2);
   for (const [z0, z1] of [[-PD - 0.4, -PD + 0.1], [-0.1, 0.4]]) boxR(-30, 180, Math.max(-20, -ph), ph, z0, z1, MX.chrome, viseG).castShadow = false;   // çene plakaları
-  rbox(-5, 155, -35, 0, -13, -3, 1, M.steel, viseG);                         // paralel 1 (y 3..13)
-  rbox(-5, 155, -35, 0, -PD + 3, -PD + 13, 1, M.steel, viseG);               // paralel 2
+  for (const [a, b] of parBands()) rbox(-5, 155, -35, -sacT(), -b, -a, 1, M.steel, viseG);   // paraleller
+  if (PAR.sac) rbox(0, PW, -6, -0.05, -PD, 0, 0.5, MDF, viseG);             // kurban plaka
   if (stockReady) syncFixtures();
 }
 // çarpışma kutuları çenelerle birlikte taşınır (FIXTURES dosyada daha aşağıda tanımlı; başlangıçta bir kez eşitlenir)
@@ -1925,10 +1954,10 @@ function rebuildIndex() {
 function syncFixtures() {
   FIXTURES.length = 0;
   if (FIX === 'vise') FIXTURES.push({ n:'mengene ön çenesine', b:[-35, 185, -25, 0], top:jawTop }, { n:'mengene arka çenesine', b:[-35, 185, PD, PD + 25], top:jawTop },
-    { n:'paralel altlığa', b:[-10, 160, 3, 13], top:0 }, { n:'paralel altlığa', b:[-10, 160, PD - 13, PD - 3], top:0 }, { n:'mengene gövdesine', b:[-40, 190, -60, 160], top:-35 });
-  else if (FIX === 'clamp') FIXTURES.push(...straps, { n:'altlığa', b:[4, PW - 4, 8, 28], top:0 }, { n:'altlığa', b:[4, PW - 4, PD - 28, PD - 8], top:0 });
+    ...parBands().map(([a, b]) => ({ n:'paralel altlığa', b:[-10, 160, a, b], top:-sacT() })), { n:'mengene gövdesine', b:[-40, 190, -60, 160], top:-35 });
+  else if (FIX === 'clamp') FIXTURES.push(...straps, ...parBands().map(([a, b]) => ({ n:'altlığa', b:[4, PW - 4, a, b], top:-sacT() })));
   else if (FIX === 'div') FIXTURES.push({ n:'divizör aynasına', b:[-46, 0.5, DIVY - 52, DIVY + 52], top:DIVZ + 52 }, { n:'divizör gövdesine', b:[-152, -46, -57, 57], top:DIVZ + 47 });
-  else if (FIX === 'rot') FIXTURES.push(...straps.map(f => Object.assign({ rot:true }, f)), { n:'paralel altlığa', b:[8, 28, 4, PD - 4], top:0, rot:true }, { n:'paralel altlığa', b:[PW - 28, PW - 8, 4, PD - 4], top:0, rot:true },
+  else if (FIX === 'rot') FIXTURES.push(...straps.map(f => Object.assign({ rot:true }, f)), ...(PAR.sac ? [] : parBands().map(([a, b]) => ({ n:'paralel altlığa', b:[a, b, 4, PD - 4], top:0, rot:true }))),
     { n:'döner tabla plakasına', c:[ROT.cx, ROT.cy, 112], top:-4 }, { n:'döner tabla gövdesine', b:[ROT.cx - 125, ROT.cx + 125, ROT.cy - 115, ROT.cy + 115], top:-26 });
   else FIXTURES.push({ n:'vakum tablasına (kurban plakasını geçti)', b:[-30, 290, -25, 165], top:-5 });
   FIXTURES.push({ n:'tablaya', b:[-400, 550, -50, 150], top:-60 });
@@ -3367,6 +3396,9 @@ function drawingSVG(J) {
     <defs><pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="currentColor" stroke-width=".6" style="stroke:var(--ink-2)"/></pattern></defs>`;
   if (J.face) s += `<rect class="dw-face" x="${X(0)}" y="${Y(D)}" width="${W * k}" height="${D * k}"/>`;
   s += `<rect class="dw-part" x="${X(0)}" y="${Y(D)}" width="${W * k}" height="${D * k}"/>`;
+  if (['vise', 'clamp', 'rot'].includes(FIX) && !PAR.sac && W === PW && D === PD) for (const [a, b] of parBands())   // paraleller: kesik çizgi
+    s += parAxis() === 'x' ? `<rect x="${X(a)}" y="${Y(D)}" width="${(b - a) * k}" height="${D * k}" fill="none" style="stroke:var(--ink-2)" stroke-width=".5" stroke-dasharray="2 1.5"/>`
+      : `<rect x="${X(0)}" y="${Y(b)}" width="${W * k}" height="${(b - a) * k}" fill="none" style="stroke:var(--ink-2)" stroke-width=".5" stroke-dasharray="2 1.5"/>`;
   J.pockets.forEach((p, i) => {
     s += `<rect class="dw-feat" style="fill:var(--paper)" x="${X(p.x0)}" y="${Y(p.y1)}" width="${(p.x1 - p.x0) * k}" height="${(p.y1 - p.y0) * k}" rx="2"/>`;
     s += `<text x="${X(p.x0) + 2}" y="${Y(p.y1) + 6}" font-size="5">C${i + 1}  ${p.x1 - p.x0}×${p.y1 - p.y0} ↓${p.depth}</text>`;
@@ -3609,6 +3641,7 @@ function startJob() {
   if (PW !== 150 || PD !== 100 || PH !== 40) setStock(150, 100, 40, true);   // iş emirleri standart ham parçayla
   resetPart(JOBS[selJob].mat || 'al');
   S.job = { idx:selJob, J:JOBS[selJob], time:0, done:false, stats:{ breaks:0, load:0, spot:0, peck:0, rub:0 } };
+  setTimeout(() => warnParallels(JOBS[selJob] || S.job.J), 300);
   $('report').hidden = true;
   $('jobStart').textContent = 'Yeniden başla';
   log(`İş ${selJob + 1} başladı: ${JOBS[selJob].title}. Yeni ham parça bağlandı, makine süresi işliyor.`, 'ok');
@@ -4508,7 +4541,7 @@ const VAC = (() => {
 const FIXNOTE = {
   div:'Divizör (deneme): yuvarlak çubuk üç ayaklı aynada, ekseni X boyunca. X = çubuğun boyu (20–150), Y = çapı (10–70). X0 ayna yüzü, Y0 eksen, Z0 çubuğun üstü. A ekseni kilidi açıp Q/E ya da düğmelerle döner; takım çubuğa her açıdan dalabilir.',
   rot:'Döner tabla: X 20–150, Y 20–120 mm. Parçanın ortası tabla merkezinde; parça X yanlarındaki iki ince paralel üstünde, iki pabuçla bağlı. Döndürmek için kilidi açın (Q/E basılı tut ya da adım düğmeleri). Takım parçadayken tablayı çevirmek yay kesmesidir; öteleme kesmesinden önce kilitleyin.',
-  vise:'Mengene: X 20–220, Y 20–135 mm parça. Çeneler üst yüzeyin 5 mm altında biter; altta iki paralel altlık var.',
+  vise:'Mengene: X 20–220, Y 20–135 mm parça. Çeneler üst yüzeyin 5 mm altında biter; altta iki paralel altlık var (Paraleller ayarından kaydırın, inceltin ya da kurban plaka koyun).',
   clamp:'Pabuç: X 40–260, Y 40–140 mm. Parça iki altlık üstünde; dört pabuç kenarın 12 mm\'sini kapatır, takım ya da tutucu çarparsa kırılır. Delerken altlıkların üstüne dikkat.',
   vac:'Vakum tabla: X 30–260, Y 30–150, Z 3–40 mm. Parçanın her yeri açık; kurban plakasına 5 mm kadar inilebilir. Tutma alanla orantılı, delikler hava kaçırır: ağır pasoda parça kopar.',
 };
@@ -4521,6 +4554,7 @@ function setFix(k, quiet) {
   [...$('fixSeg').children].forEach(b => b.classList.toggle('on', b.dataset.fx === k));
   $('clampLay').hidden = k !== 'clamp'; $('vacG').hidden = k !== 'vac'; $('rotBox').hidden = k !== 'rot' && k !== 'div';
   $('rotLab').textContent = k === 'div' ? 'A ekseni' : 'C ekseni';
+  $('parBox').hidden = k === 'vac' || k === 'div';
   ROT.lock = true; $('rotLock').textContent = 'KİLİTLİ'; $('rotLock').classList.remove('open');
   const L = FIXLIM[k];
   for (const [id, r] of [['stW', L.x], ['stD', L.y], ['stH', L.z]]) { $(id).min = r[0]; $(id).max = r[1]; }
@@ -4542,6 +4576,26 @@ $('rotZero').addEventListener('click', () => { ROT.z0 = ROT.a; ROT.shown = null;
 $('rotLock').addEventListener('click', () => {
   initAudio(); ROT.lock = !ROT.lock; ROT.pend = ROT.hold = 0; thud(ROT.lock ? 140 : 210, 0.12, 0.1);
   $('rotLock').textContent = ROT.lock ? 'KİLİTLİ' : 'AÇIK'; $('rotLock').classList.toggle('open', !ROT.lock);
+});
+// paraleller: kaydırınca ya da genişlik değişince bağlama yeniden kurulur (parça yerinde kalır)
+function syncParUI() {
+  const n = parAxis() === 'x' ? PW : PD, mx = Math.max(0, Math.floor(n / 2 - PAR.w - 2));
+  if (PAR.off > mx) PAR.off = mx;
+  $('parOff').max = mx; $('parOff').value = PAR.off; $('parOffV').textContent = `kenardan ${PAR.off} mm`;
+  [...$('parW').children].forEach(b => b.classList.toggle('on', b.dataset.pw === 'sac' ? PAR.sac : +b.dataset.pw === PAR.w));
+}
+function setPar(ch) {
+  if (S.spindle) { log('Paralelleri değiştirmek için önce mili durdurun.', 'warn'); syncParUI(); return; }
+  Object.assign(PAR, ch); syncParUI(); buildVise();
+  if (S.job && !S.job.done) { const c = parConflicts(S.job.J); if (!c.length && S.job.J.holes.length) log('Paraleller deliklerin altından çekildi.', 'ok'); else warnParallels(S.job.J); }
+  const J = S.job && !S.job.done ? S.job.J : selJob >= 0 ? JOBS[selJob] : selJob === -2 && CR.sel ? CR.sel.J : null;
+  if (J) $('dwSvg').innerHTML = drawingSVG(J);
+}
+$('parOff').addEventListener('input', e => { PAR.off = +e.target.value; $('parOffV').textContent = `kenardan ${PAR.off} mm`; });
+$('parOff').addEventListener('change', e => { initAudio(); thud(180, 0.08, 0.06); setPar({ off:+e.target.value }); });
+$('parW').addEventListener('click', e => {
+  const b = e.target.closest('[data-pw]'); if (!b) return; initAudio();
+  if (b.dataset.pw === 'sac') setPar({ sac:!PAR.sac }); else setPar({ w:+b.dataset.pw });
 });
 $('clampLay').addEventListener('click', e => {
   const b = e.target.closest('[data-cl]'); if (!b || b.dataset.cl === clampLay) return;
@@ -5283,13 +5337,17 @@ const CR = (() => {
       if (!k) { log('Bu parça mengeneye sığmaz: pabuç takımı ya da vakum tabla gerekir (dükkân).', 'warn'); openShop(); return; }
       setFix(k, true);
     }
-    st.money -= o.cost; save();
+    const sac = PAR.sac && ['vise', 'clamp', 'rot'].includes(FIX) ? 40 : 0;   // kurban plaka sarf malzemesi
+    if (o.cost + sac > st.money) { log(`Kasada ham parça ve kurban plaka için yeterli para yok (${tl(o.cost + sac)}).`, 'warn'); return; }
+    st.money -= o.cost + sac; save();
+    if (sac) log(`Kurban plaka: −${tl(sac)}.`);
     if (PW !== o.J.w || PD !== o.J.d || PH !== o.J.h) setStock(o.J.w, o.J.d, o.J.h, true);
     resetPart(o.mat);
     S.job = { idx:-1, order:o, J:o.J, time:0, done:false, stats:{ breaks:0, load:0, spot:0, peck:0, rub:0 } };
     $('report').hidden = true;
     buildScribe(o.J); select(o);
     if (o.cost) cash(-o.cost);
+    setTimeout(() => warnParallels(o.J), 300);
     log(`Sipariş #${o.id} başladı: ${o.J.title}, ${MATS[o.mat].short} ${o.J.w}×${o.J.d}×${o.J.h}${o.cost ? `, ham parça −${tl(o.cost)}` : ''}. Sıfır noktası sol-ön-üst köşede.`, 'ok');
   }
   // teslim: tam kabulde yıldıza göre ödeme ve süre primi; şartlı kabulde %40; hurdada para yok, sipariş panoda kalır
