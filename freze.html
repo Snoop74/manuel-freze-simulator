@@ -811,11 +811,11 @@ table{color:inherit;font-size:inherit}
         <div class="stat"><span>Kesme süresi</span><b id="stTime">0:00</b></div>
       </div>
       <div class="stock-row"><label>X GENİŞLİK<input id="stW" type="number" min="20" max="220" step="0.5" value="150"></label><label>Y DERİNLİK<input id="stD" type="number" min="20" max="135" step="0.5" value="100"></label><label>Z YÜKSEKLİK<input id="stH" type="number" min="10" max="80" step="0.5" value="40"></label><button class="btn" id="stApply" title="Bu ölçülerde yeni ham parça bağla">Uygula</button></div>
-      <div class="holder-row"><span class="hl-lab">Bağlama</span><div class="seg" id="fixSeg"><button data-fx="vise" class="on">Mengene</button><button data-fx="clamp">Pabuç</button><button data-fx="vac">Vakum</button><button data-fx="rot">Döner</button></div></div>
+      <div class="holder-row"><span class="hl-lab">Bağlama</span><div class="seg" id="fixSeg"><button data-fx="vise" class="on">Mengene</button><button data-fx="clamp">Pabuç</button><button data-fx="vac">Vakum</button><button data-fx="rot">Döner</button><button data-fx="div">Divizör</button></div></div>
       <div class="seg" id="clampLay" hidden><button data-cl="fb" class="on">Pabuç ön-arka</button><button data-cl="lr">Pabuç sol-sağ</button></div>
       <div class="vac-g" id="vacG" hidden><span>Vakum <b id="vgP">—</b></span><span>Tutma <b id="vgH">—</b></span><span>Kesme <b id="vgF">0 N</b></span><div class="meter"><i id="vgM"></i></div></div>
       <div class="rot-box" id="rotBox" hidden>
-        <div class="rot-head"><span class="hl-lab">C ekseni</span><b id="rotA">0.000°</b><button class="btn" id="rotLock">KİLİTLİ</button></div>
+        <div class="rot-head"><span class="hl-lab" id="rotLab">C ekseni</span><b id="rotA">0.000°</b><button class="btn" id="rotLock">KİLİTLİ</button></div>
         <div class="seg rot-steps" id="rotSteps"><button data-ra="-90">−90</button><button data-ra="-15">−15</button><button data-ra="-1">−1</button><button data-ra="-0.25">−¼</button><button data-ra="0.25">+¼</button><button data-ra="1">+1</button><button data-ra="15">+15</button><button data-ra="90">+90</button></div>
         <div class="goto"><span>C</span><input id="rotTgt" inputmode="decimal" value="0"><button class="btn" id="rotGo">Açıya git</button><button class="btn" id="rotZero">C0</button></div>
       </div>
@@ -1634,8 +1634,8 @@ function buildStock(w, d, h) {
    Mengene: çeneler parçaya göre; arka çene parçanın arkasına dayanır, çene yüksekliği parçanın 5 mm altında biter.
    Pabuç: parça iki altlık üstünde tablaya bağlanır; dört pabuç kenarın 12 mm'sini kapatır (takım çarparsa kırılır).
    Vakum tabla: kurban plakası üstünde, parçanın her yeri açık; tutma kuvveti alan ve hava kaçağına bağlı (VAC). */
-const FIXLIM = { vise:{ x:[20, 220], y:[20, 135], z:[10, 80] }, clamp:{ x:[40, 260], y:[40, 140], z:[5, 80] }, vac:{ x:[30, 260], y:[30, 150], z:[3, 40] }, rot:{ x:[20, 150], y:[20, 120], z:[5, 60] } };
-const FIXNAME = { vise:'Mengene', clamp:'Pabuç', vac:'Vakum tabla', rot:'Döner tabla' };
+const FIXLIM = { vise:{ x:[20, 220], y:[20, 135], z:[10, 80] }, clamp:{ x:[40, 260], y:[40, 140], z:[5, 80] }, vac:{ x:[30, 260], y:[30, 150], z:[3, 40] }, rot:{ x:[20, 150], y:[20, 120], z:[5, 60] }, div:{ x:[20, 150], y:[10, 70], z:[5, 200] } };
+const FIXNAME = { vise:'Mengene', clamp:'Pabuç', vac:'Vakum tabla', rot:'Döner tabla', div:'Divizör' };
 /* Döner tabla: parça, ortası tabla merkezinde olacak şekilde bağlanır ve bu merkez çevresinde döner (C ekseni, derece).
    Kesim haritası parçaya bağlı kalır; tezgâh koordinatı (S.px, S.py) her okumada parçanın kendi koordinatına çevrilir.
    a0: son kabul edilen adımın açısı; takım hareketsizken tabla dönerse aradaki fark kesme yolu sayılır (yay kanal). */
@@ -1644,6 +1644,192 @@ let LX = 0, LY = 0;
 function toLv(x, y, a = ROT.a) {
   const t = a * Math.PI / 180, c = Math.cos(t), sn = Math.sin(t), dx = x - ROT.cx, dy = y - ROT.cy;
   LX = ROT.cx + dx * c + dy * sn; LY = ROT.cy - dx * sn + dy * c;
+}
+/* ---------------- Divizör parçası: 3B hacim (voksel) modeli ----------------
+   Yükseklik haritası yalnızca yukarıdan kesilen parçayı tutar; divizörde parça döndüğü için takım yandan ve alttan da keser.
+   Parça 0.5 mm'lik vokseller halinde tutulur: her voksel 0–255 doluluk (128 = yüzey). Takım, şekli (profile) ile tanımlı bir
+   cisim olarak dolulukları düşürür; sınırda bir voksellik yumuşak geçiş, yüzeyin pürüzsüz çıkmasını sağlar.
+   Yüzey 16³ hücrelik bloklar halinde "surface nets" ile çizilir; kesilen bloklar her karede birkaçı yeniden kurulur.
+   Parçanın yerel ekseni: x divizör ekseni boyunca (0 = ayna yüzü), y yatay, z dikey; A açısı x çevresinde döndürür.
+   Izgaranın her yanında 2 voksel boşluk vardır (uç yüzler kapalı çizilsin).
+   Tezgâh (parça) koordinatında eksen y = DIVY, z = DIVZ çizgisidir. */
+const DIVY = 0, DIVZ = 40;
+const VX = (() => {
+  const R = 0.5, CH = 16, ISO = 128;
+  let nx = 0, ny = 0, nz = 0, cy = 0, cz = 0, F = null, CV = null, RS = 20, L = 100;
+  let ncx = 0, ncy = 0, ncz = 0, chunks = new Map(), dirty = new Set();
+  const grp = new THREE.Group();                                  // dönen grup: ayna, çeneler ve parça
+  const mat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.38, metalness:0.6 });
+  mat.envMapIntensity = 0.45;
+  const EDGES = [];
+  for (let c = 0; c < 8; c++) for (const b of [1, 2, 4]) if (!(c & b)) EDGES.push([c, c | b]);
+  const id = (i, j, k) => i + nx * (j + ny * k);
+  function build(len, dia) {
+    L = len; RS = dia / 2;
+    nx = Math.round(L / R) + 5; ny = nz = Math.round(dia / R) + 5; cy = cz = (ny - 1) / 2;
+    F = new Uint8Array(nx * ny * nz); CV = new Uint8Array(nx * ny * nz);
+    for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) {
+      const rho = Math.hypot((j - cy) * R, (k - cz) * R), fr = Math.min(1, Math.max(0, 0.5 + (RS - rho) / R));
+      if (!fr) continue;
+      for (let i = 0; i < nx; i++) {
+        const xx = (i - 2) * R, fx = Math.min(1, Math.max(0, 0.5 + Math.min(xx, L - xx) / R));
+        F[id(i, j, k)] = Math.round(255 * Math.min(fr, fx));
+      }
+    }
+    for (const m of chunks.values()) { grp.remove(m); m.geometry.dispose(); }
+    chunks.clear(); dirty.clear();
+    ncx = Math.ceil((nx - 1) / CH); ncy = Math.ceil((ny - 1) / CH); ncz = Math.ceil((nz - 1) / CH);
+    for (let a = 0; a < ncx; a++) for (let b = 0; b < ncy; b++) for (let c = 0; c < ncz; c++) dirty.add(a + ncx * (b + ncy * c));
+    flush(1e9);
+  }
+  // blok ağı: blok hücreleri ve bir hücrelik bindirme için köşe başına bir tepe (kenar kesişimlerinin ortalaması)
+  function meshChunk(key) {
+    const a = key % ncx, b = Math.floor(key / ncx) % ncy, c = Math.floor(key / (ncx * ncy));
+    const i0 = a * CH, j0 = b * CH, k0 = c * CH, i1 = Math.min(i0 + CH, nx - 1), j1 = Math.min(j0 + CH, ny - 1), k1 = Math.min(k0 + CH, nz - 1);
+    const ex = i1 - i0 + 1, ey = j1 - j0 + 1, ez = k1 - k0 + 1;
+    const vid = new Int32Array(ex * ey * ez).fill(-1), vi = (i, j, k) => (i - i0 + 1) + ex * ((j - j0 + 1) + ey * (k - k0 + 1));
+    const pos = [], nor = [], col = [], idx = [], v = new Float32Array(8);
+    const raw = mat.userData.raw, cut = mat.userData.cut;
+    for (let k = Math.max(0, k0 - 1); k < k1; k++) for (let j = Math.max(0, j0 - 1); j < j1; j++) for (let i = Math.max(0, i0 - 1); i < i1; i++) {
+      let mask = 0, anyCut = 0;
+      for (let q = 0; q < 8; q++) {
+        const n = id(i + (q & 1), j + ((q >> 1) & 1), k + (q >> 2));
+        v[q] = F[n]; if (v[q] >= ISO) mask |= 1 << q; anyCut |= CV[n];
+      }
+      if (mask === 0 || mask === 255) continue;
+      let px = 0, py = 0, pz = 0, ne = 0;
+      for (const [p, q] of EDGES) {
+        if ((v[p] >= ISO) === (v[q] >= ISO)) continue;
+        const t = (ISO - v[p]) / (v[q] - v[p]);
+        px += (p & 1) + t * ((q & 1) - (p & 1)); py += ((p >> 1) & 1) + t * (((q >> 1) & 1) - ((p >> 1) & 1)); pz += (p >> 2) + t * ((q >> 2) - (p >> 2)); ne++;
+      }
+      const x = (i - 2 + px / ne) * R, y = (j + py / ne - cy) * R, z = (k + pz / ne - cz) * R;
+      // normal: doluluğun azaldığı yön (hücre köşelerinden fark)
+      const gx = v[1] + v[3] + v[5] + v[7] - v[0] - v[2] - v[4] - v[6], gy = v[2] + v[3] + v[6] + v[7] - v[0] - v[1] - v[4] - v[5], gz = v[4] + v[5] + v[6] + v[7] - v[0] - v[1] - v[2] - v[3];
+      const gl = Math.hypot(gx, gy, gz) || 1;
+      vid[vi(i, j, k)] = pos.length / 3;
+      pos.push(x, z, -y); nor.push(-gx / gl, -gz / gl, gy / gl);  // three: (x, yukarı = z, -y)
+      const cc = anyCut ? cut : raw; col.push(cc[0], cc[1], cc[2]);
+    }
+    // dörtgenler: bloğa ait köşe noktalarından çıkan, işaret değiştiren her kenar için çevresindeki dört hücrenin tepeleri
+    for (let k = k0; k < k1; k++) for (let j = j0; j < j1; j++) for (let i = i0; i < i1; i++) {
+      const f0 = F[id(i, j, k)] >= ISO;
+      for (let d = 0; d < 3; d++) {
+        const i2 = i + (d === 0), j2 = j + (d === 1), k2 = k + (d === 2);
+        if (i2 >= nx || j2 >= ny || k2 >= nz) continue;
+        if ((F[id(i2, j2, k2)] >= ISO) === f0) continue;
+        // u, v: diğer iki eksen
+        const du = d === 0 ? [0, 1, 0] : d === 1 ? [0, 0, 1] : [1, 0, 0], dv = d === 0 ? [0, 0, 1] : d === 1 ? [1, 0, 0] : [0, 1, 0];
+        if (i - du[0] - dv[0] < 0 || j - du[1] - dv[1] < 0 || k - du[2] - dv[2] < 0) continue;
+        const A = vid[vi(i, j, k)], B = vid[vi(i - du[0], j - du[1], k - du[2])], Cc = vid[vi(i - du[0] - dv[0], j - du[1] - dv[1], k - du[2] - dv[2])], D = vid[vi(i - dv[0], j - dv[1], k - dv[2])];
+        if (A < 0 || B < 0 || Cc < 0 || D < 0) continue;
+        if (f0) idx.push(A, B, Cc, A, Cc, D); else idx.push(A, Cc, B, A, D, Cc);
+      }
+    }
+    const old = chunks.get(key);
+    if (old) { grp.remove(old); old.geometry.dispose(); chunks.delete(key); }
+    if (!idx.length) return;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.setIndex(idx);
+    const m = new THREE.Mesh(g, mat); m.castShadow = m.receiveShadow = true; grp.add(m); chunks.set(key, m);
+  }
+  function flush(budget = 8) {
+    let n = 0;
+    for (const key of dirty) { meshChunk(key); dirty.delete(key); if (++n >= budget) break; }
+  }
+  function markRange(ia, ib, ja, jb, ka, kb) {
+    for (let c = Math.max(0, Math.floor((ka - 1) / CH)); c <= Math.min(ncz - 1, Math.floor(kb / CH)); c++)
+      for (let b = Math.max(0, Math.floor((ja - 1) / CH)); b <= Math.min(ncy - 1, Math.floor(jb / CH)); b++)
+        for (let a = Math.max(0, Math.floor((ia - 1) / CH)); a <= Math.min(ncx - 1, Math.floor(ib / CH)); a++) dirty.add(a + ncx * (b + ncy * c));
+  }
+  // parça (tezgâh) koordinatı ile yerel koordinat arası
+  function local(px, py, pz, aDeg) {
+    const t = aDeg * Math.PI / 180, c = Math.cos(t), s = Math.sin(t), yr = py - DIVY, zr = pz - DIVZ;
+    return [px, c * yr + s * zr, -s * yr + c * zr];
+  }
+  // takım cismiyle kesişim: test=true ise yalnızca ölçer (temas, dikey bindirme, en üst malzeme), değilse keser
+  function work(xm, ym, tip, T, test) {
+    const r = T.d / 2, top = tip + (test ? T.stick : T.flute), zTop = Math.min(top, DIVZ + RS + R);
+    const out = { over:0, maxH:-1, shank:false, holder:false, any:false, vol:0 };
+    if (!F || tip > DIVZ + RS + R || xm + r < -R || xm - r > L + R || Math.abs(ym - DIVY) - r > RS + R) return out;
+    const t = ROT.a * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
+    // yerel sınır kutusu: takım kutusunun 8 köşesi
+    let ylo = 1e9, yhi = -1e9, zlo = 1e9, zhi = -1e9;
+    for (const yy of [ym - r, ym + r]) for (const zz of [tip, zTop]) {
+      const yr = yy - DIVY, zr = zz - DIVZ, ly = c * yr + s * zr, lz = -s * yr + c * zr;
+      ylo = Math.min(ylo, ly); yhi = Math.max(yhi, ly); zlo = Math.min(zlo, lz); zhi = Math.max(zhi, lz);
+    }
+    const ia = Math.max(0, Math.floor((xm - r) / R) + 1), ib = Math.min(nx - 1, Math.ceil((xm + r) / R) + 3);
+    const ja = Math.max(0, Math.floor(ylo / R + cy) - 1), jb = Math.min(ny - 1, Math.ceil(yhi / R + cy) + 1);
+    const ka = Math.max(0, Math.floor(zlo / R + cz) - 1), kb = Math.min(nz - 1, Math.ceil(zhi / R + cz) + 1);
+    if (ia > ib || ja > jb || ka > kb) return out;
+    const rr = (r + R) * (r + R);
+    let vol = 0, ci0 = 1e9, ci1 = -1, cj0 = 1e9, cj1 = -1, ck0 = 1e9, ck1 = -1;
+    for (let k = ka; k <= kb; k++) {
+      const z = (k - cz) * R;
+      for (let j = ja; j <= jb; j++) {
+        const y = (j - cy) * R, pyp = DIVY + c * y - s * z, pzp = DIVZ + s * y + c * z;
+        if (pzp < tip - R || pzp > zTop + R) continue;
+        const qy = pyp - ym;
+        if (qy * qy > rr) continue;
+        let n = id(ia, j, k);
+        for (let i = ia; i <= ib; i++, n++) {
+          const f = F[n]; if (!f) continue;
+          const qx = (i - 2) * R - xm, d2 = qx * qx + qy * qy;
+          if (d2 > rr) continue;
+          const rho = Math.sqrt(d2), zb = profile(T, Math.min(rho, r), tip);
+          if (test) {
+            if (f >= ISO && rho < r) { if (pzp > out.maxH) out.maxH = pzp; if (pzp >= zb && pzp - zb > out.over) out.over = pzp - zb; }
+            continue;
+          }
+          const d = Math.max(rho - r, zb - pzp, pzp - top);
+          const nv = Math.max(0, Math.min(255, Math.round((0.5 + d / R) * 255)));
+          if (nv < f) {
+            vol += f - nv; F[n] = nv; CV[n] = 1;
+            if (i < ci0) ci0 = i; if (i > ci1) ci1 = i; if (j < cj0) cj0 = j; if (j > cj1) cj1 = j; if (k < ck0) ck0 = k; if (k > ck1) ck1 = k;
+          }
+        }
+      }
+    }
+    if (test) { out.any = out.over > 0.002; if (out.any && out.maxH - tip > T.flute + 0.3) out.shank = true; return out; }
+    if (ci1 >= 0) markRange(ci0, ci1, cj0, cj1, ck0, ck1);
+    out.vol = vol / 255 * R * R * R;
+    return out;
+  }
+  function setMat(m) {
+    mat.userData.raw = m.rawL.slice(); mat.userData.cut = m.cutL.slice();
+    mat.metalness = m.nonMetal ? 0 : 0.6; mat.roughness = m.nonMetal ? 0.55 : 0.36;
+  }
+  return { grp, build, flush, work, local, setMat, get radius() { return RS; }, get length() { return L; }, get ready() { return !!F; }, stats:() => ({ voxels:nx * ny * nz, chunks:chunks.size, dirty:dirty.size }) };
+})();
+// Divizör: tablaya cıvatalı gövde, arkada bölüntü diski ve kol; önde dönen üç ayaklı ayna (parçayla birlikte A açısında döner)
+const divG = new THREE.Group(), divRot = new THREE.Group(), divJaws = new THREE.Group(); divG.visible = false; table.add(divG);
+divRot.position.set(0, DIVZ, -DIVY); divG.add(divRot); divRot.add(VX.grp); divRot.add(divJaws);
+let divCrank = null;
+function buildDivBody() {
+  if (divCrank) return;
+  rbox(-172, -38, -60, -22, -72, 72, 4, M.paintDark, divG);                  // taban
+  rbox(-152, -50, -22, DIVZ + 45, -55, 55, 8, M.paint, divG);                // gövde
+  const nose = cyl(30, 30, 8, M.ground, 40); nose.rotation.z = Math.PI / 2; nose.position.set(-47, DIVZ, -DIVY); divG.add(nose);
+  const plate = cyl(36, 36, 4, MX.chrome, 48); plate.rotation.x = Math.PI / 2; plate.position.set(-100, DIVZ, -DIVY - 57); divG.add(plate);   // bölüntü diski
+  for (let k = 0; k < 36; k++) { const a = k / 36 * Math.PI * 2, h = cyl(1, 1, 1, M.black, 6); h.rotation.x = Math.PI / 2; h.position.set(-100 + Math.cos(a) * 30, DIVZ + Math.sin(a) * 30, -DIVY - 59.2); divG.add(h); }
+  divCrank = new THREE.Group(); divCrank.position.set(-100, DIVZ, -DIVY - 62); divG.add(divCrank);
+  box(8, 34, 5, M.ground, 0, 15, 0, divCrank);
+  const kn = cyl(4, 4, 18, M.black, 12); kn.rotation.x = Math.PI / 2; kn.position.set(0, 30, -8); divCrank.add(kn);
+  const ch = cyl(50, 50, 36, M.ground, 48); ch.rotation.z = Math.PI / 2; ch.position.x = -26; divRot.add(ch);   // ayna gövdesi
+  const fc = cyl(46, 46, 1, M.steel, 48); fc.rotation.z = Math.PI / 2; fc.position.x = -7.6; divRot.add(fc);
+}
+function buildDivJaws(rs) {
+  while (divJaws.children.length) { const o = divJaws.children[0]; divJaws.remove(o); o.traverse(q => { if (q.geometry) q.geometry.dispose(); }); }
+  for (let k = 0; k < 3; k++) {
+    const g = new THREE.Group(); g.rotation.x = k * Math.PI * 2 / 3; divJaws.add(g);
+    const h = Math.max(6, 47 - rs);
+    box(14, h, 11, M.steel, -8, rs + h / 2, 0, g);
+    box(8, 5, 11, M.steel, -2, rs + 2.5, 0, g);                              // çenenin parçaya basan ucu
+  }
 }
 let FIX = 'vise', clampLay = 'fb', straps = [];
 const viseG = new THREE.Group(); rotIn.add(viseG);
@@ -1670,6 +1856,8 @@ function buildVise() {
   while (viseG.children.length) { const o = viseG.children[0]; viseG.remove(o); if (o.geometry) o.geometry.dispose(); }
   while (rotBase.children.length) { const o = rotBase.children[0]; rotBase.remove(o); if (o.geometry) o.geometry.dispose(); }
   viseBase.visible = FIX === 'vise'; straps = []; rotCrank = null;
+  divG.visible = FIX === 'div'; rotIn.visible = FIX !== 'div';
+  if (FIX === 'div') { buildDivBody(); buildDivJaws(PD / 2); }
   ROT.on = FIX === 'rot'; ROT.a = ROT.a0 = ROT.pend = ROT.hold = ROT.z0 = 0; ROT.cx = PW / 2; ROT.cy = PD / 2;
   rotG.position.set(ROT.cx, 0, -ROT.cy); rotIn.position.set(-ROT.cx, 0, ROT.cy); rotG.rotation.y = 0;
   if (FIX === 'rot') {
@@ -1739,6 +1927,7 @@ function syncFixtures() {
   if (FIX === 'vise') FIXTURES.push({ n:'mengene ön çenesine', b:[-35, 185, -25, 0], top:jawTop }, { n:'mengene arka çenesine', b:[-35, 185, PD, PD + 25], top:jawTop },
     { n:'paralel altlığa', b:[-10, 160, 3, 13], top:0 }, { n:'paralel altlığa', b:[-10, 160, PD - 13, PD - 3], top:0 }, { n:'mengene gövdesine', b:[-40, 190, -60, 160], top:-35 });
   else if (FIX === 'clamp') FIXTURES.push(...straps, { n:'altlığa', b:[4, PW - 4, 8, 28], top:0 }, { n:'altlığa', b:[4, PW - 4, PD - 28, PD - 8], top:0 });
+  else if (FIX === 'div') FIXTURES.push({ n:'divizör aynasına', b:[-46, 0.5, DIVY - 52, DIVY + 52], top:DIVZ + 52 }, { n:'divizör gövdesine', b:[-152, -46, -57, 57], top:DIVZ + 47 });
   else if (FIX === 'rot') FIXTURES.push(...straps.map(f => Object.assign({ rot:true }, f)), { n:'paralel altlığa', b:[8, 28, 4, PD - 4], top:0, rot:true }, { n:'paralel altlığa', b:[PW - 28, PW - 8, 4, PD - 4], top:0, rot:true },
     { n:'döner tabla plakasına', c:[ROT.cx, ROT.cy, 112], top:-4 }, { n:'döner tabla gövdesine', b:[ROT.cx - 125, ROT.cx + 125, ROT.cy - 115, ROT.cy + 115], top:-26 });
   else FIXTURES.push({ n:'vakum tablasına (kurban plakasını geçti)', b:[-30, 290, -25, 165], top:-5 });
@@ -1962,6 +2151,14 @@ function ambientParticles(dt, tip) {
   }
 }
 function groundAt(x, y) {
+  if (FIX === 'div') {
+    const rs = VX.radius, dy = y - DIVY;
+    if (x >= 0 && x <= PW && Math.abs(dy) <= rs) return DIVZ + Math.sqrt(rs * rs - dy * dy);
+    if (x >= -46 && x < 0 && Math.abs(dy) <= 50) return DIVZ + 50;
+    if (x >= -152 && x < -46 && Math.abs(dy) <= 57) return DIVZ + 47;
+    if (x >= -172 && x <= -38 && Math.abs(dy) <= 72) return -22;
+    return x >= -400 && x <= 550 && y >= -60 && y <= 160 ? -60 : -9999;
+  }
   if (ROT.on) {
     toLv(x, y); const lx = LX, ly = LY;
     for (const f of straps) if (lx >= f.b[0] && lx <= f.b[1] && ly >= f.b[2] && ly <= f.b[3]) return f.strapTop;
@@ -2376,6 +2573,7 @@ function fixtureHit(x, y, tip, T) {
   return null;
 }
 function interfere(x, y, tip, T) {
+  if (FIX === 'div') return VX.work(x, y, tip, T, true);
   if (ROT.on) { toLv(x, y); x = LX; y = LY; }
   const r = T.d / 2;
   const out = { over:0, maxH:-1, shank:false, holder:false, any:false };
@@ -2408,6 +2606,7 @@ function interfere(x, y, tip, T) {
   return out;
 }
 function applyCut(x, y, tip, T, mx = 1, my = 0, mk = null) {
+  if (FIX === 'div') return VX.work(x, y, tip, T, false).vol;
   if (ROT.on) { toLv(x, y); x = LX; y = LY; }                      // mx, my zaten parçaya göre hareket yönü
   const r = T.d / 2, r2 = r * r, ml = Math.hypot(mx, my) || 1;
   const i0 = Math.max(0, Math.floor((x - r) / C)), i1 = Math.min(NX - 1, Math.ceil((x + r) / C));
@@ -2460,6 +2659,7 @@ function tryStep(nx, ny, nn, dtStep) {
   const T = tool(), tip = nn - T.len;
   let mdx = nx - S.px, mdy = ny - S.py;                            // parçaya göre hareket
   if (ROT.on) { toLv(S.px, S.py, ROT.a0); const ax = LX, ay = LY; toLv(nx, ny); mdx = LX - ax; mdy = LY - ay; }
+  else if (FIX === 'div' && ROT.turning) { const a = VX.local(S.px, S.py, tip, ROT.a0), b = VX.local(nx, ny, tip, ROT.a); mdx = Math.hypot(b[1] - a[1], b[2] - a[2]); mdy = 0; }
   const horiz = Math.hypot(mdx, mdy), down = nn < S.nose;
   const fh = fixtureHit(nx, ny, T.type === 'dial' ? tip - 2 : tip, T);
   if (fh) { crash(fh); return false; }
@@ -2568,7 +2768,7 @@ function tryStep(nx, ny, nn, dtStep) {
     log(`Takım ${HOLDERS[hk].n} tutucusundan ${a} mm dışarı kaydı! Uç artık DRO'nun gösterdiğinden derinde, parça fazla kesiliyor. Mili durdurup Tutucu satırındaki düğmeye basarak takımı yeniden bağlayın.`, 'bad');
   }
   S.lastChip = L.chip; S.lastStress = L.stress;
-  if (ROT.on && !ROT.lock && !ROT.turning && L.stress > 0.8) {
+  if ((ROT.on || FIX === 'div') && !ROT.lock && !ROT.turning && L.stress > 0.8) {
     ROT.a += (L.stress - 0.8) * 0.05 * (Math.random() < 0.5 ? -1 : 1); ROT.a0 = ROT.a;
     warnOnce('rotlock', 'Döner tabla kilitsiz: parça kesme yükü altında döndü! Öteleme kesmesinden önce kilit kolunu sıkın.', 'warn', 6000);
   }
@@ -2618,6 +2818,7 @@ function holeRadius(x, y, tip) {           // merkezden dışa doğru tarama: il
 }
 function tapStep(nx, ny, nn, T, it, horiz) {
   const tip = nn - T.len, down = nn < S.nose;
+  if (FIX === 'div' && it.any) { warnOnce('divtap', 'Divizördeki parçada kılavuz çekme henüz yok.', 'warn'); return false; }
   if (ROT.on) toLv(nx, ny);
   const lx = ROT.on ? LX : nx, ly = ROT.on ? LY : ny;
   if (!it.any) {
@@ -2703,7 +2904,7 @@ function heldDir(ax) {
 // Tabla dönüşü: takımdaki çevresel hız ilerlemeye eşit (en çok 30°/s); her alt adım bir kesme adımı gibi denenir
 function rotStep(dt) {
   if (ROT.lock) { ROT.pend = ROT.hold = 0; warnOnce('rotlocked', 'Döner tabla kilitli: döndürmek için kilidi açın.', 'warn'); return; }
-  const R = Math.max(5, Math.hypot(S.px - ROT.cx, S.py - ROT.cy));
+  const R = FIX === 'div' ? Math.max(3, Math.hypot(S.py - DIVY, tipZ() - DIVZ)) : Math.max(5, Math.hypot(S.px - ROT.cx, S.py - ROT.cy));
   const w = Math.min(30, (rapid() ? RAPID : S.feed) / 60 / R * 180 / Math.PI) * S.sim;
   if (ROT.hold) ROT.pend = ROT.hold * w * dt;
   const dA = clamp(ROT.pend, -w * dt, w * dt);
@@ -2761,7 +2962,7 @@ function motion(dt) {
   } else if (S.autoX) { m.x += S.autoX * S.feed / 60 * S.sim * dt; jog = true; }
   // Kesme hesabında kullanılan gerçek ilerleme: kol/tuş ilerlemesi veya el çarkının dönüş hızı
   S.feedNow = Math.max(jog ? (rapid() ? RAPID : S.feed) : 0, wd / dt * 60);
-  if (ROT.on && (ROT.pend || ROT.hold) && !S.tap) rotStep(dt);
+  if ((ROT.on || FIX === 'div') && (ROT.pend || ROT.hold) && !S.tap) rotStep(dt);
   if (!m.x && !m.y && !m.z) return;
   const len = Math.max(Math.abs(m.x), Math.abs(m.y), Math.abs(m.z));
   const n = Math.max(1, Math.ceil(len / 0.25));
@@ -3060,7 +3261,7 @@ function setMaterial(k) {
   $('matSel').value = S.mat;
   $('brandMat').textContent = $('tbMat').textContent = `${mat.short} · ${PW}×${PD}×${PH}`;
   topMat.metalness = mat.nonMetal ? 0 : 0.62; topMat.roughness = mat.nonMetal ? 0.5 : 0.34;
-  M.raw.color.setRGB(...mat.rawL); M.raw.metalness = mat.nonMetal ? 0 : 0.55; M.raw.roughness = mat.nonMetal ? 0.6 : 0.55;
+  M.raw.color.setRGB(...mat.rawL); VX.setMat(mat); M.raw.metalness = mat.nonMetal ? 0 : 0.55; M.raw.roughness = mat.nonMetal ? 0.6 : 0.55;
   chipMat.metalness = mat.nonMetal ? 0 : 0.8; chipMat.roughness = mat.nonMetal ? 0.55 : 0.28;
   updateRec();
 }
@@ -3071,6 +3272,7 @@ function resetPart(k) {
   S.temp = 0; S.power = 0; S.chatNow = 0; S.lastRa = null;
   S.removed = 0; S.cutTime = 0; S.peck.active = false; clearChips();
   S.loose = null; for (const m of partMeshes()) { m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); }
+  if (FIX === 'div') VX.build(PW, PD);
   stopMotion();
   if (tipZ() < PH + 5) S.nose = PH + 20 + tool().len;
 }
@@ -3403,6 +3605,7 @@ function startJob() {
   if (CR.on) { CR.start(); return; }
   if (selJob < 0) return;
   if (JOBS[selJob].rot && FIX !== 'rot') setFix('rot', true);
+  else if (FIX === 'div') setFix('vise', true);
   if (PW !== 150 || PD !== 100 || PH !== 40) setStock(150, 100, 40, true);   // iş emirleri standart ham parçayla
   resetPart(JOBS[selJob].mat || 'al');
   S.job = { idx:selJob, J:JOBS[selJob], time:0, done:false, stats:{ breaks:0, load:0, spot:0, peck:0, rub:0 } };
@@ -3471,7 +3674,7 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Shift') { S.rapidKey = true; return; }
   const km = KEYMAP[e.code];
   if (km) { e.preventDefault(); if (!e.repeat) press('key-' + e.code, km[0], km[1]); return; }
-  if (e.code === 'KeyQ' || e.code === 'KeyE') { if (!e.repeat && ROT.on) { if (ROT.lock) log('Döner tabla kilitli: önce kilidi açın.', 'warn'); else ROT.hold = e.code === 'KeyQ' ? 1 : -1; } return; }
+  if (e.code === 'KeyQ' || e.code === 'KeyE') { if (!e.repeat && (ROT.on || FIX === 'div')) { if (ROT.lock) log('Döner tabla kilitli: önce kilidi açın.', 'warn'); else ROT.hold = e.code === 'KeyQ' ? 1 : -1; } return; }
   if (e.repeat) return;
   if (e.code === 'Space') { e.preventDefault(); spindle(!S.spindle); }
   else if (e.code === 'KeyC') toggleCoolant();
@@ -3533,7 +3736,10 @@ function frame(now) {
   table.position.x = -S.px;
   rotG.rotation.y = ROT.on ? ROT.a * Math.PI / 180 : 0;
   if (rotCrank) rotCrank.rotation.z = -ROT.a * 90 * Math.PI / 180;
-  if (ROT.on && ROT.shown !== ROT.a) { ROT.shown = ROT.a; const d = ((ROT.a - ROT.z0) % 360 + 360) % 360; $('rotA').textContent = d.toFixed(3) + '°'; }
+  divRot.rotation.x = FIX === 'div' ? ROT.a * Math.PI / 180 : 0;
+  if (divCrank) divCrank.rotation.z = -ROT.a * 40 * Math.PI / 180;   // 40:1 sonsuz vida: kolun bir turu 9°
+  if (FIX === 'div') VX.flush(6);
+  if ((ROT.on || FIX === 'div') && ROT.shown !== ROT.a) { ROT.shown = ROT.a; const d = ((ROT.a - ROT.z0) % 360 + 360) % 360; $('rotA').textContent = d.toFixed(3) + '°'; }
   wheels.forEach(w => w.rotation.x = -S.px / 5 * Math.PI * 2);
   spindleG.position.y = S.nose;
   const qTop = 310;
@@ -4300,6 +4506,7 @@ const VAC = (() => {
   return { update, check, measure, ui };
 })();
 const FIXNOTE = {
+  div:'Divizör (deneme): yuvarlak çubuk üç ayaklı aynada, ekseni X boyunca. X = çubuğun boyu (20–150), Y = çapı (10–70). X0 ayna yüzü, Y0 eksen, Z0 çubuğun üstü. A ekseni kilidi açıp Q/E ya da düğmelerle döner; takım çubuğa her açıdan dalabilir.',
   rot:'Döner tabla: X 20–150, Y 20–120 mm. Parçanın ortası tabla merkezinde; parça X yanlarındaki iki ince paralel üstünde, iki pabuçla bağlı. Döndürmek için kilidi açın (Q/E basılı tut ya da adım düğmeleri). Takım parçadayken tablayı çevirmek yay kesmesidir; öteleme kesmesinden önce kilitleyin.',
   vise:'Mengene: X 20–220, Y 20–135 mm parça. Çeneler üst yüzeyin 5 mm altında biter; altta iki paralel altlık var.',
   clamp:'Pabuç: X 40–260, Y 40–140 mm. Parça iki altlık üstünde; dört pabuç kenarın 12 mm\'sini kapatır, takım ya da tutucu çarparsa kırılır. Delerken altlıkların üstüne dikkat.',
@@ -4312,7 +4519,8 @@ function setFix(k, quiet) {
   if (S.spindle) spindle(false);
   FIX = k;
   [...$('fixSeg').children].forEach(b => b.classList.toggle('on', b.dataset.fx === k));
-  $('clampLay').hidden = k !== 'clamp'; $('vacG').hidden = k !== 'vac'; $('rotBox').hidden = k !== 'rot';
+  $('clampLay').hidden = k !== 'clamp'; $('vacG').hidden = k !== 'vac'; $('rotBox').hidden = k !== 'rot' && k !== 'div';
+  $('rotLab').textContent = k === 'div' ? 'A ekseni' : 'C ekseni';
   ROT.lock = true; $('rotLock').textContent = 'KİLİTLİ'; $('rotLock').classList.remove('open');
   const L = FIXLIM[k];
   for (const [id, r] of [['stW', L.x], ['stD', L.y], ['stH', L.z]]) { $(id).min = r[0]; $(id).max = r[1]; }
@@ -4324,7 +4532,7 @@ function setFix(k, quiet) {
 }
 $('fixSeg').addEventListener('click', e => { const b = e.target.closest('[data-fx]'); if (b && b.dataset.fx !== FIX) { initAudio(); setFix(b.dataset.fx); } });
 // döner tabla kumandaları: adım, açıya git, sıfır, kilit
-const rotGoTo = deg => { if (!ROT.on) return; if (ROT.lock) { log('Döner tabla kilitli: önce kilidi açın.', 'warn'); return; } ROT.pend += deg; };
+const rotGoTo = deg => { if (!ROT.on && FIX !== 'div') return; if (ROT.lock) { log('Döner tabla kilitli: önce kilidi açın.', 'warn'); return; } ROT.pend += deg; };
 $('rotSteps').addEventListener('click', e => { const b = e.target.closest('[data-ra]'); if (b) { initAudio(); rotGoTo(+b.dataset.ra); } });
 $('rotGo').addEventListener('click', () => {
   const v = parseFloat(String($('rotTgt').value).replace(',', '.')); if (!Number.isFinite(v)) return;
@@ -4499,6 +4707,7 @@ stockReady = true; syncFixtures();
 function setStock(w, d, h, quiet) {
   const L = FIXLIM[FIX];
   w = clamp(Math.round(w * 2) / 2, ...L.x); d = clamp(Math.round(d * 2) / 2, ...L.y); h = clamp(Math.round(h * 2) / 2, ...L.z);
+  if (FIX === 'div') h = DIVZ + d / 2;                             // divizör: X boy, Y çap; Z0 çubuğun üstü
   if (S.spindle) spindle(false);
   buildStock(w, d, h);
   resetPart(S.mat);
@@ -4641,7 +4850,7 @@ const BN = (() => {
     setTool(tool); cancelAnimationFrame(raf); loop();
   }
   function hide() { open = false; $('bench').hidden = true; cancelAnimationFrame(raf); }
-  $('benchOpen').addEventListener('click', () => { initAudio(); if (S.spindle) { log('Parçayı masaya almak için önce mili durdurun.', 'warn'); return; } show(); });
+  $('benchOpen').addEventListener('click', () => { initAudio(); if (FIX === 'div') { log('Divizör parçası parça masasında henüz incelenemiyor.', 'warn'); return; } if (S.spindle) { log('Parçayı masaya almak için önce mili durdurun.', 'warn'); return; } show(); });
   $('bnClose').addEventListener('click', hide);
   document.querySelectorAll('[data-bt]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.bt)));
   $('bnClear').addEventListener('click', () => { clearMarks(); $('bnList').innerHTML = ''; hint('Ölçümler temizlendi.'); });
@@ -5069,7 +5278,7 @@ const CR = (() => {
       if (FIX !== 'rot') setFix('rot', true);
     }
     const fits = k => o.J.w >= FIXLIM[k].x[0] && o.J.w <= FIXLIM[k].x[1] && o.J.d >= FIXLIM[k].y[0] && o.J.d <= FIXLIM[k].y[1] && o.J.h >= FIXLIM[k].z[0] && o.J.h <= FIXLIM[k].z[1];
-    if (!fits(FIX)) {
+    if (FIX === 'div' || !fits(FIX)) {
       const k = ['vise', 'clamp', 'vac'].find(q => fits(q) && (q === 'vise' || hasEq(q)));
       if (!k) { log('Bu parça mengeneye sığmaz: pabuç takımı ya da vakum tabla gerekir (dükkân).', 'warn'); openShop(); return; }
       setFix(k, true);
