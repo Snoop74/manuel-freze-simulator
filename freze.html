@@ -482,19 +482,64 @@ table{color:inherit;font-size:inherit}
 .pr-grid .btn{padding:6px 2px;font-size:12px}
 .pr-zero{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
 .rack button.locked .d{color:var(--warn)}
+/* ---- Üst çubuk: simgeler, ipuçları, açılır menüler ---- */
+.topbar{overflow:visible;gap:6px}
+.tb-brand{display:flex;align-items:center;gap:8px}
+.tb-brand b{display:block;font-size:14px;letter-spacing:.1em}
+.tb-logo{width:30px;height:30px;display:grid;place-items:center;border-radius:6px;background:var(--safety);color:#1a1d1f;flex:none}
+.tb-logo svg{width:22px;height:22px}
+.tb-icons{display:flex;align-items:center;gap:2px;min-width:0}
+.tb-grp{display:flex;align-items:center;gap:1px}
+.tb-sep{width:1px;height:24px;background:var(--line);margin:0 6px;flex:none}
+.tb-flex{flex:1}
+.tbi{position:relative;width:34px;height:34px;display:grid;place-items:center;border-radius:6px;color:var(--muted);background:none;border:0;padding:0;flex:none}
+.tbi[hidden]{display:none}
+.tbi svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tbi:hover,.tbi.open{color:var(--fg);background:var(--panel-2)}
+.tbi.on{color:var(--fg)}
+.tbi.on::before{content:"";position:absolute;left:9px;right:9px;bottom:2px;height:2px;border-radius:2px;background:var(--safety)}
+.tbi.act.on{color:#1a1d1f;background:var(--safety)}
+.tbi.act.on::before{display:none}
+.tbi[data-tip]:hover::after{content:attr(data-tip);position:absolute;top:40px;left:50%;transform:translateX(-50%);background:#0e1214;border:1px solid var(--line);padding:4px 8px;border-radius:4px;font-size:12px;font-family:var(--f-display);letter-spacing:.02em;white-space:nowrap;color:var(--fg);z-index:96;pointer-events:none}
+.tbi.open[data-tip]::after{display:none}
+.tb-menu{position:absolute;top:44px;z-index:95;display:grid;gap:2px;min-width:200px;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:5px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.tb-menu[hidden]{display:none}
+.tb-menu button{display:flex;justify-content:space-between;gap:12px;align-items:baseline;text-align:left;background:none;border:0;border-radius:4px;padding:7px 9px;font-size:13px;font-family:var(--f-display);color:var(--fg)}
+.tb-menu button:hover{background:var(--panel-2)}
+.tb-menu small,.tb-hint{color:var(--muted);font-size:11px}
+.tb-hint{padding:4px 9px}
+.tb-menu hr{border:0;border-top:1px solid var(--line);margin:3px 0;width:100%}
+.tb-help{width:340px;padding:10px 12px;font-size:13px;line-height:1.45}
+.tb-help ol{margin:6px 0 2px;padding-left:20px}
+.tb-help li{margin:3px 0}
+@media (max-width:1200px){.tb-sep{margin:0 2px}.tbi{width:30px;height:32px}.tb-brand b{display:none}}
 </style>
 
 <div class="app">
   <header class="topbar" id="topbar">
-    <div class="tb-brand" id="tbBrand">Manuel Freze<small id="tbMat"></small></div>
-    <span class="tb-money" id="tbMoney" title="Kariyer kasası" hidden></span>
-    <span class="tb-sep"></span>
-    <div class="tb-group"><span class="tb-label">Paneller</span><div class="tb-group tb-panels"></div></div>
-    <span class="tb-sep"></span>
-    <div class="tb-group tb-layouts"><span class="tb-label">Düzen</span><button class="chip" data-l="kumanda">Kumanda</button><button class="chip" data-l="temel">Temel</button><button class="chip" data-l="tam">Tam</button><button class="chip" data-l="kariyer">Kariyer</button><button class="chip" data-l="is">İş emri</button></div>
-    <span class="tb-sep"></span>
-    <div class="tb-group tb-views"></div>
+    <div class="tb-brand" id="tbBrand"><span class="tb-logo" data-ic="logo"></span><div><b>SNOOP3000</b><small id="tbMat"></small></div></div>
+    <nav class="tb-icons" aria-label="Paneller ve aletler">
+      <div class="tb-grp" data-g="Makine"><button class="tbi" data-p="console" data-ic="console" data-tip="Kumanda paneli" aria-label="Kumanda paneli"></button><button class="tbi" data-p="dro" data-ic="dro" data-tip="DRO" aria-label="DRO"></button><button class="tbi" data-p="wheels" data-ic="wheels" data-tip="El çarkları" aria-label="El çarkları"></button><button class="tbi" data-p="jog" data-ic="jog" data-tip="Hareket" aria-label="Hareket"></button><button class="tbi" data-p="spindle" data-ic="spindle" data-tip="İş mili" aria-label="İş mili"></button></div>
+      <span class="tb-sep"></span>
+      <div class="tb-grp" data-g="İş"><button class="tbi" data-p="tools" data-ic="tools" data-tip="Takımlar" aria-label="Takımlar"></button><button class="tbi" data-p="part" data-ic="part" data-tip="Parça ve bağlama" aria-label="Parça ve bağlama"></button><button class="tbi" data-p="jobs" data-ic="jobs" data-tip="İş emirleri ve kariyer" aria-label="İş emirleri ve kariyer"></button><button class="tbi act" data-act="drawing" id="tbDraw" data-ic="drawing" data-tip="Teknik resim" aria-label="Teknik resim"></button></div>
+      <span class="tb-sep"></span>
+      <div class="tb-grp" data-g="Aletler"><button class="tbi act" data-act="air" id="tbAir" data-ic="air" data-tip="Hava tabancası (B)" aria-label="Hava tabancası (B)"></button><button class="tbi act" data-act="fd" id="tbFd" data-ic="fd" data-tip="Fareyle sür (G)" aria-label="Fareyle sür (G)"></button><button class="tbi act" data-act="bench" data-ic="bench" data-tip="Parça masası: ölç, kesit al" aria-label="Parça masası: ölç, kesit al"></button><button class="tbi act" data-act="editor" data-ic="editor" data-tip="Takım editörü" aria-label="Takım editörü"></button><button class="tbi act" data-act="shop" id="tbShop" hidden data-ic="shop" data-tip="Dükkân" aria-label="Dükkân"></button></div>
+      <span class="tb-sep"></span>
+      <div class="tb-grp" data-g="Bilgi"><button class="tbi" data-p="hud" data-ic="hud" data-tip="Durum" aria-label="Durum"></button><button class="tbi" data-p="log" data-ic="log" data-tip="Olay kaydı" aria-label="Olay kaydı"></button></div>
+      <span class="tb-sep"></span>
+      <div class="tb-grp"><button class="tbi" data-menu="layout" data-ic="layout" data-tip="Panel düzeni" aria-label="Panel düzeni"></button><button class="tbi" data-menu="camera" data-ic="camera" data-tip="Kamera" aria-label="Kamera"></button></div>
+    </nav>
+    <span class="tb-flex"></span>
+    <span class="tb-money" id="tbMoney" title="Kariyer kasası: dükkânı aç" hidden></span>
+    <button class="tbi act" data-act="sound" id="tbMute" data-ic="sound" data-tip="Ses" aria-label="Ses"></button><button class="tbi" data-menu="help" data-ic="help" data-tip="Yardım ve kısayollar" aria-label="Yardım ve kısayollar"></button>
     <button class="estop" id="estopBtn" title="Mili ve tüm hareketleri durdur (Esc)">ACİL STOP</button>
+    <div class="tb-menu" id="mnLayout" hidden><button data-l="kumanda">Kumanda <small>konsol, takımlar, durum</small></button><button data-l="temel">Temel <small>klasik paneller</small></button><button data-l="tam">Tam <small>hepsi</small></button><button data-l="is">İş emri <small>iş, DRO, takımlar</small></button><button data-l="kariyer">Kariyer <small>sipariş, konsol, takımlar</small></button><hr><button data-l="reset">Panelleri sıfırla</button></div>
+    <div class="tb-menu" id="mnCamera" hidden><button data-v="vOp">Operatör</button><button data-v="vNear">Yakın</button><button data-v="vTop">Üstten</button><button data-v="vFront">Önden</button><small class="tb-hint">Sağ tuş döndür, tekerlek yakınlaştır</small></div>
+    <div class="tb-menu tb-help" id="mnHelp" hidden>
+      <b>Nasıl başlarım</b>
+      <ol><li>Takımlar panelinden takım seç (T3 Ø10 takılı).</li><li>Parçaya yaklaş: ok tuşları X/Y, W/S ya da PgUp/PgDn Z; Shift hızlı.</li><li>Üst yüzeye değince DRO'da Z0'a bas.</li><li>Mili çalıştır (Boşluk), önerilen devir ve ilerlemeyi uygula, paso al.</li><li>İş emirlerinden bir iş seç; teslimde parça ölçülür.</li></ol>
+      <hr><button data-act="keys">Tüm kısayollar</button>
+    </div>
   </header>
   <section class="stage" id="stage">
     <canvas id="c" aria-label="Freze tezgâhının 3B görünümü"></canvas>
@@ -3886,6 +3931,30 @@ function toolIcon(T) {
   return s + '<circle cx="16" cy="16" r="10"/></svg>';
 }
 
+const TBICON = {
+  logo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6v6H9z"/><path d="M10 8h4v10l-2 3-2-3z"/><path d="M10 11l4 2M10 15l4 2"/></svg>',
+  console:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="10" r="2.3"/><circle cx="15.5" cy="10" r="2.3"/><path d="M7 16h10"/>',
+  dro:'<rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M6.5 9.5v5M9.5 9.5h2.5v2.5h-2.5v2.5h2.5M15 9.5h2.5v5H15M15 12h2.5"/>',
+  wheels:'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2"/><path d="M12 10V3.5M10.3 13l-5.6 3.3M13.7 13l5.6 3.3"/>',
+  jog:'<path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/>',
+  spindle:'<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/><circle cx="12" cy="17" r="1.3"/>',
+  tools:'<path d="M9 2h6v7H9z"/><path d="M10 9h4v11l-2 2-2-2z"/><path d="M10 12l4 2M10 16l4 2"/>',
+  part:'<path d="M4.5 8.5l7.5-4 7.5 4-7.5 4z"/><path d="M4.5 8.5v7l7.5 4 7.5-4v-7"/><path d="M12 12.5v7"/>',
+  jobs:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.5h6V4M8.5 10h7M8.5 14h7M8.5 18h4"/>',
+  drawing:'<rect x="3" y="4" width="18" height="16" rx="1.5"/><circle cx="12" cy="12" r="3.5"/><path d="M12 6.5v11M6.5 12h11" stroke-dasharray="2 1.6"/>',
+  air:'<path d="M3 8.5h11v4H3z"/><path d="M14 10.5h6"/><path d="M5 12.5l-1.5 7.5h4.5L9.5 12.5"/><path d="M21 7.5c1.2 1 1.2 5 0 6"/>',
+  fd:'<path d="M4 20l1-5L16 4l4 4L9 19z"/><path d="M14 6l4 4"/>',
+  bench:'<path d="M3 5h18v4H3z"/><path d="M5 9v10l3-4V9M15 9v6l3 4V9"/><path d="M8 5v2M11 5v2M14 5v2M17 5v2"/>',
+  editor:'<path d="M7 2h6v6H7z"/><path d="M8 8h4v9l-2 2-2-2z"/><path d="M15 21l6-6-2-2-6 6v2z"/>',
+  shop:'<path d="M3 4h2l2.5 11h11L21 7H6.2"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>',
+  hud:'<path d="M3 12h4l2-5 4 10 2-5h6"/>',
+  log:'<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>',
+  layout:'<rect x="3" y="3" width="8" height="10" rx="1.5"/><rect x="13" y="3" width="8" height="6" rx="1.5"/><rect x="13" y="11" width="8" height="10" rx="1.5"/><rect x="3" y="15" width="8" height="6" rx="1.5"/>',
+  camera:'<path d="M3 8h3.5l2-3h7l2 3H21v11H3z"/><circle cx="12" cy="13" r="3.5"/>',
+  sound:'<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
+  mute:'<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/>',
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7v.5"/><circle cx="12" cy="17" r=".7"/>'
+};
 /* ---------------- Paneller: taşınabilir, ölçeklenebilir kumanda pencereleri ---------------- */
 const PM = (() => {
   const TOP = 46, KEY = 'freze-panels-v2';
@@ -3933,7 +4002,7 @@ const PM = (() => {
   function setVis(id, v, noSave) {
     const p = P[id]; if (!p) return;
     p.vis = v; p.el.hidden = !v;
-    const chip = document.querySelector(`.chip[data-p="${id}"]`); if (chip) chip.classList.toggle('on', v);
+    const chip = document.querySelector(`.tbi[data-p="${id}"]`); if (chip) chip.classList.toggle('on', v);
     if (v) { front(p); place(p); }
     if (!noSave) save();
   }
@@ -4013,10 +4082,35 @@ const PM = (() => {
     CFG.forEach(build);
     // üst çubuk: marka, panel düğmeleri, düzenler, kamera, acil stop
     const tb = $('topbar');
-    tb.querySelector('.tb-panels').innerHTML = CFG.filter(c => c.id !== 'drawing').map(c => `<button class="chip" data-p="${c.id}">${c.title}</button>`).join('');
-    tb.querySelector('.tb-panels').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) setVis(b.dataset.p, !P[b.dataset.p].vis); });
-    tb.querySelector('.tb-layouts').addEventListener('click', e => { const b = e.target.closest('button'); if (b) preset(b.dataset.l); });
-    const views = document.querySelector('.views'); if (views) tb.querySelector('.tb-views').append(views);
+    // simgeler, panel düğmeleri, aletler ve açılır menüler
+    tb.querySelectorAll('[data-ic]').forEach(el => { const k = el.dataset.ic; el.innerHTML = k === 'logo' ? TBICON.logo : `<svg viewBox="0 0 24 24">${TBICON[k]}</svg>`; });
+    const views = document.querySelector('.views'); if (views) views.hidden = true;     // kamera düğmeleri menüden tetiklenir
+    const menus = { layout:$('mnLayout'), camera:$('mnCamera'), help:$('mnHelp') };
+    const closeMenus = () => { for (const k in menus) menus[k].hidden = true; tb.querySelectorAll('.tbi.open').forEach(q => q.classList.remove('open')); };
+    tb.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.menu) {
+        const m = menus[b.dataset.menu], was = !m.hidden; closeMenus(); if (was) return;
+        m.hidden = false; b.classList.add('open');
+        const r = b.getBoundingClientRect(); m.style.left = Math.max(6, Math.min(window.innerWidth - m.offsetWidth - 6, r.left + r.width / 2 - m.offsetWidth / 2)) + 'px';
+        return;
+      }
+      if (b.dataset.p) { setVis(b.dataset.p, !P[b.dataset.p].vis); return; }
+      if (b.dataset.l) { closeMenus(); if (b.dataset.l === 'reset') { try { localStorage.removeItem(KEY); } catch (_) {} preset('kumanda'); } else preset(b.dataset.l); return; }
+      if (b.dataset.v) { closeMenus(); const v = $(b.dataset.v); if (v) v.click(); return; }
+      const a = b.dataset.act; if (!a) return;
+      initAudio(); closeMenus();
+      if (a === 'drawing') $('drawing').hidden = !$('drawing').hidden;
+      else if (a === 'air') AG.setOn(!AG.on);
+      else if (a === 'fd') FD.setOn(!FD.on);
+      else if (a === 'bench') $('benchOpen').click();
+      else if (a === 'editor') TE.show(S.tool);
+      else if (a === 'shop') CR.openShop();
+      else if (a === 'keys') setVis('keys', true);
+      else if (a === 'sound') { $('mute').click(); b.innerHTML = `<svg viewBox="0 0 24 24">${TBICON[S.muted ? 'mute' : 'sound']}</svg>`; b.classList.toggle('on', S.muted); }
+    });
+    document.addEventListener('pointerdown', e => { if (!e.target.closest('.tb-menu') && !e.target.closest('[data-menu]')) closeMenus(); });
+    window.addEventListener('keydown', e => { if (e.code === 'Escape') closeMenus(); });
     // kaydedilmiş düzen ya da varsayılan
     const has = Object.keys(store).length > 0;
     for (const id in P) {
@@ -4028,7 +4122,7 @@ const PM = (() => {
     // teknik resim paneli, resmin kendi görünürlüğünü izler
     const dw = $('drawing');
     if (dw && P.drawing) {
-      const sync = () => { const v = !dw.hidden; P.drawing.vis = v; P.drawing.el.hidden = !v; if (v) { if (!P.drawing.x && !P.drawing.y) { P.drawing.x = leftEdge; P.drawing.y = 10; } front(P.drawing); place(P.drawing); } };
+      const sync = () => { const v = !dw.hidden; P.drawing.vis = v; P.drawing.el.hidden = !v; $('tbDraw').classList.toggle('on', v); if (v) { if (!P.drawing.x && !P.drawing.y) { P.drawing.x = leftEdge; P.drawing.y = 10; } front(P.drawing); place(P.drawing); } };
       new MutationObserver(sync).observe(dw, { attributes:true, attributeFilter:['hidden'] }); sync();
     }
     window.addEventListener('resize', () => { for (const id in P) if (P[id].vis) place(P[id]); });
@@ -4201,7 +4295,7 @@ const FD = (() => {
   function setOn(v) {
     on = v; drag = false; canvas.style.cursor = '';
     if (on && AG.on) AG.setOn(false);
-    $('drawMode').textContent = 'Fareyle sür: ' + (on ? 'AÇIK' : 'KAPALI'); $('drawMode').classList.toggle('start', on);
+    $('drawMode').textContent = 'Fareyle sür: ' + (on ? 'AÇIK' : 'KAPALI'); $('drawMode').classList.toggle('start', on); $('tbFd').classList.toggle('on', on);
     if (on) log('Fareyle sürme açık: parçanın üstünde sol tuşu basılı tutup sürükleyin, takım farenin peşinden gider. Önce Z ile derinliği verin, mili çalıştırın.', 'ok');
   }
   $('drawMode').addEventListener('click', () => setOn(!on));
@@ -4283,7 +4377,7 @@ const AG = (() => {
     on = v; if (!on) { if (blowing) sound(false); blowing = false; aim = null; place(); controls.enabled = true; }
     if (on && FD.on) FD.setOn(false);
     canvas.style.cursor = '';
-    $('airBtn').textContent = 'Hava tabancası: ' + (on ? 'AÇIK' : 'KAPALI'); $('airBtn').classList.toggle('start', on);
+    $('airBtn').textContent = 'Hava tabancası: ' + (on ? 'AÇIK' : 'KAPALI'); $('airBtn').classList.toggle('start', on); $('tbAir').classList.toggle('on', on);
     if (on) log('Hava tabancası elinizde: talaşın üstünde sol tuşu basılı tutun. Talaşsız teslim kariyerde prim getirir.', 'ok');
   }
   window.addEventListener('pointerdown', e => {                 // pencere düzeyinde: tezgâh kollarından önce yakalar
@@ -5265,7 +5359,7 @@ const CR = (() => {
   function render() {
     $('career').hidden = !on; $('jobList').hidden = on;
     [...$('modeSw').children].forEach(b => b.classList.toggle('on', (b.dataset.mode === 'career') === on));
-    $('tbMoney').hidden = !on;
+    $('tbMoney').hidden = !on; $('tbShop').hidden = !on;
     $('shMoney').textContent = on ? tl(st.money) : 'serbest';
     if (on) {
       const lv = level(), nx = LEVELS[lv + 1];
