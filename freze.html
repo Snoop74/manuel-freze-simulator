@@ -3460,7 +3460,20 @@ const unlocked = i => i === 0 || bestStars(i - 1) >= 1;
 
 const jobTop = J => (J.h || PH) - (J.face ? J.face.depth : 0);
 const inRect = (x, y, p, m = 0) => x >= p.x0 - m && x <= p.x1 + m && y >= p.y0 - m && y <= p.y1 + m;
+// hazır parça: istenen bitmiş yükseklik (düzlenecek seviye) ya da parçanın kendi yüzeyi
+function blankTop(J, x, y) {
+  const P = J._P, o = P.H(x, y);
+  if (J.levels) { const g = P.geo, r = Math.hypot(x - g.c, y - g.c); for (const L of J.levels) if (r >= (L.rmin || 0) && r <= L.rmax) return Math.min(o, L.z); }
+  if (J.flush && o > J.flush.top) return J.flush.top;
+  if (J.deck && P.Sf(x, y) === SF.old && o >= J.deck.base) return Math.min(o, J.deck.floor + J.deck.maxCut * 0.5);
+  if (J.face) return Math.min(o, jobTop(J));
+  return o;
+}
 function localTop(J, x, y) {
+  if (J._P) {                                                      // hazır parça: bitmiş üst yüzey (eski delik dipleri değil)
+    const g = J._P.geo, top = J.levels ? (Math.hypot(x - g.c, y - g.c) <= g.Rh ? J.levels[0].z : J.levels[1].z) : J.face ? jobTop(J) : J.flush ? J.flush.top : J.h;
+    let t = top; for (const p of J.pockets) if (inRR(x, y, p)) t = Math.min(t, top - p.depth); return t;
+  }
   let t = jobTop(J);
   for (const p of J.pockets) if (inRR(x, y, p)) t = Math.min(t, jobTop(J) - p.depth);
   for (const A of J.arcs || []) if (inArc(x, y, A)) t = Math.min(t, jobTop(J) - A.depth);
@@ -3469,6 +3482,16 @@ function localTop(J, x, y) {
 // Resme göre bir noktada inilebilecek en düşük yükseklik (bunun altı "fazla kesilmiş")
 function allowedAt(J, x, y) {
   for (const h of J.holes) if (Math.hypot(x - h.x, y - h.y) <= h.d / 2 + 0.6) return -1;
+  if (J._P) {                                                      // hazır parça: istenmeyen yerde parçanın kendi yüzeyi sınırdır
+    const P = J._P, o = P.H(x, y);
+    let e = o;
+    if (J.deck && P.Sf(x, y) === SF.old && o >= J.deck.base) e = Math.min(o, J.deck.floor);
+    if (J.levels) { const g = P.geo, r = Math.hypot(x - g.c, y - g.c), [Lh, Lf] = J.levels; e = Math.min(e, r <= g.Rh ? Lh.z - Lh.tol : Lf.z - Lf.tol); }   // göbek dibi ve kenar pahı da alın seviyesine inebilir
+    if (J.flush) e = Math.min(e, J.flush.top - 0.2);
+    if (J.face) e = Math.min(e, jobTop(J));
+    for (const p of J.pockets) if (inRect(x, y, p, 0.6)) e = Math.min(e, blankTop(J, x, y) - p.depth);
+    return e;
+  }
   let e = jobTop(J);
   for (const p of J.pockets) if (inRect(x, y, p, 0.6)) e = Math.min(e, jobTop(J) - p.depth);
   for (const A of J.arcs || []) if (inArc(x, y, A, 0.6)) e = Math.min(e, jobTop(J) - A.depth);
@@ -3511,7 +3534,9 @@ function drawingSVG(J) {
   let s = `<svg viewBox="0 0 200 146" role="img" aria-label="Teknik resim üstten görünüş">
     <defs><pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="currentColor" stroke-width=".6" style="stroke:var(--ink-2)"/></pattern></defs>`;
   if (J.face) s += `<rect class="dw-face" x="${X(0)}" y="${Y(D)}" width="${W * k}" height="${D * k}"/>`;
-  s += `<rect class="dw-part" x="${X(0)}" y="${Y(D)}" width="${W * k}" height="${D * k}"/>`;
+  if (J.round) s += `<circle class="dw-part" cx="${X(J.round.c)}" cy="${Y(J.round.c)}" r="${J.round.R * k}"/>`;
+  else s += `<rect class="dw-part" x="${X(0)}" y="${Y(D)}" width="${W * k}" height="${D * k}"/>`;
+  for (const [ex, ey, er] of J.exist || []) s += `<circle cx="${X(ex)}" cy="${Y(ey)}" r="${er * k}" fill="none" style="stroke:var(--ink-2)" stroke-width=".45" stroke-dasharray="1.2 1"/>`;   // parçada zaten var
   if (['vise', 'clamp', 'rot'].includes(FIX) && !PAR.sac && W === PW && D === PD) for (const [a, b] of parBands())   // paraleller: kesik çizgi
     s += parAxis() === 'x' ? `<rect x="${X(a)}" y="${Y(D)}" width="${(b - a) * k}" height="${D * k}" fill="none" style="stroke:var(--ink-2)" stroke-width=".5" stroke-dasharray="2 1.5"/>`
       : `<rect x="${X(0)}" y="${Y(b)}" width="${W * k}" height="${(b - a) * k}" fill="none" style="stroke:var(--ink-2)" stroke-width=".5" stroke-dasharray="2 1.5"/>`;
@@ -3555,6 +3580,10 @@ function drawingTable(J) {
     t += '<tr><th>Yay</th><th>Merkez</th><th>R × genişlik</th><th>Açı</th><th>Derinlik</th></tr>';
     J.arcs.forEach((A, i) => t += `<tr><td>Y${i + 1}</td><td>${A.cx}, ${A.cy}</td><td>R${A.r} × ${A.w} ±${SIZE_TOL}</td><td>${A.a0}°–${A.a1}°</td><td>${A.depth.toFixed(2)} ±${DEPTH_TOL}</td></tr>`);
   }
+  if (J.deck) t += `<tr><td colspan="5">Conta yüzü: tamamen düzlenecek, düzlemsellik ≤ ${J.deck.flat}, en çok ${J.deck.maxCut} mm alınacak (en yüksek noktaya göre)</td></tr>`;
+  for (const L of J.levels || []) t += `<tr><td colspan="5">${L.name}: ${L.z.toFixed(2)} ±${L.tol} (tablaya göre yükseklik)</td></tr>`;
+  if (J.flush) t += `<tr><td colspan="5">Kaynak dikişleri plaka yüzeyiyle sıfırlanacak (${J.flush.top.toFixed(2)} +${J.flush.tol}); plakaya en çok 0.2 mm dalınabilir</td></tr>`;
+  if (J.exist && J.exist.length) t += '<tr><td colspan="5">Kesik daireler parçada zaten olan delik ve detaylardır.</td></tr>';
   if (J.holes.length) t += `<tr><td colspan="5">Delik konum toleransı ±${HOLE_TOL}</td></tr>`;
   return t;
 }
@@ -3679,6 +3708,39 @@ function inspect(J) {
     add(g, 'Kanal genişliği', A.w.toFixed(2) + ' ±' + SIZE_TOL, wm.toFixed(2), Math.abs(wm - A.w) <= SIZE_TOL, dev(Math.abs(wm - A.w), SIZE_TOL));
     add(g, 'Kanal yarıçapı', 'R' + A.r.toFixed(2) + ' ±' + SIZE_TOL, 'R' + rm.toFixed(2), Math.abs(rm - A.r) <= SIZE_TOL, dev(Math.abs(rm - A.r), SIZE_TOL), 2);
   });
+  if (J.deck) {                                                    // silindir kapağı: conta yüzü
+    let n = 0, cut = 0, sum = 0, mn = 1e9, mx = -1e9;
+    for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+      const x = i * C, y = j * C;
+      if (J._P.Sf(x, y) !== SF.old || J._P.H(x, y) < J.deck.base) continue;
+      const k = j * NX + i, h = H[k]; n++; if (CUT[k]) cut++; sum += h; if (h < mn) mn = h; if (h > mx) mx = h;
+    }
+    const cov = n ? cut / n : 0, mean = n ? sum / n : 0, flat = mx - mn, take = J.deck.top0 - mean;
+    add('Conta yüzü', 'Temizlenen alan', '≥ %98', '%' + (cov * 100).toFixed(1), cov >= 0.98, cov / 0.98, 2);
+    add('Conta yüzü', 'Düzlemsellik', '≤ ' + J.deck.flat.toFixed(2), flat.toFixed(3), flat <= J.deck.flat, dev(flat, J.deck.flat), 2);
+    add('Conta yüzü', 'Alınan talaş', '≤ ' + J.deck.maxCut.toFixed(2), take.toFixed(3), take <= J.deck.maxCut, take <= J.deck.maxCut ? 1 : Math.max(0, 1 - (take - J.deck.maxCut) / 0.3), 2);
+  }
+  for (const L of J.levels || []) {                                // döküm flanş: alın ve göbek seviyeleri
+    const g = J._P.geo; let n = 0, cut = 0, sum = 0;
+    for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+      const x = i * C, y = j * C, r = Math.hypot(x - g.c, y - g.c);
+      if (r < (L.rmin || 0) || r > L.rmax || allowedAt(J, x, y) < 0 || J._P.H(x, y) < 1) continue;
+      const k = j * NX + i; n++; if (CUT[k]) cut++; sum += H[k];
+    }
+    const mean = n ? sum / n : 0, cov = n ? cut / n : 0;
+    add(L.name, 'Yükseklik', L.z.toFixed(2) + ' ±' + L.tol, mean.toFixed(3), Math.abs(mean - L.z) <= L.tol, dev(Math.abs(mean - L.z), L.tol), 2);
+    add(L.name, 'Temizlenen alan', '≥ %97', '%' + (cov * 100).toFixed(1), cov >= 0.97, cov / 0.97);
+  }
+  if (J.flush) {                                                   // kaynaklı plaka: dikiş yüzeyle sıfır
+    let n = 0, hi = 0, mx = -1e9;
+    for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+      const x = i * C, y = j * C; if (J._P.Sf(x, y) !== SF.weld) continue;
+      const h = H[j * NX + i]; n++; if (h > J.flush.top + J.flush.tol) hi++; if (h > mx) mx = h;
+    }
+    const ok = n ? 1 - hi / n : 0;
+    add('Kaynak dikişi', 'Sıfırlanan dikiş', '%100', '%' + (ok * 100).toFixed(1), ok >= 0.995, ok, 2);
+    add('Kaynak dikişi', 'En yüksek nokta', (J.flush.top).toFixed(2) + ' +' + J.flush.tol, mx.toFixed(3), mx <= J.flush.top + J.flush.tol, dev(Math.max(0, mx - J.flush.top), J.flush.tol), 2);
+  }
   // Resim dışı kesilmiş bölgeler
   let gouge = 0;
   INSP.fill(0);
@@ -3824,7 +3886,7 @@ function showReport(run, items, r, newBest) {
 }
 // kariyer teslimi: kazanç, itibar ve kasa büyük; primler etiket
 function showPayout(res) {
-  $('rpHero').innerHTML = `<div class="rp-card big ${res.pay > 0 ? 'good' : 'bad'}"><span>Kazanç</span><b>${res.pay > 0 ? '+' : ''}${res.pay.toLocaleString('tr-TR')} ₺</b><small>${res.pay > 0 ? 'müşteri ödedi' : 'ödeme yok'}</small></div>` +
+  $('rpHero').innerHTML = `<div class="rp-card big ${res.pay > 0 ? 'good' : 'bad'}"><span>Kazanç</span><b>${res.pay > 0 ? '+' : ''}${res.pay.toLocaleString('tr-TR')} ₺</b><small>${res.pay > 0 ? 'müşteri ödedi' : res.pay < 0 ? 'parça bedeli ödendi' : 'ödeme yok'}</small></div>` +
     `<div class="rp-card ${res.rep > 0 ? 'good' : res.rep < 0 ? 'bad' : ''}"><span>İtibar</span><b>${res.rep > 0 ? '+' : ''}${res.rep}</b><small>toplam ${res.repTotal}</small></div>` +
     `<div class="rp-card"><span>Kasa</span><b>${Math.round(res.money).toLocaleString('tr-TR')}</b><small>₺</small></div>`;
   $('rpTags').innerHTML = res.tags.map(([t, c]) => `<span class="rp-tag ${c}">${t}</span>`).join('');
@@ -5391,6 +5453,152 @@ const TE = (() => {
   }, true);
   return { show, hide, specOf };
 })();
+/* ---------------- Hazır parçalar: şekilli ham parça şablonları ----------------
+   Müşteri boş blok yerine şekli olan bir parça getirir: döküm flanş, çarpılmış silindir kapağı, kaynaklı plaka...
+   Her şablon rastgele bir çeşit üretir: ölçüler, yükseklik işlevi H(x, y) ve yüzey türü Sf(x, y).
+   Yüzey türü (SURF) yalnızca görünüm içindir; işlenen hücre işlenmiş rengine geçer. Parça yükseklik haritası olduğundan
+   yukarıdan görülebilen her şekil olur (kademe, göbek, çukur, delik, kabarık dikiş, eğik yüzey); dış hat dışı boştur (H = 0). */
+const SF = { raw:0, cast:1, ground:2, old:3, weld:4, scale:5 };
+const SFNAME = ['ham', 'döküm', 'taşlanmış', 'eski işleme', 'kaynak dikişi', 'hadde tufalı'];
+// pürüzsüz rastgele dalgalanma (döküm yüzeyi): birkaç sinüsün toplamı, sivri üçgen yapmaz
+// tohumlu rastgele: sipariş panoda beklerken, iş başlarken ve muayenede aynı parça yeniden kurulur
+let RNG = Math.random;
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function castNoise() {
+  const w = Array.from({ length:5 }, (_, k) => ({ a:RNG() * 6.28, b:RNG() * 6.28, f:0.08 + k * 0.07 + RNG() * 0.05, g:0.06 + RNG() * 0.2 }));
+  return (x, y) => w.reduce((s, q) => s + Math.sin(x * q.f + q.a) * Math.cos(y * q.f * 0.8 + q.b) * q.g, 0) / 2.2;
+}
+const rr = (a, b) => a + RNG() * (b - a), rp = a => a[Math.floor(RNG() * a.length)], r05 = v => Math.round(v * 2) / 2;
+const BLANKS = [
+  { id:'head', name:'Silindir kapağı', cat:'Motor', desc:'Conta yüzü çarpılmış alüminyum kapak: yanma odaları, supap ve cıvata delikleri hazır. Yüzey traşlanacak.',
+    gen() {
+      const n = rp([3, 4]), w = n === 4 ? 200 : 160, d = 96, h = 42, warp = +rr(0.12, 0.4).toFixed(2), p = w / n, Rc = 19;
+      const bolts = [], valves = [], plugs = [], jackets = [];
+      for (let i = 0; i <= n; i++) for (const y of [11, d - 11]) bolts.push([i === 0 ? 10 : i === n ? w - 10 : i * p, y, 5.5]);
+      for (let i = 0; i < n; i++) {
+        const cx = p * (i + 0.5);
+        valves.push([cx - 7, d / 2 - 8, 5.5], [cx + 7, d / 2 + 8, 5]); plugs.push([cx, d / 2, 3]);
+        for (const y of [24, d - 24]) jackets.push([cx - p / 2 + 4, y, 6, 2.5]);
+      }
+      const hole = (x, y, L) => L.some(([a, b, r]) => (x - a) ** 2 + (y - b) ** 2 <= r * r);
+      const slot = (x, y) => jackets.some(([a, b, l, r]) => Math.abs(y - b) <= r && x >= a - l / 2 && x <= a + l / 2);
+      const bow = (x, y) => warp * (1 - ((x - w / 2) / (w / 2)) ** 2) + warp * 0.3 * ((x / w) - 0.5) * ((y / d) - 0.5) * 4;
+      const exist = [...bolts, ...valves, ...plugs, ...Array.from({ length:n }, (_, i) => [p * (i + 0.5), d / 2, Rc])];
+      return { w, d, h:h + warp * 1.4, mat:'al', warp, n, exist, deckBase:h, info:`${n} silindirli, çarpılma ${warp.toFixed(2)} mm (orta yüksek)`,
+        H:(x, y) => {
+          if (hole(x, y, bolts) || hole(x, y, valves) || hole(x, y, plugs) || slot(x, y)) return 0;
+          const top = h + Math.max(0, bow(x, y));
+          for (let i = 0; i < n; i++) { const rc = Math.hypot(x - p * (i + 0.5), y - d / 2); if (rc < Rc) return top - 6 * Math.pow(1 - (rc / Rc) ** 2, 0.6); }
+          return top;
+        },
+        Sf:(x, y) => { for (let i = 0; i < n; i++) if (Math.hypot(x - p * (i + 0.5), y - d / 2) < Rc - 0.3) return SF.cast; return SF.old; } };
+    } },
+  { id:'flange', name:'Döküm flanş', cat:'Makine', desc:'Yuvarlak döküm flanş: pürüzlü alın, ortada göbek ve döküm deliği, 1–2 mm işleme payı. Alın ve göbek işlenecek, cıvata dairesi delinecek.',
+    gen() {
+      const D = rp([110, 120, 130]), R = D / 2, Rh = rp([26, 30]), t = 12, hub = 28, a = +rr(1, 2).toFixed(1), bore = rp([11, 13]), nz = castNoise();
+      const c = R;
+      return { w:D, d:D, h:hub + a + 0.6, mat:rp(['gg25', 'gg25', 's235']), geo:{ c, R, Rh, flN:t, hubN:hub, bore }, round:{ c, R }, exist:[[c, c, bore], [c, c, Rh]],
+        info:`Ø${D} flanş, göbek Ø${Rh * 2}, işleme payı ${a} mm`,
+        H:(x, y) => {
+          const r = Math.hypot(x - c, y - c);
+          if (r > R || r < bore) return 0;
+          const f = t + a + nz(x, y) * 0.5, hb = hub + a + nz(x * 1.3, y * 1.3) * 0.4;
+          if (r <= Rh) return hb;
+          if (r <= Rh + 4) return f + (hb - f) * (1 - (r - Rh) / 4) ** 2;   // göbek dibi yuvarlatma
+          if (r > R - 1.5) return f - (r - (R - 1.5)) * 1.2;                 // dış kenar pahı
+          return f;
+        },
+        Sf:() => SF.cast };
+    } },
+  { id:'mold', name:'Kalıp plakası', cat:'Kalıphane', desc:'Taşlanmış çelik plaka: köşelerde havşalı kılavuz kolon delikleri, kenarlarda bağlama delikleri hazır. Kalıp boşluğu ve itici pim delikleri açılacak.',
+    gen() {
+      const w = rp([150, 156, 170]), d = rp([110, 116, 120]), h = rp([26, 30]), m = 15, Rg = 10, Rcb = 14;
+      const guides = [[m, m], [w - m, m], [w - m, d - m], [m, d - m]], screws = [[w / 2, 9], [w / 2, d - 9], [9, d / 2], [w - 9, d / 2]];
+      return { w, d, h, mat:rp(['c45', 'c45', 'ss304']), geo:{ m, Rcb }, exist:[...guides.map(([a, b]) => [a, b, Rcb]), ...screws.map(([a, b]) => [a, b, 4.5])], info:`${w}×${d}×${h}, 4 kılavuz kolon deliği Ø${Rg * 2}`,
+        H:(x, y) => {
+          for (const [a, b] of guides) { const r = Math.hypot(x - a, y - b); if (r <= Rg) return 0; if (r <= Rcb) return h - 6; }
+          for (const [a, b] of screws) if (Math.hypot(x - a, y - b) <= 4.5) return 0;
+          return h;
+        },
+        Sf:(x, y) => guides.some(([a, b]) => Math.hypot(x - a, y - b) <= Rcb + 0.3) ? SF.old : SF.ground };
+    } },
+  { id:'weld', name:'Kaynaklı plaka', cat:'Kaynak', desc:'Hadde tufalı çelik plaka, üstünde kabarık kaynak dikişleri. Dikişler yüzeyle sıfırlanacak, plakaya dalınmayacak.',
+    gen() {
+      const w = rp([180, 200]), d = rp([100, 110]), h = rp([16, 20]), bh = +rr(2, 3).toFixed(1), bw = rp([8, 10]);
+      const xa = r05(w * rr(0.32, 0.45)), yb = r05(d * rr(0.55, 0.7)), lx = r05(w * rr(0.75, 0.9));
+      const bead = (dist, along) => dist >= bw / 2 ? 0 : bh * Math.sqrt(1 - (dist / (bw / 2)) ** 2) * (0.85 + 0.15 * Math.sin(along * 1.9));
+      const B = (x, y) => Math.max(bead(Math.abs(x - xa), y), x >= xa && x <= lx ? bead(Math.abs(y - yb), x) : 0);
+      return { w, d, h:h + bh + 0.4, mat:'s235', geo:{ plate:h, xa, yb, lx, bw }, exist:[], info:`T dikiş, ${bh} mm kabarık, ${bw} mm geniş`,
+        H:(x, y) => h + B(x, y), Sf:(x, y) => B(x, y) > 0.05 ? SF.weld : SF.scale };
+    } },
+  { id:'hyd', name:'Hidrolik blok', cat:'Hidrolik', desc:'İşlenmiş çelik blok: alın yüzü taşlanmış, iki port deliği ve bağlantı delikleri hazır. Yeni portlar açılacak, üst yüzey 0.3 mm alınacak.',
+    gen() {
+      const w = rp([100, 110]), d = rp([70, 80]), h = rp([50, 60]);
+      const ports = [[w * 0.3, d / 2, 8], [w * 0.7, d / 2, 8]], spot = 12, mounts = [[8, 8], [w - 8, 8], [w - 8, d - 8], [8, d - 8]];
+      return { w, d, h, mat:'c45', exist:[...ports.map(([a, b]) => [a, b, spot]), ...mounts.map(([a, b]) => [a, b, 3.3])], info:`${w}×${d}×${h}, 2 port Ø16 (25 derin), 4 bağlantı deliği`,
+        H:(x, y) => {
+          for (const [a, b, r] of ports) { const q = Math.hypot(x - a, y - b); if (q <= r) return h - 25 + q * 0.6; if (q <= spot) return h - 1.5; }
+          for (const [a, b] of mounts) if (Math.hypot(x - a, y - b) <= 3.3) return 0;
+          return h;
+        },
+        Sf:(x, y) => ports.some(([a, b]) => Math.hypot(x - a, y - b) <= spot + 0.3) || mounts.some(([a, b]) => Math.hypot(x - a, y - b) <= 3.6) ? SF.old : SF.ground };
+    } },
+  { id:'repair', name:'Tamir işi', cat:'Tamir', desc:'Yanlış delinmiş alüminyum plaka: dört delik resimdeki yerlerinden 1–2 mm kaymış. Delikler doğru yerde Ø12\'ye büyütülecek.',
+    gen() {
+      const w = 150, d = 100, h = rp([20, 25]), nom = [[25, 20], [125, 20], [125, 80], [25, 80]];
+      const off = nom.map(([x, y]) => { const a = rr(0, 6.28), m = rr(1, 1.8); return [x + Math.cos(a) * m, y + Math.sin(a) * m]; });
+      const exist = off.map(([x, y]) => [x, y, 4.25]);
+      return { w, d, h, mat:'al', nominal:nom, exist, info:`4 delik Ø8.5, ${Math.max(...off.map(([x, y], i) => Math.hypot(x - nom[i][0], y - nom[i][1]))).toFixed(1)} mm'ye kadar kaymış`,
+        H:(x, y) => off.some(([a, b]) => Math.hypot(x - a, y - b) <= 4.25) ? 0 : h,
+        Sf:() => SF.old };
+    } },
+];
+// şablonu mengeneye bağla: ölçü, malzeme, yükseklik ve yüzey haritası
+function genBlank(id, seed) {
+  const B = BLANKS.find(q => q.id === id); if (!B) return null;
+  RNG = mulberry(seed); const P = B.gen(); RNG = Math.random;
+  P.stockH = Math.ceil(P.h * 2) / 2; P.seed = seed;
+  return P;
+}
+function loadBlank(id, seed = Math.random() * 1e9 | 0, force = false) {
+  const B = BLANKS.find(q => q.id === id); if (!B) return null;
+  if (!force && S.job && !S.job.done) { log('İş sürerken parça değiştirilmez.', 'warn'); return null; }
+  const P = genBlank(id, seed);
+  if (!['vise', 'clamp', 'vac'].includes(FIX)) setFix('vise', true);
+  setStock(P.w, P.d, P.stockH, true);
+  resetPart(P.mat);
+  for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+    const k = j * NX + i, x = i * C, y = j * C;
+    H[k] = clamp(P.H(x, y), 0, PH); SURF[k] = P.Sf(x, y);
+  }
+  throughDirty = true; markDirty(0, NX - 1, 0, NY - 1);
+  S.blank = { id, name:B.name, ...P };
+  log(`Hazır parça bağlandı: ${B.name} (${P.info}). ${MATS[P.mat].short}.`, 'ok');
+  return P;
+}
+// GEÇİCİ: şablonları hızlıca görmek için galeri penceresi (üst çubukta "Hazır parça galerisi")
+const BG = (() => {
+  const el = document.createElement('div'); el.className = 'blank-gal'; el.hidden = true;
+  el.innerHTML = '<div class="bg-head"><b>HAZIR PARÇA GALERİSİ</b><small>geçici</small><button class="btn" id="bgClose">Kapat</button></div><div class="bg-list"></div><div class="dro-note" id="bgInfo">Bir parçaya tıklayın: mengeneye bağlanır. "Yeni çeşit" aynı tipten başka bir parça üretir.</div>';
+  document.body.append(el);
+  const L = el.querySelector('.bg-list');
+  for (const B of BLANKS) {
+    const c = document.createElement('div'); c.className = 'bg-card';
+    c.innerHTML = `<div class="bg-t"><b>${B.name}</b><span>${B.cat}</span></div><p>${B.desc}</p><div class="bg-b"><button class="btn start" data-b="${B.id}">Bağla</button><button class="btn" data-r="${B.id}">Yeni çeşit</button><button class="btn" data-m="${B.id}">Masada incele</button></div>`;
+    L.append(c);
+  }
+  el.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return; initAudio();
+    if (b.id === 'bgClose') { el.hidden = true; return; }
+    const id = b.dataset.b || b.dataset.r || b.dataset.m; if (!id) return;
+    if (S.spindle) spindle(false);
+    const P = loadBlank(id); if (!P) return;
+    $('bgInfo').textContent = `${BLANKS.find(q => q.id === id).name}: ${P.info} · ${MATS[P.mat].short} · ${P.w}×${P.d}×${(Math.ceil(P.h * 2) / 2)}`;
+    if (b.dataset.m) $('benchOpen').click();
+  });
+  return { show:() => { el.hidden = false; }, toggle:() => { el.hidden = !el.hidden; } };
+})();
+
 /* ---------------- Kariyer: siparişler, kasa, itibar, dükkân ----------------
    Serbest atölyede her şey açık ve ücretsiz. Kariyerde müşteriler sipariş verir: ham parça kasadan alınır,
    teslimde parça ölçülür (iş emirleriyle aynı muayene) ve ödeme yapılır. Takımlar satın alınır; kırılan takım gider,
@@ -5448,8 +5656,45 @@ const CR = (() => {
 
   /* -- Sipariş üretici: seviyeye göre malzeme, ham parça ölçüsü ve özellikler -- */
   const rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)], r5 = v => Math.round(v / 5) * 5;
+  // hazır parça siparişi: müşteri parçasını getirir (ham parça parası yok), hurdada parça bedeli atölyeden
+  const BLANK_JOBS = {
+    repair:{ lv:0, cust:['Kemal Usta', 'tamirhane'], title:'Tamir: kaymış delikler', value:700, make(P) {
+      return { holes:P.nominal.map(([x, y]) => ({ x, y, d:12 })), brief:'Delikler 1–2 mm kaymış açılmış. Resimdeki doğru yerlerde Ø12\'ye büyütün; kaymış eski delik yeni deliğin içinde kalmalı.', val:200 + 4 * 70, target:90 + 4 * 45 }; } },
+    weld:{ lv:0, cust:['Usta Kaynakçı Rıza', 'kaynak atölyesi'], title:'Kaynak dikişi sıfırlama', value:600, make(P) {
+      const g = P.geo, holes = [[g.xa / 2, g.yb / 2], [(g.xa + P.w) / 2, g.yb / 2]].filter(() => RNG() < 0.8).map(([x, y]) => ({ x:r05(x), y:r05(y), d:8.5 }));
+      return { flush:{ top:g.plate, tol:0.1 }, holes, brief:`Plakanın üstündeki T kaynak dikişini plaka yüzeyiyle sıfırlayın (plakaya 0.2 mm'den fazla dalmayın)${holes.length ? `, ${holes.length}×Ø8.5 delik açın` : ''}.`, val:250 + (P.h + P.w) * 1.2 + holes.length * 60, target:150 + holes.length * 60 }; } },
+    mold:{ lv:0, cust:['Öz Kalıp', 'kalıphane'], title:'Kalıp plakası: kalıp boşluğu', value:2400, make(P) {
+      const inn = P.geo.m + P.geo.Rcb + 6, pw = r5(rr(0.35, 0.5) * (P.w - 2 * inn)) + 20, pd = r5(rr(0.4, 0.6) * (P.d - 2 * inn)) + 15, cx = P.w / 2, cy = P.d / 2;
+      const pk = { x0:cx - pw / 2, x1:cx + pw / 2, y0:cy - pd / 2, y1:cy + pd / 2, depth:rp([3, 4, 5]), r:rp([5, 5, 8]) };
+      const ej = [[pk.x0 + 10, cy], [pk.x1 - 10, cy]].concat(pw > 50 ? [[cx, cy]] : []).map(([x, y]) => ({ x:r05(x), y:r05(y), d:5 }));
+      return { pockets:[pk], holes:ej, brief:`Taşlanmış kalıp plakasının ortasına ${pw}×${pd}×${pk.depth} kalıp boşluğu (köşeler R${pk.r}), tabanına ${ej.length}×Ø5 itici pim deliği. Kılavuz kolon deliklerine dokunmayın.`, val:300 + pw * pd * pk.depth / 80 + ej.length * 60, target:150 + pw * pd * pk.depth / 22 + ej.length * 50 }; } },
+    head:{ lv:1, cust:['Mahalle Kaportacısı', 'oto tamiri'], title:'Silindir kapağı traşlama', value:3500, make(P) {
+      let top0 = -1; for (let y = 0; y <= P.d; y += 1) for (let x = 0; x <= P.w; x += 1) if (P.Sf(x, y) === SF.old && P.H(x, y) > 1) top0 = Math.max(top0, P.H(x, y));
+      return { deck:{ flat:0.05, maxCut:0.5, top0, floor:top0 - 0.5, base:P.deckBase - 0.02 }, brief:`Motor ısınınca kapağın conta yüzü çarpılmış. Yüzeyi tamamen düzleyin (düzlemsellik ≤ 0.05) ama en yüksek noktadan en çok 0.5 mm alın. Önce en yüksek ve en alçak noktayı bulun: taster ya da Z'yi dokundurarak.`, val:700 + P.w * P.d / 25, target:150 + P.w * P.d / 60 }; } },
+    hyd:{ lv:1, cust:['Kaya Hidrolik', 'fabrika'], title:'Hidrolik blok: yeni portlar', value:2000, make(P) {
+      const holes = [[P.w / 2, 14], [P.w / 2, P.d - 14]].map(([x, y]) => ({ x:r05(x), y:r05(y), d:8.5 }));
+      return { face:{ depth:0.3, tol:0.05 }, holes, brief:`Üst yüzeyden 0.30 mm alın (±0.05), iki yeni Ø8.5 boydan boya port açın (${P.h} mm derin: gagalayarak). Mevcut portlara dokunmayın.`, val:300 + P.w * P.d / 60 + holes.length * 110, target:160 + P.w * P.d / 100 + holes.length * 80 }; } },
+    flange:{ lv:1, cust:['Demir Tarım Aletleri', 'atölye'], title:'Döküm flanş işleme', value:900, make(P) {
+      const g = P.geo, n = rp([4, 6]), R = r05((g.Rh + 4 + g.R - 3) / 2);
+      const holes = Array.from({ length:n }, (_, k) => { const a = (k * 360 / n + 45) * Math.PI / 180; return { x:+(g.c + R * Math.cos(a)).toFixed(3), y:+(g.c + R * Math.sin(a)).toFixed(3), d:12 }; });
+      return { levels:[{ name:'Göbek üstü', rmax:g.Rh - 1.5, z:g.hubN, tol:0.1 }, { name:'Flanş alnı', rmin:g.Rh + 5, rmax:g.R - 2.5, z:g.flN, tol:0.1 }], holes,
+        brief:`Döküm flanşın göbek üstünü ${g.hubN.toFixed(2)}, flanş alnını ${g.flN.toFixed(2)} yüksekliğe işleyin (tablaya göre, ±0.1), R${R} dairesine ${n}×Ø12 delik açın.`, val:350 + n * 60 + g.R * g.R / 15, target:200 + n * 55 + g.R * 2 }; } },
+  };
+  function genBlankOrder(lv) {
+    const ids = Object.keys(BLANK_JOBS).filter(k => BLANK_JOBS[k].lv <= lv), id = pick(ids), B = BLANK_JOBS[id], seed = Math.random() * 1e9 | 0;
+    const P = genBlank(id, seed);
+    RNG = mulberry(seed ^ 0x5bd1e995); const F = B.make(P); RNG = Math.random;
+    const mf = MATF[P.mat] || 1;
+    const J = Object.assign({ pockets:[], holes:[], arcs:[], face:null, w:P.w, d:P.d, h:P.stockH, mat:P.mat, title:B.title, exist:P.exist || [], round:P.round || null, blank:{ id, seed } }, F);
+    J.target = Math.round(F.target * (mf > 1.2 ? 1.3 : 1) / 10) * 10;
+    const [cn, ck] = B.cust;
+    J.brief = `${cn} (${ck}) kendi parçasını getirdi: ${BLANKS.find(q => q.id === id).name}, ${MATS[P.mat].short} ${P.w}×${P.d}. ${F.brief} Hurdaya çıkarsa parça bedeli ${tl(B.value)} sizden.`;
+    delete J.val; delete J.brief0;
+    return { id:st.seq++, cust:cn, mat:P.mat, J, pay:Math.round(F.val * mf * (1 + lv * 0.15) / 10) * 10, cost:0, free:true, own:true, value:B.value, lv };
+  }
   function genOrder(free) {
     const lv = level();
+    if (!free && Math.random() < 0.5) return genBlankOrder(lv);
     const m = pick([['al', 'pom', 'brass', 'al'], ['al', 'brass', 's235', 'pom'], ['s235', 'c45', 'al', 'gg25', 'brass'], ['c45', 'ss304', 's235', 'brass']][lv]);
     const big = lv >= 1 && Math.random() < 0.25;                   // büyük plaka: mengene en fazla 135 mm açılır
     const arc = !big && lv >= 1 && Math.random() < 0.25;           // yay kanallı flanş: döner tabla ister
@@ -5555,7 +5800,8 @@ const CR = (() => {
     });
   }
   function select(o) {
-    sel = o; selJob = -2;                                         // iş emri listesindeki seçim kalkar
+    sel = o; selJob = -2;
+    if (o.J.blank && !o.J._P) Object.defineProperty(o.J, '_P', { value:genBlank(o.J.blank.id, o.J.blank.seed), enumerable:false, writable:true, configurable:true });                                         // iş emri listesindeki seçim kalkar
     $('jcNo').textContent = 'SİPARİŞ #' + o.id; $('jcTitle').textContent = `${o.J.title} · ${o.cust}`; $('jcBrief').textContent = o.J.brief;
     $('jcMeta').innerHTML = `<span>Ödeme <b>${tl(o.pay)}</b></span><span>Hedef süre <b>${mmss(o.J.target)}</b></span><span>Ham parça <b>${o.free ? 'müşteriden' : tl(o.cost)}</b></span>${o.J.big ? '<span>Bağlama <b>pabuç / vakum</b></span>' : o.J.arcs && o.J.arcs.length ? '<span>Bağlama <b>döner tabla</b></span>' : ''}`;
     $('jcBtns').hidden = false; $('vDraw').hidden = false;
@@ -5586,8 +5832,13 @@ const CR = (() => {
     if (o.cost + sac > st.money) { log(`Kasada ham parça ve kurban plaka için yeterli para yok (${tl(o.cost + sac)}).`, 'warn'); return; }
     st.money -= o.cost + sac; save();
     if (sac) log(`Kurban plaka: −${tl(sac)}.`);
-    if (PW !== o.J.w || PD !== o.J.d || PH !== o.J.h) setStock(o.J.w, o.J.d, o.J.h, true);
-    resetPart(o.mat);
+    if (o.J.blank) {                                                 // müşterinin parçası: aynı tohumla aynı parça
+      const P = loadBlank(o.J.blank.id, o.J.blank.seed, true);
+      Object.defineProperty(o.J, '_P', { value:P, enumerable:false, writable:true, configurable:true });
+    } else {
+      if (PW !== o.J.w || PD !== o.J.d || PH !== o.J.h) setStock(o.J.w, o.J.d, o.J.h, true);
+      resetPart(o.mat);
+    }
     S.job = { idx:-1, order:o, J:o.J, time:0, done:false, stats:{ breaks:0, load:0, spot:0, peck:0, rub:0 } };
     $('report').hidden = true;
     buildScribe(o.J); select(o);
@@ -5610,10 +5861,14 @@ const CR = (() => {
       tags.push(clean ? ['Temiz teslim +%5', 'ok'] : ['Talaşlı teslim: hava tabancası +%5 kazandırırdı', 'warn']);
       txt = `Müşteri memnun: +${tl(pay)}${run.time <= o.J.target ? ' (zamanında teslim primi dahil)' : ''}${clean ? ' · temiz teslim +%5' : ' · parça talaşlı geldi, temizleseydiniz +%5'} · itibar +${rep}`;
     } else if (r.stars >= 1) { pay = Math.round(o.pay * 0.04) * 10; txt = `Şartlı kabul, indirimli ödeme: +${tl(pay)} · itibar değişmedi`; tags.push(['Şartlı kabul: ödemenin %40\'ı', 'warn']); }
+    else if (o.own) {
+      rep = -3; const v = Math.min(st.money, o.value); pay = -v;
+      txt = `Müşterinin parçası hurdaya çıktı: parça bedeli −${tl(v)} · itibar −3.`; tags.push([`Müşteri parçası hurda: parça bedeli −${tl(v)}`, 'warn']);
+    }
     else { rep = -2; txt = `Parça hurda: ödeme yok · itibar −2. Sipariş panoda duruyor, yeni ham parçayla tekrar deneyebilirsiniz.`; tags.push(['Hurda: sipariş panoda, tekrar deneyebilirsiniz', 'warn']); }
     const lv0 = level();
     st.money += pay; st.earned += pay; st.rep = Math.max(0, st.rep + rep);
-    if (pay > 0) { st.done++; st.orders = st.orders.filter(q => q.id !== o.id); sel = null; fillBoard(); }
+    if (pay > 0 || o.own) { if (pay > 0) st.done++; st.orders = st.orders.filter(q => q.id !== o.id); sel = null; fillBoard(); }   // müşteri parçası tek: hurdada da sipariş gider
     save();
     if (pay) cash(pay);
     if (level() > lv0) { txt += ` · YENİ SEVİYE: ${LEVELS[level()][1]}!`; tags.unshift([`Yeni seviye: ${LEVELS[level()][1]}`, 'gold']); log(`Atölye büyüdü: ${LEVELS[level()][1]}. Daha büyük ve daha iyi ödeyen işler gelecek.`, 'ok'); }
@@ -5687,139 +5942,6 @@ const CR = (() => {
   return { get on() { return on; }, hasEq, openShop, render, start, settle, allowTool, lost, charge, forget, priceOf, get sel() { return sel; } };
 })();
 
-/* ---------------- Hazır parçalar: şekilli ham parça şablonları ----------------
-   Müşteri boş blok yerine şekli olan bir parça getirir: döküm flanş, çarpılmış silindir kapağı, kaynaklı plaka...
-   Her şablon rastgele bir çeşit üretir: ölçüler, yükseklik işlevi H(x, y) ve yüzey türü Sf(x, y).
-   Yüzey türü (SURF) yalnızca görünüm içindir; işlenen hücre işlenmiş rengine geçer. Parça yükseklik haritası olduğundan
-   yukarıdan görülebilen her şekil olur (kademe, göbek, çukur, delik, kabarık dikiş, eğik yüzey); dış hat dışı boştur (H = 0). */
-const SF = { raw:0, cast:1, ground:2, old:3, weld:4, scale:5 };
-const SFNAME = ['ham', 'döküm', 'taşlanmış', 'eski işleme', 'kaynak dikişi', 'hadde tufalı'];
-// pürüzsüz rastgele dalgalanma (döküm yüzeyi): birkaç sinüsün toplamı, sivri üçgen yapmaz
-function castNoise(seed) {
-  const w = Array.from({ length:5 }, (_, k) => ({ a:Math.random() * 6.28, b:Math.random() * 6.28, f:0.08 + k * 0.07 + Math.random() * 0.05, g:0.06 + Math.random() * 0.2 }));
-  return (x, y) => w.reduce((s, q) => s + Math.sin(x * q.f + q.a) * Math.cos(y * q.f * 0.8 + q.b) * q.g, 0) / 2.2;
-}
-const rr = (a, b) => a + Math.random() * (b - a), rp = a => a[Math.floor(Math.random() * a.length)], r05 = v => Math.round(v * 2) / 2;
-const BLANKS = [
-  { id:'head', name:'Silindir kapağı', cat:'Motor', desc:'Conta yüzü çarpılmış alüminyum kapak: yanma odaları, supap ve cıvata delikleri hazır. Yüzey traşlanacak.',
-    gen() {
-      const n = rp([3, 4]), w = n === 4 ? 200 : 160, d = 96, h = 42, warp = +rr(0.12, 0.4).toFixed(2), p = w / n, Rc = 19;
-      const bolts = [], valves = [], plugs = [], jackets = [];
-      for (let i = 0; i <= n; i++) for (const y of [11, d - 11]) bolts.push([i === 0 ? 10 : i === n ? w - 10 : i * p, y, 5.5]);
-      for (let i = 0; i < n; i++) {
-        const cx = p * (i + 0.5);
-        valves.push([cx - 7, d / 2 - 8, 5.5], [cx + 7, d / 2 + 8, 5]); plugs.push([cx, d / 2, 3]);
-        for (const y of [24, d - 24]) jackets.push([cx - p / 2 + 4, y, 6, 2.5]);
-      }
-      const hole = (x, y, L) => L.some(([a, b, r]) => (x - a) ** 2 + (y - b) ** 2 <= r * r);
-      const slot = (x, y) => jackets.some(([a, b, l, r]) => Math.abs(y - b) <= r && x >= a - l / 2 && x <= a + l / 2);
-      const bow = (x, y) => warp * (1 - ((x - w / 2) / (w / 2)) ** 2) + warp * 0.3 * ((x / w) - 0.5) * ((y / d) - 0.5) * 4;
-      return { w, d, h:h + warp * 1.4, mat:'al', warp, info:`${n} silindirli, çarpılma ${warp.toFixed(2)} mm (orta yüksek)`,
-        H:(x, y) => {
-          if (hole(x, y, bolts) || hole(x, y, valves) || hole(x, y, plugs) || slot(x, y)) return 0;
-          const top = h + Math.max(0, bow(x, y));
-          for (let i = 0; i < n; i++) { const rc = Math.hypot(x - p * (i + 0.5), y - d / 2); if (rc < Rc) return top - 6 * Math.pow(1 - (rc / Rc) ** 2, 0.6); }
-          return top;
-        },
-        Sf:(x, y) => { for (let i = 0; i < n; i++) if (Math.hypot(x - p * (i + 0.5), y - d / 2) < Rc - 0.3) return SF.cast; return SF.old; } };
-    } },
-  { id:'flange', name:'Döküm flanş', cat:'Makine', desc:'Yuvarlak döküm flanş: pürüzlü alın, ortada göbek ve döküm deliği, 1–2 mm işleme payı. Alın ve göbek işlenecek, cıvata dairesi delinecek.',
-    gen() {
-      const D = rp([110, 120, 130]), R = D / 2, Rh = rp([26, 30]), t = 12, hub = 28, a = +rr(1, 2).toFixed(1), bore = rp([11, 13]), nz = castNoise();
-      const c = R;
-      return { w:D, d:D, h:hub + a + 0.6, mat:rp(['gg25', 'gg25', 's235']), info:`Ø${D} flanş, göbek Ø${Rh * 2}, işleme payı ${a} mm`,
-        H:(x, y) => {
-          const r = Math.hypot(x - c, y - c);
-          if (r > R || r < bore) return 0;
-          const f = t + a + nz(x, y) * 0.5, hb = hub + a + nz(x * 1.3, y * 1.3) * 0.4;
-          if (r <= Rh) return hb;
-          if (r <= Rh + 4) return f + (hb - f) * (1 - (r - Rh) / 4) ** 2;   // göbek dibi yuvarlatma
-          if (r > R - 1.5) return f - (r - (R - 1.5)) * 1.2;                 // dış kenar pahı
-          return f;
-        },
-        Sf:() => SF.cast };
-    } },
-  { id:'mold', name:'Kalıp plakası', cat:'Kalıphane', desc:'Taşlanmış çelik plaka: köşelerde havşalı kılavuz kolon delikleri, kenarlarda bağlama delikleri hazır. Kalıp boşluğu ve itici pim delikleri açılacak.',
-    gen() {
-      const w = rp([150, 156, 170]), d = rp([110, 116, 120]), h = rp([26, 30]), m = 15, Rg = 10, Rcb = 14;
-      const guides = [[m, m], [w - m, m], [w - m, d - m], [m, d - m]], screws = [[w / 2, 9], [w / 2, d - 9], [9, d / 2], [w - 9, d / 2]];
-      return { w, d, h, mat:rp(['c45', 'c45', 'ss304']), info:`${w}×${d}×${h}, 4 kılavuz kolon deliği Ø${Rg * 2}`,
-        H:(x, y) => {
-          for (const [a, b] of guides) { const r = Math.hypot(x - a, y - b); if (r <= Rg) return 0; if (r <= Rcb) return h - 6; }
-          for (const [a, b] of screws) if (Math.hypot(x - a, y - b) <= 4.5) return 0;
-          return h;
-        },
-        Sf:(x, y) => guides.some(([a, b]) => Math.hypot(x - a, y - b) <= Rcb + 0.3) ? SF.old : SF.ground };
-    } },
-  { id:'weld', name:'Kaynaklı plaka', cat:'Kaynak', desc:'Hadde tufalı çelik plaka, üstünde kabarık kaynak dikişleri. Dikişler yüzeyle sıfırlanacak, plakaya dalınmayacak.',
-    gen() {
-      const w = rp([180, 200]), d = rp([100, 110]), h = rp([16, 20]), bh = +rr(2, 3).toFixed(1), bw = rp([8, 10]);
-      const xa = r05(w * rr(0.32, 0.45)), yb = r05(d * rr(0.55, 0.7)), lx = r05(w * rr(0.75, 0.9));
-      const bead = (dist, along) => dist >= bw / 2 ? 0 : bh * Math.sqrt(1 - (dist / (bw / 2)) ** 2) * (0.85 + 0.15 * Math.sin(along * 1.9));
-      const B = (x, y) => Math.max(bead(Math.abs(x - xa), y), x >= xa && x <= lx ? bead(Math.abs(y - yb), x) : 0);
-      return { w, d, h:h + bh + 0.4, mat:'s235', info:`T dikiş, ${bh} mm kabarık, ${bw} mm geniş`,
-        H:(x, y) => h + B(x, y), Sf:(x, y) => B(x, y) > 0.05 ? SF.weld : SF.scale };
-    } },
-  { id:'hyd', name:'Hidrolik blok', cat:'Hidrolik', desc:'İşlenmiş çelik blok: alın yüzü taşlanmış, iki port deliği ve bağlantı delikleri hazır. Yeni portlar açılacak, üst yüzey 0.3 mm alınacak.',
-    gen() {
-      const w = rp([100, 110]), d = rp([70, 80]), h = rp([50, 60]);
-      const ports = [[w * 0.3, d / 2, 8], [w * 0.7, d / 2, 8]], spot = 12, mounts = [[8, 8], [w - 8, 8], [w - 8, d - 8], [8, d - 8]];
-      return { w, d, h, mat:'c45', info:`${w}×${d}×${h}, 2 port Ø16 (25 derin), 4 bağlantı deliği`,
-        H:(x, y) => {
-          for (const [a, b, r] of ports) { const q = Math.hypot(x - a, y - b); if (q <= r) return h - 25 + q * 0.6; if (q <= spot) return h - 1.5; }
-          for (const [a, b] of mounts) if (Math.hypot(x - a, y - b) <= 3.3) return 0;
-          return h;
-        },
-        Sf:(x, y) => ports.some(([a, b]) => Math.hypot(x - a, y - b) <= spot + 0.3) || mounts.some(([a, b]) => Math.hypot(x - a, y - b) <= 3.6) ? SF.old : SF.ground };
-    } },
-  { id:'repair', name:'Tamir işi', cat:'Tamir', desc:'Yanlış delinmiş alüminyum plaka: dört delik resimdeki yerlerinden 1–2 mm kaymış. Delikler doğru yerde Ø12\'ye büyütülecek.',
-    gen() {
-      const w = 150, d = 100, h = rp([20, 25]), nom = [[25, 20], [125, 20], [125, 80], [25, 80]];
-      const off = nom.map(([x, y]) => { const a = rr(0, 6.28), m = rr(1, 1.8); return [x + Math.cos(a) * m, y + Math.sin(a) * m]; });
-      return { w, d, h, mat:'al', nominal:nom, info:`4 delik Ø8.5, ${Math.max(...off.map(([x, y], i) => Math.hypot(x - nom[i][0], y - nom[i][1]))).toFixed(1)} mm'ye kadar kaymış`,
-        H:(x, y) => off.some(([a, b]) => Math.hypot(x - a, y - b) <= 4.25) ? 0 : h,
-        Sf:() => SF.old };
-    } },
-];
-// şablonu mengeneye bağla: ölçü, malzeme, yükseklik ve yüzey haritası
-function loadBlank(id) {
-  const B = BLANKS.find(q => q.id === id); if (!B) return null;
-  if (S.job && !S.job.done) { log('İş sürerken parça değiştirilmez.', 'warn'); return null; }
-  const P = B.gen();
-  if (!['vise', 'clamp', 'vac'].includes(FIX)) setFix('vise', true);
-  setStock(P.w, P.d, Math.ceil(P.h * 2) / 2, true);
-  resetPart(P.mat);
-  for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
-    const k = j * NX + i, x = i * C, y = j * C;
-    H[k] = clamp(P.H(x, y), 0, PH); SURF[k] = P.Sf(x, y);
-  }
-  throughDirty = true; markDirty(0, NX - 1, 0, NY - 1);
-  S.blank = { id, name:B.name, ...P };
-  log(`Hazır parça bağlandı: ${B.name} (${P.info}). ${MATS[P.mat].short}.`, 'ok');
-  return P;
-}
-// GEÇİCİ: şablonları hızlıca görmek için galeri penceresi (üst çubukta "Hazır parça galerisi")
-const BG = (() => {
-  const el = document.createElement('div'); el.className = 'blank-gal'; el.hidden = true;
-  el.innerHTML = '<div class="bg-head"><b>HAZIR PARÇA GALERİSİ</b><small>geçici</small><button class="btn" id="bgClose">Kapat</button></div><div class="bg-list"></div><div class="dro-note" id="bgInfo">Bir parçaya tıklayın: mengeneye bağlanır. "Yeni çeşit" aynı tipten başka bir parça üretir.</div>';
-  document.body.append(el);
-  const L = el.querySelector('.bg-list');
-  for (const B of BLANKS) {
-    const c = document.createElement('div'); c.className = 'bg-card';
-    c.innerHTML = `<div class="bg-t"><b>${B.name}</b><span>${B.cat}</span></div><p>${B.desc}</p><div class="bg-b"><button class="btn start" data-b="${B.id}">Bağla</button><button class="btn" data-r="${B.id}">Yeni çeşit</button><button class="btn" data-m="${B.id}">Masada incele</button></div>`;
-    L.append(c);
-  }
-  el.addEventListener('click', e => {
-    const b = e.target.closest('button'); if (!b) return; initAudio();
-    if (b.id === 'bgClose') { el.hidden = true; return; }
-    const id = b.dataset.b || b.dataset.r || b.dataset.m; if (!id) return;
-    if (S.spindle) spindle(false);
-    const P = loadBlank(id); if (!P) return;
-    $('bgInfo').textContent = `${BLANKS.find(q => q.id === id).name}: ${P.info} · ${MATS[P.mat].short} · ${P.w}×${P.d}×${(Math.ceil(P.h * 2) / 2)}`;
-    if (b.dataset.m) $('benchOpen').click();
-  });
-  return { show:() => { el.hidden = false; }, toggle:() => { el.hidden = !el.hidden; } };
-})();
 
 // Başlangıç
 buildToolVisual(); updateToolUI(); updateRec(); updateSpindleUI();
