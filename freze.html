@@ -222,6 +222,26 @@ table{color:inherit;font-size:inherit}
 .rp-tab tr:last-child td{border-bottom:0}
 .rp-tab .ok-t{color:var(--ok);font-weight:600}.rp-tab .bad-t{color:var(--bad);font-weight:600}
 .rp-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.rp-hero{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px}
+.rp-hero.two{grid-template-columns:2fr 1fr}
+@media (max-width:560px){.rp-hero,.rp-hero.two{grid-template-columns:1fr 1fr}.rp-card.big{grid-column:1/-1}}
+.rp-card{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;gap:2px;text-align:center}
+.rp-card span{font-family:var(--f-display);font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.rp-card b{font-family:var(--f-dro);font-weight:400;font-size:34px;line-height:1.1;color:var(--fg)}
+.rp-card small{color:var(--muted);font-size:12px}
+.rp-card.good b{color:var(--ok)}.rp-card.bad b{color:var(--bad)}.rp-card.gold b{color:var(--safety)}
+.rp-card.big b{font-size:44px}
+.rp-tags{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.rp-tags:empty{display:none}
+.rp-tag{font-size:12px;padding:3px 10px;border-radius:12px;border:1px solid var(--line);color:var(--muted);font-family:var(--f-display)}
+.rp-tag.ok{border-color:var(--ok);color:var(--ok)}.rp-tag.warn{border-color:var(--warn);color:var(--warn)}.rp-tag.gold{border-color:var(--safety);color:#1a1d1f;background:var(--safety)}
+.rp-sum{margin:0;text-align:center;font-size:14px;line-height:1.45}
+.rp-more{justify-self:center;background:none;border:0;color:var(--vfd);font-family:var(--f-display);font-size:13px;padding:4px 8px;letter-spacing:.04em}
+.rp-more span{display:inline-block;transition:transform .2s}
+.rp-more[aria-expanded="true"] span{transform:rotate(180deg)}
+.rp-detail{display:grid;gap:10px}
+.rp-detail[hidden]{display:none}
+.fw{position:fixed;inset:0;z-index:81;pointer-events:none}
 .rp-btns .btn{padding:8px 12px}
 
 @media (max-width:900px){
@@ -644,10 +664,17 @@ table{color:inherit;font-size:inherit}
       <div class="box" role="dialog" aria-labelledby="rpTitle">
         <div class="rp-head"><span id="rpJob">İŞ 1</span><h2 id="rpTitle">Muayene raporu</h2></div>
         <div class="stars" id="rpStars"></div>
-        <div class="rp-score"><b id="rpTotal">0</b><span>/ 100</span><em id="rpVerdict"></em></div>
-        <div class="rp-bars" id="rpBars"></div>
-        <div class="rp-tab"><table id="rpTable"></table></div>
+        <div class="rp-hero" id="rpHero"></div>
+        <div class="rp-tags" id="rpTags"></div>
+        <p class="rp-sum" id="rpSum"></p>
+        <button class="rp-more" id="rpMore" aria-expanded="false">Detayları gör <span>▾</span></button>
+        <div class="rp-detail" id="rpDetail" hidden>
+          <div class="rp-score"><b id="rpTotal">0</b><span>/ 100 puan</span><em id="rpVerdict"></em></div>
+          <div class="rp-bars" id="rpBars"></div>
+          <div class="rp-tab"><table id="rpTable"></table></div>
+        </div>
         <div class="rp-btns">
+          <button class="btn" id="rpClose">Kapat</button>
           <button class="btn" id="rpInspect">Parçayı incele</button>
           <button class="btn" id="rpRetry">Tekrar dene</button>
           <button class="btn start" id="rpNext">Sonraki iş</button>
@@ -3726,9 +3753,10 @@ function submitJob() {
   const r = scoreJob(J, run, items);
   run.done = true;
   if (run.order) {
-    const txt = CR.settle(run, r);
+    const res = CR.settle(run, r);
     showReport(run, items, r, false);
-    $('rpVerdict').textContent = txt; $('rpVerdict').style.color = r.allOk ? 'var(--ok)' : r.stars ? 'var(--warn)' : 'var(--bad)';
+    showPayout(res);
+    $('rpVerdict').textContent = res.txt; $('rpVerdict').style.color = r.allOk ? 'var(--ok)' : r.stars ? 'var(--warn)' : 'var(--bad)';
     $('rpRetry').hidden = !CR.sel;   // hurda: sipariş panoda, yeniden denenebilir
   } else {
     const key = 'j' + run.idx, prev = progress[key];
@@ -3744,6 +3772,7 @@ function submitJob() {
   const cx = 75 - S.px, cz = -50 + S.py, cy = jobTop(J) + 2;
   if (r.stars) for (let s = 0; s < r.stars; s++) setTimeout(() => { burst('gold', 110, cx, cy, cz, 260, 900, 1.8); beep(1200 + s * 300); }, 250 + s * 250);
   else burst('smoke', 30, cx, cy, cz, 60, 80, 2.2);
+  if (r.allOk) setTimeout(() => FW.show(r.stars), 700);           // kabul edilen parça: havai fişek
 }
 const STAR = '<svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6 6.5.8-4.8 4.5 1.2 6.5L12 17.3l-5.8 3.1 1.2-6.5L2.6 9.4l6.5-.8z" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 function showReport(run, items, r, newBest) {
@@ -3761,8 +3790,81 @@ function showReport(run, items, r, newBest) {
     items.map(i => `<tr><td>${i.grp}</td><td>${i.label}</td><td class="num">${i.nom}</td><td class="num">${i.meas}</td><td class="${i.ok ? 'ok-t' : 'bad-t'}">${i.ok ? '✓' : '✗'}</td></tr>`).join('');
   const hasNext = !run.order && run.idx + 1 < JOBS.length && unlocked(run.idx + 1);
   $('rpNext').hidden = !hasNext;
+  // özet: tolerans dışı ölçüler tek cümlede, ayrıntılar "Detayları gör"de
+  const bad = items.filter(i => !i.ok);
+  $('rpSum').textContent = !bad.length ? 'Bütün ölçüler tolerans içinde.' : `${bad.length} ölçü tolerans dışında: ${bad.slice(0, 4).map(i => `${i.grp} ${i.label.toLocaleLowerCase('tr')}`).join(', ')}${bad.length > 4 ? '…' : ''}.`;
+  $('rpHero').classList.toggle('two', !run.order);
+  if (!run.order) {
+    $('rpHero').innerHTML = `<div class="rp-card big ${r.allOk ? 'gold' : r.stars ? '' : 'bad'}"><span>Puan</span><b>${r.total}</b><small>/ 100</small></div>` +
+      `<div class="rp-card"><span>Süre</span><b>${mmss(run.time)}</b><small>hedef ${mmss(run.J.target)}</small></div>`;
+    $('rpTags').innerHTML = newBest ? '<span class="rp-tag gold">YENİ REKOR</span>' : '';
+  }
+  $('rpDetail').hidden = true; $('rpMore').setAttribute('aria-expanded', 'false');
   $('report').hidden = false;
 }
+// kariyer teslimi: kazanç, itibar ve kasa büyük; primler etiket
+function showPayout(res) {
+  $('rpHero').innerHTML = `<div class="rp-card big ${res.pay > 0 ? 'good' : 'bad'}"><span>Kazanç</span><b>${res.pay > 0 ? '+' : ''}${res.pay.toLocaleString('tr-TR')} ₺</b><small>${res.pay > 0 ? 'müşteri ödedi' : 'ödeme yok'}</small></div>` +
+    `<div class="rp-card ${res.rep > 0 ? 'good' : res.rep < 0 ? 'bad' : ''}"><span>İtibar</span><b>${res.rep > 0 ? '+' : ''}${res.rep}</b><small>toplam ${res.repTotal}</small></div>` +
+    `<div class="rp-card"><span>Kasa</span><b>${Math.round(res.money).toLocaleString('tr-TR')}</b><small>₺</small></div>`;
+  $('rpTags').innerHTML = res.tags.map(([t, c]) => `<span class="rp-tag ${c}">${t}</span>`).join('');
+}
+$('rpMore').addEventListener('click', () => { const open = $('rpDetail').hidden; $('rpDetail').hidden = !open; $('rpMore').setAttribute('aria-expanded', String(open)); $('rpMore').firstChild.textContent = open ? 'Detayları gizle ' : 'Detayları gör '; });
+$('rpClose').addEventListener('click', () => { $('report').hidden = true; FW.stop(); });
+
+/* ---------------- Havai fişek: başarılı teslimde ekranın üstünde patlar ----------------
+   Yıldız sayısı gösteriyi büyütür; 2B tuval, olayı bitince kendini kapatır. Patlama sesi süzülmüş gürültü + kısa çıtırtı. */
+const FW = (() => {
+  let cv = null, g = null, parts = [], rockets = [], raf = 0, left = 0, nextT = 0, last = 0;
+  const COLS = [[255, 200, 70], [255, 120, 60], [120, 220, 255], [150, 255, 160], [255, 255, 230], [255, 110, 190]];
+  function ensure() {
+    if (cv) return;
+    cv = document.createElement('canvas'); cv.className = 'fw'; document.body.append(cv); g = cv.getContext('2d');
+  }
+  function size() { const d = Math.min(2, window.devicePixelRatio || 1); cv.width = innerWidth * d; cv.height = innerHeight * d; g.setTransform(d, 0, 0, d, 0, 0); }
+  function launch() {
+    const u = Math.random(), x = innerWidth * (u < 0.5 ? 0.04 + u * 0.56 : 0.68 + (u - 0.5) * 0.56);   // pencerenin iki yanında, kazanç okunsun
+    rockets.push({ x, y:innerHeight + 10, vx:(Math.random() - 0.5) * 60, vy:-(innerHeight * (0.9 + Math.random() * 0.35)), ty:innerHeight * (0.12 + Math.random() * 0.33), c:COLS[Math.random() * COLS.length | 0] });
+    if (ac && !S.muted) noiseHit(ac.currentTime, 'highpass', 3000, 0.6, 0.03, 0.25);   // fişek yükselişi
+  }
+  function explode(R) {
+    const n = 70 + (Math.random() * 50 | 0), sp = 120 + Math.random() * 140, c2 = Math.random() < 0.4 ? COLS[Math.random() * COLS.length | 0] : R.c;
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * Math.PI * 2, v = sp * (0.35 + Math.random() * 0.65);
+      parts.push({ x:R.x, y:R.y, vx:Math.cos(a) * v, vy:Math.sin(a) * v, life:1.2 + Math.random() * 0.8, max:2, c:k % 3 ? R.c : c2, tw:Math.random() < 0.3 });
+    }
+    if (ac && !S.muted) { const t = ac.currentTime; noiseHit(t, 'lowpass', 600, 0.7, 0.35, 0.5); noiseHit(t + 0.02, 'bandpass', 2400, 1.2, 0.08, 0.9); }
+  }
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000 || 0.016); last = now;
+    if (left > 0 && now > nextT) { launch(); left--; nextT = now + 260 + Math.random() * 380; }
+    g.globalCompositeOperation = 'destination-out'; g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(0, 0, innerWidth, innerHeight);
+    g.globalCompositeOperation = 'lighter';
+    for (const R of rockets) {
+      R.vy += 420 * dt; R.x += R.vx * dt; R.y += R.vy * dt;
+      g.fillStyle = 'rgba(255,220,150,0.9)'; g.fillRect(R.x - 1.5, R.y - 1.5, 3, 3);
+      if (R.y <= R.ty || R.vy > -40) { R.done = true; explode(R); }
+    }
+    rockets = rockets.filter(R => !R.done);
+    for (const p of parts) {
+      p.vx *= 1 - 1.4 * dt; p.vy = p.vy * (1 - 1.4 * dt) + 90 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
+      const a = Math.max(0, Math.min(1, p.life)) * (p.tw && Math.random() < 0.4 ? 0.3 : 1);
+      g.fillStyle = `rgba(${p.c[0]},${p.c[1]},${p.c[2]},${a})`; g.beginPath(); g.arc(p.x, p.y, 1.8, 0, Math.PI * 2); g.fill();
+    }
+    parts = parts.filter(p => p.life > 0);
+    if (left > 0 || rockets.length || parts.length) raf = requestAnimationFrame(frame);
+    else { g.clearRect(0, 0, innerWidth, innerHeight); cv.hidden = true; raf = 0; }
+  }
+  function show(stars) {
+    if (!stars) return;
+    ensure(); size(); cv.hidden = false;
+    left += [0, 3, 6, 12][stars] || 3; nextT = 0;
+    if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); }
+  }
+  function stop() { left = 0; }
+  window.addEventListener('resize', () => { if (cv && !cv.hidden) size(); });
+  return { show, stop };
+})();
 $('jobStart').addEventListener('click', startJob);
 $('jobSubmit').addEventListener('click', submitJob);
 $('rpInspect').addEventListener('click', () => { $('report').hidden = true; log('Kırmızı bölgeler resim dışında fazla kesilmiş yerleri gösterir.'); });
@@ -5475,21 +5577,26 @@ const CR = (() => {
   function settle(run, r) {
     const o = run.order;
     let pay = 0, rep = 0, txt;
+    const tags = [];
     if (r.allOk) {
-      pay = Math.round(o.pay * ({ 3:1.15, 2:1 }[r.stars] || 0.85) * (run.time <= o.J.target ? 1.1 : 1) / 10) * 10; rep = Math.max(1, r.stars) + o.lv;
+      const onTime = run.time <= o.J.target;
+      pay = Math.round(o.pay * ({ 3:1.15, 2:1 }[r.stars] || 0.85) * (onTime ? 1.1 : 1) / 10) * 10; rep = Math.max(1, r.stars) + o.lv;
       const clean = chipsOnPart() === 0;
       if (clean) pay = Math.round(pay * 1.05 / 10) * 10;
+      if (r.stars === 3) tags.push(['Kusursuz parça +%15', 'ok']);
+      tags.push(onTime ? ['Zamanında teslim +%10', 'ok'] : ['Gecikti: zaman primi yok', 'warn']);
+      tags.push(clean ? ['Temiz teslim +%5', 'ok'] : ['Talaşlı teslim: hava tabancası +%5 kazandırırdı', 'warn']);
       txt = `Müşteri memnun: +${tl(pay)}${run.time <= o.J.target ? ' (zamanında teslim primi dahil)' : ''}${clean ? ' · temiz teslim +%5' : ' · parça talaşlı geldi, temizleseydiniz +%5'} · itibar +${rep}`;
-    } else if (r.stars >= 1) { pay = Math.round(o.pay * 0.04) * 10; txt = `Şartlı kabul, indirimli ödeme: +${tl(pay)} · itibar değişmedi`; }
-    else { rep = -2; txt = `Parça hurda: ödeme yok · itibar −2. Sipariş panoda duruyor, yeni ham parçayla tekrar deneyebilirsiniz.`; }
+    } else if (r.stars >= 1) { pay = Math.round(o.pay * 0.04) * 10; txt = `Şartlı kabul, indirimli ödeme: +${tl(pay)} · itibar değişmedi`; tags.push(['Şartlı kabul: ödemenin %40\'ı', 'warn']); }
+    else { rep = -2; txt = `Parça hurda: ödeme yok · itibar −2. Sipariş panoda duruyor, yeni ham parçayla tekrar deneyebilirsiniz.`; tags.push(['Hurda: sipariş panoda, tekrar deneyebilirsiniz', 'warn']); }
     const lv0 = level();
     st.money += pay; st.earned += pay; st.rep = Math.max(0, st.rep + rep);
     if (pay > 0) { st.done++; st.orders = st.orders.filter(q => q.id !== o.id); sel = null; fillBoard(); }
     save();
     if (pay) cash(pay);
-    if (level() > lv0) { txt += ` · YENİ SEVİYE: ${LEVELS[level()][1]}!`; log(`Atölye büyüdü: ${LEVELS[level()][1]}. Daha büyük ve daha iyi ödeyen işler gelecek.`, 'ok'); }
+    if (level() > lv0) { txt += ` · YENİ SEVİYE: ${LEVELS[level()][1]}!`; tags.unshift([`Yeni seviye: ${LEVELS[level()][1]}`, 'gold']); log(`Atölye büyüdü: ${LEVELS[level()][1]}. Daha büyük ve daha iyi ödeyen işler gelecek.`, 'ok'); }
     render();
-    return txt;
+    return { txt, pay, rep, repTotal:st.rep, money:st.money, tags };
   }
   function cash(v) {                                              // kasa sesi ve üst çubukta yanıp sönen tutar
     if (v > 0) { beep(1300, 0.08); setTimeout(() => beep(1750, 0.12), 110); }
