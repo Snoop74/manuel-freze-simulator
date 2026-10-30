@@ -20,3 +20,4 @@ import './15-takim-editoru.js';
 import './16-hazir-parca.js';
 import './17-kariyer.js';
 import './18-baslangic.js';
+import './19-atolye.js';

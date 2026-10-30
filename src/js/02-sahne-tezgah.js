@@ -504,6 +504,6 @@ function updateCoolant(dt, tip) {
 }
 
 
-export { M, MX, bStart, box, boxR, camera, canvas, controls, coolHandle, coolValve, cyl, hwheel, lever,
+export { FLOOR_Y, M, MX, addSurface, bStart, box, boxR, camera, canvas, controls, coolHandle, coolValve, cyl, hwheel, lever,
   motorSwitch, mush, quill, rbox, renderer, scene, smat, spLampMat, spindleG, stage, startBtnMat, toolRot,
   updateCoolant, zFine, zLever };
