@@ -2,6 +2,7 @@
 // pencereler, tavan vinci, elektrik panosu, tabelalar ve duvar saati. Yalnızca görünüm; çarpışma ve oyun mantığına girmez.
 import { TAU } from './00-temel.js';
 import { FLOOR_Y, M, MX, addSurface, cyl, rbox, renderer, scene, smat } from './02-sahne-tezgah.js';
+import { table } from './03-tabla-parca.js';
 
 const F = FLOOR_Y;
 const WALL_Z = -1600, WALL_X = -3360;   // arka duvarın ve sol duvarın iç yüzü
@@ -266,3 +267,78 @@ setInterval(clock.redraw, 30000);
   lab.material.envMapIntensity = 0.3;
   add(lab, WALL_X + 100, F + 620, -1200);
 }
+
+/* ---- Tezgâhın üstündeki plakalar, etiketler, yağ lekeleri ve yağlama nipelleri ----
+   Çıkartma (decal): yüzeyin 0.3 mm önünde tuval dokulu düzlem; polygonOffset ile yüzeye gömülmez, saydam kenarlı olabilir. */
+function decal(w, h, px, draw, { metal = 0, rough = 0.6, transparent = false } = {}) {
+  const o = canvasPlane(w, h, px, draw);
+  Object.assign(o.m.material, { metalness:metal, roughness:rough, transparent, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2 });
+  o.m.material.envMapIntensity = metal ? 0.8 : 0.3;
+  o.m.castShadow = false; return o.m;
+}
+const place = (m, x, y, z, ry = 0, rx = 0, parent = scene) => { m.position.set(x, y, z); m.rotation.set(rx, ry, 0); parent.add(m); return m; };
+// fırçalanmış alüminyum zemin ve vida delikleri (plakalar için ortak)
+function plate(g, w, h) {
+  const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#c9ccc9'); gr.addColorStop(0.5, '#e4e6e2'); gr.addColorStop(1, '#b8bbb8');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  g.globalAlpha = 0.08; g.fillStyle = '#000';
+  for (let y = 0; y < h; y += 2) g.fillRect(0, y, w, Math.random() < 0.5 ? 1 : 0);   // fırça izleri
+  g.globalAlpha = 1; g.strokeStyle = '#33383a'; g.lineWidth = Math.max(2, h * 0.025); g.strokeRect(g.lineWidth / 2, g.lineWidth / 2, w - g.lineWidth, h - g.lineWidth);
+  g.fillStyle = '#6d7275';
+  for (const [x, y] of [[0.05, 0.12], [0.95, 0.12], [0.05, 0.88], [0.95, 0.88]]) { g.beginPath(); g.arc(w * x, h * y, h * 0.045, 0, TAU); g.fill(); }
+}
+// SNOOP3000 isim plakası: kayış muhafazasının önü (z = 72)
+place(decal(150, 52, 512, (g, w, h) => {
+  plate(g, w, h);
+  g.fillStyle = '#b3261e'; g.fillRect(w * 0.08, h * 0.2, w * 0.06, h * 0.6);
+  g.fillStyle = '#1d2124'; g.textAlign = 'left'; g.textBaseline = 'middle';
+  fitText(g, 'SNOOP3000', w * 0.17, h * 0.44, w * 0.76, Math.round(h * 0.42), 700);
+  g.fillStyle = '#4a4f50'; fitText(g, 'KONSOLLU DİK FREZE · MADE IN TÜRKİYE', w * 0.17, h * 0.76, w * 0.76, Math.round(h * 0.13), 600);
+}, { metal:0.7, rough:0.35 }), 0, 515, 72.3);
+// devir tablosu: kafanın sağ yanı (x = 112)
+place(decal(120, 80, 384, (g, w, h) => {
+  plate(g, w, h);
+  g.fillStyle = '#1d2124'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  fitText(g, 'DEVİR · dev/dk', w / 2, h * 0.18, w * 0.8, Math.round(h * 0.13), 700);
+  const rows = [['YÜKSEK', '660 – 4200'], ['DÜŞÜK', '100 – 660']];
+  rows.forEach(([a, b], k) => { const y = h * (0.42 + k * 0.22); g.textAlign = 'left'; fitText(g, a, w * 0.1, y, w * 0.35, Math.round(h * 0.11), 600); g.textAlign = 'right'; fitText(g, b, w * 0.9, y, w * 0.45, Math.round(h * 0.11), 600); });
+  g.fillStyle = '#b3261e'; g.textAlign = 'center'; fitText(g, 'Vites değiştirmeden önce mili durdurun', w / 2, h * 0.86, w * 0.84, Math.round(h * 0.07), 600);
+}, { metal:0.6, rough:0.4 }), 112.4, 515, -45, Math.PI / 2);
+// dönen takım uyarısı: kovan gövdesinin önü (z = 62), sağda
+place(decal(48, 42, 192, (g, w, h) => {
+  g.fillStyle = '#f0b429'; g.beginPath(); g.moveTo(w / 2, h * 0.04); g.lineTo(w * 0.97, h * 0.66); g.lineTo(w * 0.03, h * 0.66); g.closePath(); g.fill();
+  g.strokeStyle = '#16191b'; g.lineWidth = w * 0.05; g.stroke();
+  g.fillStyle = '#16191b'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `700 ${Math.round(h * 0.4)}px ${FONT}`; g.fillText('!', w / 2, h * 0.43);
+  g.fillStyle = '#f2f0e8'; g.fillRect(0, h * 0.7, w, h * 0.3);
+  g.fillStyle = '#16191b'; fitText(g, 'DÖNEN TAKIM', w / 2, h * 0.85, w * 0.92, Math.round(h * 0.15), 700);
+}, { transparent:true }), 58, 395, 62.3);
+// seri plakası: kolonun sağ yanı (x = 150)
+place(decal(130, 90, 384, (g, w, h) => {
+  plate(g, w, h);
+  g.fillStyle = '#1d2124'; g.textAlign = 'left'; g.textBaseline = 'middle';
+  fitText(g, 'SNOOP3000 KD', w * 0.1, h * 0.17, w * 0.8, Math.round(h * 0.13), 700);
+  const L = [['Seri No', '2026-0074'], ['Motor', '2.2 kW · 3 HP'], ['Gerilim', '400 V · 50 Hz'], ['Devir', '100 – 4200 dev/dk'], ['İmal yılı', '2026']];
+  L.forEach(([a, b], k) => { const y = h * (0.33 + k * 0.13); g.fillStyle = '#4a4f50'; fitText(g, a, w * 0.1, y, w * 0.3, Math.round(h * 0.085), 500); g.fillStyle = '#1d2124'; fitText(g, b, w * 0.42, y, w * 0.5, Math.round(h * 0.085), 600); });
+}, { metal:0.6, rough:0.4 }), 150.4, 340, -470, Math.PI / 2);   // kumanda kutusunun üstünde
+// yağ lekeleri: tezgâhın çevresinde zeminde (koyu, kenarları saydam, yumuşak)
+function stain(g, w, h, a = 0.55) {
+  g.clearRect(0, 0, w, h);
+  for (let k = 0; k < 7; k++) {
+    const x = w * (0.3 + Math.random() * 0.4), y = h * (0.3 + Math.random() * 0.4), r = w * (0.12 + Math.random() * 0.2);
+    const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(12,10,6,${a})`); gr.addColorStop(0.6, `rgba(16,13,8,${a * 0.5})`); gr.addColorStop(1, 'rgba(16,13,8,0)');
+    g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, r, r * (0.5 + Math.random() * 0.5), Math.random() * TAU, 0, TAU); g.fill();
+  }
+}
+for (const [x, z, s] of [[-180, 250, 520], [260, 180, 380], [-420, -150, 300], [120, -620, 340], [520, 420, 260]]) {
+  const m = decal(s, s, 256, (g, w, h) => stain(g, w, h, 0.5), { transparent:true, rough:0.25 });
+  m.material.depthWrite = false; m.renderOrder = 1;
+  place(m, x, F + 0.8, z, Math.random() * TAU, -Math.PI / 2);
+}
+// tablada yağ izi ve kızakların önünde kırmızı yağlama nipelleri (tablayla birlikte hareket eder)
+for (const [x, z, s] of [[-300, -40, 120], [470, 20, 90]]) {
+  const m = decal(s, s * 0.6, 128, (g, w, h) => stain(g, w, h, 0.35), { transparent:true, rough:0.2 });
+  m.material.depthWrite = false; m.renderOrder = 1;
+  place(m, x, -59.6, z, 0, -Math.PI / 2, table);
+}
+const nip = smat(0xb3261e, 0.4, 0.3, 0.4);
+for (const x of [-360, 520]) { const n = cyl(4, 4, 8, nip, 10); n.rotation.x = Math.PI / 2; n.position.set(x, -75, 58); table.add(n); }

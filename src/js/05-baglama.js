@@ -1,7 +1,7 @@
 // ── Bağlama: divizör gövdesi, mengene, pabuç, paraleller, çarpışma kutuları, parça yüzeyinin çizimi
 import { C, CUT, H, INSP, NX, NY, PD, PH, PW, SURF, allocGrid, app, clamp, log, mat } from './00-temel.js';
 import { M, MX, box, boxR, cyl, hwheel, rbox, smat } from './02-sahne-tezgah.js';
-import { ROT, rotG, rotIn, table, viseBase } from './03-tabla-parca.js';
+import { ROT, VISE_PAINT, rotG, rotIn, table, viseBase } from './03-tabla-parca.js';
 import { DIVY, DIVZ, VX } from './04-voksel.js';
 
 /* ---- Parça mesh'i: ham parça ölçüsü değişince (buildStock) yükseklik haritası, mesh ve mengene yeniden kurulur ---- */
@@ -193,10 +193,18 @@ function buildVise() {
     return;
   }
   jawTop = jawOverride ?? clamp(PH - 5, 4, 22);
-  rbox(-35, 185, -35, jawTop, -PD - 25, -PD, 2, M.ground, viseG);           // arka çene (y PD..PD+25)
-  rbox(-35, 185, -35, jawTop, 0, 25, 2, M.ground, viseG);                    // ön (hareketli) çene (y -25..0)
-  const ph = Math.min(20, jawTop - 2);
-  for (const [z0, z1] of [[-PD - 0.4, -PD + 0.1], [-0.1, 0.4]]) boxR(-30, 180, Math.max(-20, -ph), ph, z0, z1, MX.chrome, viseG).castShadow = false;   // çene plakaları
+  // çeneler: döküm ağız (y -25..0 önde, PD..PD+25 arkada) ve arkalarında daha alçak ağız gövdeleri (y -60..-25, PD+25..PD+50)
+  const jb = Math.max(-30, jawTop - 3);
+  rbox(-35, 185, -35, jawTop, -PD - 25, -PD - 6, 2, VISE_PAINT, viseG);           // arka (sabit) ağız
+  rbox(-35, 185, -35, jb, -PD - 50, -PD - 24, 3, VISE_PAINT, viseG);
+  rbox(-35, 185, -35, jawTop, 6, 25, 2, VISE_PAINT, viseG);                      // ön (hareketli) ağız
+  rbox(-35, 185, -35, jb, 24, 60, 3, VISE_PAINT, viseG);
+  // taşlanmış çene plakaları (6 mm) ve havşa başlı iki vida; plakanın parçaya bakan yüzü y = 0 ve y = PD
+  const py0 = Math.max(-33, jawTop - 32), pym = (py0 + jawTop) / 2;
+  for (const [z0, z1, fz] of [[-PD - 6, -PD, -PD + 0.15], [0, 6, -0.15]]) {
+    rbox(-30, 180, py0, jawTop - 0.3, z0, z1, 0.6, M.ground, viseG);
+    for (const x of [-14, 164]) { const sc = cyl(4.5, 4.5, 0.4, M.black, 16); sc.rotation.x = Math.PI / 2; sc.position.set(x, pym, fz); viseG.add(sc); }
+  }
   for (const [a, b] of parBands()) rbox(-5, 155, -35, -sacT(), -b, -a, 1, M.steel, viseG);   // paraleller
   if (PAR.sac) rbox(0, PW, -6, -0.05, -PD, 0, 0.5, MDF, viseG);             // kurban plaka
   if (stockReady) syncFixtures();
@@ -222,7 +230,10 @@ function rebuildIndex() {
 function syncFixtures() {
   app.FIXTURES.length = 0;
   if (FIX === 'vise') app.FIXTURES.push({ n:'mengene ön çenesine', b:[-35, 185, -25, 0], top:jawTop }, { n:'mengene arka çenesine', b:[-35, 185, PD, PD + 25], top:jawTop },
-    ...parBands().map(([a, b]) => ({ n:'paralel altlığa', b:[-10, 160, a, b], top:-sacT() })), { n:'mengene gövdesine', b:[-40, 190, -60, 160], top:-35 });
+    ...parBands().map(([a, b]) => ({ n:'paralel altlığa', b:[-10, 160, a, b], top:-sacT() })), { n:'mengene ağız gövdesine', b:[-35, 185, -60, -25], top:Math.max(-30, jawTop - 3) },
+    { n:'mengene ağız gövdesine', b:[-35, 185, PD + 25, PD + 50], top:Math.max(-30, jawTop - 3) },
+    { n:'mengene vida yatağına', b:[25, 125, -95, -75], top:-18 }, { n:'mengene koluna', b:[-5, 155, -125, -95], top:-24 },
+    { n:'mengene gövdesine', b:[-40, 190, -95, 200], top:-35 });
   else if (FIX === 'clamp') app.FIXTURES.push(...straps, ...parBands().map(([a, b]) => ({ n:'altlığa', b:[4, PW - 4, a, b], top:-sacT() })));
   else if (FIX === 'div') app.FIXTURES.push({ n:'divizör aynasına', b:[-46, 0.5, DIVY - 52, DIVY + 52], top:DIVZ + 52 }, { n:'divizör gövdesine', b:[-152, -46, -57, 57], top:DIVZ + 47 });
   else if (FIX === 'rot') app.FIXTURES.push(...straps.map(f => Object.assign({ rot:true }, f)), ...(PAR.sac ? [] : parBands().map(([a, b]) => ({ n:'paralel altlığa', b:[a, b, 4, PD - 4], top:0, rot:true }))),

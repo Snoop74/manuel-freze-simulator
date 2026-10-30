@@ -196,7 +196,9 @@ function groundAt(x, y) {
   if (FIX === 'vac') { if (x >= -26 && x <= 286 && y >= -21 && y <= 161) return 0; }
   else if (FIX === 'vise') {
     if (x >= -35 && x <= 185 && ((y >= -25 && y < 0) || (y > PD && y <= PD + 25))) return jawTop;
-    if (x >= -40 && x <= 190 && y >= -60 && y <= 160) return -35;
+    if (x >= -35 && x <= 185 && ((y >= -60 && y < -25) || (y > PD + 25 && y <= PD + 50))) return Math.max(-30, jawTop - 3);
+    if (x >= 25 && x <= 125 && y >= -95 && y < -75) return -18;
+    if (x >= -40 && x <= 190 && y >= -95 && y <= 200) return -35;
   }
   if (x >= -400 && x <= 550 && y >= -60 && y <= 160) return -60;
   return -9999;
