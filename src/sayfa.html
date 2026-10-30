@@ -1,0 +1,420 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- Üretilmiş dosya: kaynak src/ altında. Değişikliği orada yapıp "node build.mjs" çalıştırın; bu dosya her derlemede yeniden yazılır. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Manuel Freze Tezgâhı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=Share+Tech+Mono&display=swap">
+<style>
+/*@CSS@*/
+</style>
+
+<div class="app">
+  <header class="topbar" id="topbar">
+    <div class="tb-brand" id="tbBrand"><span class="tb-logo" data-ic="logo"></span><div><b>SNOOP3000</b><small id="tbMat"></small></div></div>
+    <nav class="tb-icons" aria-label="Paneller ve aletler">
+      <div class="tb-grp" data-g="Makine"><button class="tbi" data-p="console" data-ic="console" data-tip="Kumanda paneli" aria-label="Kumanda paneli"></button><button class="tbi" data-p="dro" data-ic="dro" data-tip="DRO" aria-label="DRO"></button><button class="tbi" data-p="wheels" data-ic="wheels" data-tip="El çarkları" aria-label="El çarkları"></button><button class="tbi" data-p="jog" data-ic="jog" data-tip="Hareket" aria-label="Hareket"></button><button class="tbi" data-p="spindle" data-ic="spindle" data-tip="İş mili" aria-label="İş mili"></button></div>
+      <span class="tb-sep"></span>
+      <div class="tb-grp" data-g="İş"><button class="tbi" data-p="tools" data-ic="tools" data-tip="Takımlar" aria-label="Takımlar"></button><button class="tbi" data-p="part" data-ic="part" data-tip="Parça ve bağlama" aria-label="Parça ve bağlama"></button><button class="tbi" data-p="jobs" data-ic="jobs" data-tip="İş emirleri ve kariyer" aria-label="İş emirleri ve kariyer"></button><button class="tbi act" data-act="drawing" id="tbDraw" data-ic="drawing" data-tip="Teknik resim" aria-label="Teknik resim"></button></div>
+      <span class="tb-sep"></span>
+      <div class="tb-grp" data-g="Aletler"><button class="tbi act" data-act="air" id="tbAir" data-ic="air" data-tip="Hava tabancası (B)" aria-label="Hava tabancası (B)"></button><button class="tbi act" data-act="fd" id="tbFd" data-ic="fd" data-tip="Fareyle sür (G)" aria-label="Fareyle sür (G)"></button><button class="tbi act" data-act="bench" data-ic="bench" data-tip="Parça masası: ölç, kesit al" aria-label="Parça masası: ölç, kesit al"></button><button class="tbi act" data-act="editor" data-ic="editor" data-tip="Takım editörü" aria-label="Takım editörü"></button><button class="tbi act" data-act="shop" id="tbShop" hidden data-ic="shop" data-tip="Dükkân" aria-label="Dükkân"></button><button class="tbi act" data-act="blanks" data-ic="blank" data-tip="Hazır parça galerisi (geçici)" aria-label="Hazır parça galerisi"></button></div>
+      <span class="tb-sep"></span>
+      <div class="tb-grp" data-g="Bilgi"><button class="tbi" data-p="hud" data-ic="hud" data-tip="Durum" aria-label="Durum"></button><button class="tbi" data-p="log" data-ic="log" data-tip="Olay kaydı" aria-label="Olay kaydı"></button></div>
+      <span class="tb-sep"></span>
+      <div class="tb-grp"><button class="tbi" data-menu="layout" data-ic="layout" data-tip="Panel düzeni" aria-label="Panel düzeni"></button><button class="tbi" data-menu="camera" data-ic="camera" data-tip="Kamera" aria-label="Kamera"></button></div>
+    </nav>
+    <span class="tb-flex"></span>
+    <span class="tb-money" id="tbMoney" title="Kariyer kasası: dükkânı aç" hidden></span>
+    <button class="tbi act" data-act="sound" id="tbMute" data-ic="sound" data-tip="Ses" aria-label="Ses"></button><button class="tbi" data-menu="help" data-ic="help" data-tip="Yardım ve kısayollar" aria-label="Yardım ve kısayollar"></button>
+    <button class="estop" id="estopBtn" title="Mili ve tüm hareketleri durdur (Esc)">ACİL STOP</button>
+    <div class="tb-menu" id="mnLayout" hidden><button data-l="kumanda">Kumanda <small>konsol, takımlar, durum</small></button><button data-l="temel">Temel <small>klasik paneller</small></button><button data-l="tam">Tam <small>hepsi</small></button><button data-l="is">İş emri <small>iş, DRO, takımlar</small></button><button data-l="kariyer">Kariyer <small>sipariş, konsol, takımlar</small></button><hr><button data-l="reset">Panelleri sıfırla</button></div>
+    <div class="tb-menu" id="mnCamera" hidden><button data-v="vOp">Operatör</button><button data-v="vNear">Yakın</button><button data-v="vTop">Üstten</button><button data-v="vFront">Önden</button><small class="tb-hint">Sağ tuş döndür, tekerlek yakınlaştır</small></div>
+    <div class="tb-menu tb-help" id="mnHelp" hidden>
+      <b>Nasıl başlarım</b>
+      <ol><li>Takımlar panelinden takım seç (T3 Ø10 takılı).</li><li>Parçaya yaklaş: ok tuşları X/Y, W/S ya da PgUp/PgDn Z; Shift hızlı.</li><li>Üst yüzeye değince DRO'da Z0'a bas.</li><li>Mili çalıştır (Boşluk), önerilen devir ve ilerlemeyi uygula, paso al.</li><li>İş emirlerinden bir iş seç; teslimde parça ölçülür.</li></ol>
+      <hr><button data-act="keys">Tüm kısayollar</button>
+    </div>
+  </header>
+  <section class="stage" id="stage">
+    <canvas id="c" aria-label="Freze tezgâhının 3B görünümü"></canvas>
+    <div class="hud" aria-live="polite" data-panel="hud">
+      <div class="row" id="hJobRow" hidden><span class="k">İş</span><span class="v" id="hJob">—</span></div>
+      <div class="row" id="hTimeRow" hidden><span class="k">Makine süresi</span><span class="v" id="hTime">—</span></div>
+      <div class="row"><span class="k">Takım</span><span class="v" id="hTool">—</span></div>
+      <div class="row"><span class="k">Mil</span><span class="v" id="hSpin">DURUYOR</span></div>
+      <div class="row"><span class="k">İlerleme</span><span class="v" id="hFeed">—</span></div>
+      <div class="row"><span class="k">Malzeme</span><span class="v" id="hMat">—</span></div>
+      <div class="row"><span class="k">Kesme hızı Vc</span><span class="v" id="hVc">—</span></div>
+      <div class="row"><span class="k">Mil gücü</span><span class="v" id="hPow">—</span></div>
+      <div class="row"><span class="k">Parça sıcaklığı</span><span class="v" id="hTemp">—</span></div>
+      <div class="row"><span class="k">Takım aşınması</span><span class="v" id="hWear">—</span></div>
+      <div class="row"><span class="k">Son yüzey Ra</span><span class="v" id="hRa">—</span></div>
+      <div class="row"><span class="k">Talaş</span><span class="v" id="hChip">—</span></div>
+      <div class="row"><span class="k">Yüzeye mesafe</span><span class="v" id="hGap">—</span></div>
+      <div class="row"><span class="k" id="hLoadK">Talaş kalınlığı</span><span class="v" id="hLoad">—</span></div>
+      <div class="row"><span class="k">Takım yükü</span><span class="v" id="hStress">kesmiyor</span></div>
+      <div class="meter"><i id="hMeter"></i></div>
+      <div class="row"><span class="k">Takım zorlanması</span><span class="v" id="hDmg">0%</span></div>
+      <div class="meter dmg"><i id="hDmgBar"></i></div>
+      <div class="paper" id="hPaper" hidden>Kağıt sıkışıyor: takım yüzeyde, Z sıfırlanabilir</div>
+    </div>
+    <div class="views">
+      <button id="vOp">Operatör</button>
+      <button id="vNear">Yakın</button>
+      <button id="vTop">Üstten</button>
+      <button id="vFront">Önden</button>
+      <button id="vDraw" hidden>Resim</button>
+    </div>
+    <div class="drawing" id="drawing" data-panel="drawing" hidden>
+      <div class="dw-head"><span id="dwTitle">TEKNİK RESİM</span><button id="dwClose" aria-label="Resmi gizle">gizle</button></div>
+      <div id="dwSvg"></div>
+      <div class="dw-tab"><table id="dwTable"></table></div>
+      <div class="dw-note">Ölçüler mm. Sıfır noktası: parçanın sol-ön köşesi. Sarı çizgiler parçadaki markalama izleridir.</div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <div class="bench" id="shop" hidden>
+      <div class="bench-box shop-box" role="dialog" aria-label="Dükkân">
+        <div class="bench-head"><b>DÜKKÂN</b><span id="shMoney"></span><button class="btn" id="shClose">Kapat</button></div>
+        <div class="shop-body">
+          <div class="dro-note" id="shNote"></div>
+          <div class="sub">Takımlar</div>
+          <div class="shop" id="shopTools"></div>
+          <div class="sub">Ekipman</div>
+          <div class="shop" id="shopEq"></div>
+        </div>
+      </div>
+    </div>
+    <div class="bench" id="tedit" hidden>
+      <div class="bench-box" role="dialog" aria-label="Takım editörü">
+        <div class="bench-head"><b>TAKIM EDİTÖRÜ</b><span id="teMode"></span><button class="btn" id="teClose">Kapat</button></div>
+        <div class="bench-body">
+          <div class="bench-view"><canvas id="teC" aria-label="Takımın 3B önizlemesi"></canvas><div class="bench-hint" id="teHint"></div></div>
+          <div class="bench-side te-side">
+            <label class="te-base">BAŞLANGIÇ<select id="teBase"></select></label>
+            <div class="sub">Tip</div>
+            <div class="te-seg" id="teKind"><button class="btn" data-tk="end">Parmak</button><button class="btn" data-tk="ball">Küresel</button><button class="btn" data-tk="chamfer">Pah</button><button class="btn" data-tk="drill">Matkap</button></div>
+            <div class="sub">Ölçüler</div>
+            <div class="sec-row"><span>Çap</span><input type="range" id="teD"><output id="teDv"></output></div>
+            <div class="sec-row"><span>Ağız sayısı</span><input type="range" id="teZ"><output id="teZv"></output></div>
+            <div class="sec-row"><span>Ağız boyu</span><input type="range" id="teFl"><output id="teFlv"></output></div>
+            <div class="sec-row"><span>Çıkıntı</span><input type="range" id="teSt"><output id="teStv"></output></div>
+            <div class="sec-row"><span>Helis açısı</span><input type="range" id="teHx"><output id="teHxv"></output></div>
+            <div class="sec-row"><span>Köşe radyüsü</span><input type="range" id="teCr"><output id="teCrv"></output></div>
+            <div class="sec-row" id="teAngRow"><span>Uç açısı</span><div class="te-seg" id="teAng"></div><output></output></div>
+            <div class="sub">Malzeme ve kaplama</div>
+            <div class="te-seg" id="teTm"><button class="btn" data-tm="hss">HSS</button><button class="btn" data-tm="carbide">Karbür</button></div>
+            <div class="te-seg" id="teCoat"><button class="btn" data-tc="none">Yok</button><button class="btn" data-tc="tin">TiN</button><button class="btn" data-tc="altin">AlTiN</button><button class="btn" data-tc="dlc">DLC</button></div>
+            <label class="te-base">AD<input id="teName" maxlength="24"></label>
+            <div class="sub">Tezgâhta ne değişir</div>
+            <ul id="teStats"></ul>
+            <div class="te-act"><button class="btn start" id="teMount">Kaydet ve tak</button><button class="btn" id="teSave">Dolaba ekle</button><button class="btn" id="teDel">Sil</button></div>
+            <div class="dro-note">Takımlar bu tarayıcıda saklanır. Sürükle döndür, tekerlek yakınlaştır.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bench" id="bench" hidden>
+      <div class="bench-box" role="dialog" aria-label="Parça masası">
+        <div class="bench-head"><b>PARÇA MASASI</b><span id="bnInfo"></span><button class="btn" id="bnClose">Kapat</button></div>
+        <div class="bench-body">
+          <div class="bench-view" id="bnView"><canvas id="bnC" aria-label="Parçanın 3B görünümü"></canvas><div class="bench-hint" id="bnHint"></div></div>
+          <div class="bench-side">
+            <div class="sub">Ölçü aleti</div>
+            <div class="tools"><button class="btn on" data-bt="cal">Kumpas</button><button class="btn" data-bt="h">Yükseklik</button><button class="btn" data-bt="hole">Delik / cep</button></div>
+            <div class="sub">Kesit</div>
+            <div class="sec-row"><span>X</span><input type="range" id="bnSecX" min="0" max="150" step="0.5" value="150"><output id="bnSecXv">kapalı</output></div>
+            <div class="sec-row"><span>Y</span><input type="range" id="bnSecY" min="0" max="100" step="0.5" value="100"><output id="bnSecYv">kapalı</output></div>
+            <div class="sub">Ölçümler</div>
+            <ul id="bnList"></ul>
+            <button class="btn" id="bnClear">Ölçümleri temizle</button>
+            <div class="dro-note">Sol tık ölç, sağ tık sürükle döndür, tekerlek yakınlaştır. Kesit kaydırıcıları parçayı o düzlemden keser; iç cepler ve delikler görünür.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="report" id="report" hidden>
+      <div class="box" role="dialog" aria-labelledby="rpTitle">
+        <div class="rp-head"><span id="rpJob">İŞ 1</span><h2 id="rpTitle">Muayene raporu</h2></div>
+        <div class="stars" id="rpStars"></div>
+        <div class="rp-hero" id="rpHero"></div>
+        <div class="rp-tags" id="rpTags"></div>
+        <p class="rp-sum" id="rpSum"></p>
+        <button class="rp-more" id="rpMore" aria-expanded="false">Detayları gör <span>▾</span></button>
+        <div class="rp-detail" id="rpDetail" hidden>
+          <div class="rp-score"><b id="rpTotal">0</b><span>/ 100 puan</span><em id="rpVerdict"></em></div>
+          <div class="rp-bars" id="rpBars"></div>
+          <div class="rp-tab"><table id="rpTable"></table></div>
+        </div>
+        <div class="rp-btns">
+          <button class="btn" id="rpClose">Kapat</button>
+          <button class="btn" id="rpInspect">Parçayı incele</button>
+          <button class="btn" id="rpRetry">Tekrar dene</button>
+          <button class="btn start" id="rpNext">Sonraki iş</button>
+        </div>
+      </div>
+    </div>
+    <div class="alarm" id="alarm" hidden>
+      <div class="box" role="alert" aria-labelledby="alarmTitle">
+        <h2 id="alarmTitle">ALARM</h2>
+        <p id="alarmMsg"></p>
+        <small id="alarmHint">Mil durduruldu ve takım kırıldı. Alarmı sıfırlayın, takımı yukarı çekin ve takım dolabından yeni bir takım takın.</small>
+        <div class="row2"><button class="btn big stop" id="alarmReset">Alarmı sıfırla</button><button class="btn big start" id="alarmFix">Sıfırla ve yeni takım tak</button></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="pendant">
+    <div class="brand"><h1>Manuel Freze</h1><span id="brandMat">Al 6061 · 150×100×40</span></div>
+
+    <div class="sec" data-panel="console">
+      <h2><span>Kumanda paneli</span></h2>
+      <div class="cp">
+        <div class="cp-top">
+          <div class="cp-left">
+            <div class="cp-label"><b>SNOOP3000</b> · MANUEL FREZE KUMANDASI</div>
+            <div class="cp-screen" id="cpScreen" aria-live="polite">
+              <div class="lcd-head"><span id="lcdMode">DRO · MUTLAK</span><span id="lcdState">HAZIR</span></div>
+              <div class="lcd-page" id="lcdP1">
+                <div class="lcd-ax" data-ax="x"><b>X</b><span id="lcdX">+0.000</span></div>
+                <div class="lcd-ax" data-ax="y"><b>Y</b><span id="lcdY">+0.000</span></div>
+                <div class="lcd-ax" data-ax="z"><b>Z</b><span id="lcdZ">+0.000</span></div>
+                <div class="lcd-info"><span id="lcdS">S 0</span><span id="lcdF">F 0</span><span id="lcdT">T3</span></div>
+              </div>
+              <div class="lcd-page" id="lcdP2" hidden>
+                <div class="lcd-row"><span>YÜK</span><span class="lcd-bar"><i id="lcdLoad"></i></span><span id="lcdLoadV">—</span></div>
+                <div class="lcd-row"><span>GÜÇ</span><span class="lcd-bar"><i id="lcdPow"></i></span><span id="lcdPowV">—</span></div>
+                <div class="lcd-row"><span>MALZ.</span><span id="lcdMat" class="lcd-wide">—</span></div>
+                <div class="lcd-row"><span>SICAK.</span><span id="lcdTemp" class="lcd-wide">—</span></div>
+                <div class="lcd-row"><span>AŞINMA</span><span id="lcdWear" class="lcd-wide">—</span></div>
+                <div class="lcd-row"><span>Ra</span><span id="lcdRa" class="lcd-wide">—</span></div>
+                <div class="lcd-row"><span>TALAŞ</span><span id="lcdChip" class="lcd-wide">—</span></div>
+              </div>
+              <div class="lcd-input"><span id="lcdSel">EKSEN SEÇ</span><span id="lcdBuf"></span></div>
+              <div class="lcd-soft"><span>X0</span><span>Y0</span><span>Z0</span><span>1/2</span><span id="lcdPgK">DURUM</span></div>
+            </div>
+            <div class="cp-softkeys" id="cpSoft"><button data-sk="0" aria-label="X sıfırla"></button><button data-sk="1" aria-label="Y sıfırla"></button><button data-sk="2" aria-label="Z sıfırla"></button><button data-sk="3" aria-label="Seçili ekseni yarıya böl"></button><button data-sk="4" aria-label="Ekran sayfası"></button></div>
+          </div>
+          <div class="cp-keypad" id="cpKeys">
+            <button class="key ax" data-k="x">X</button><button class="key ax" data-k="y">Y</button><button class="key ax" data-k="z">Z</button>
+            <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+            <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+            <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+            <button class="key" data-k="±">±</button><button class="key" data-k="0">0</button><button class="key" data-k=".">.</button>
+            <button class="key amber" data-k="clr">CLR</button><button class="key go" data-k="git" title="Yazılan değerlere git">GİT</button><button class="key ent" data-k="ent" title="Seçili eksene değeri ata">ENT</button>
+          </div>
+        </div>
+        <div class="cp-bottom">
+          <div class="cp-group">
+            <div class="cp-cap">MİL</div>
+            <div class="cp-btns">
+              <div class="cp-b"><button class="rb green" id="cpStart" aria-label="Mil start"></button><span>START</span></div>
+              <div class="cp-b"><button class="rb red" id="cpStop" aria-label="Mil stop"></button><span>STOP</span></div>
+              <div class="cp-b"><button class="toggle" id="cpDir" aria-label="Mil yönü"><i></i></button><span id="cpDirL">İLERİ</span></div>
+              <div class="cp-b"><button class="rb blue" id="cpCool" aria-label="Soğutma sıvısı"></button><span>SOĞUTMA</span></div>
+            </div>
+          </div>
+          <div class="cp-group knobs">
+            <div class="cp-k"><div class="knob" id="kRpm" tabindex="0" aria-label="Devir topuzu"></div><span>DEVİR <b id="kRpmV"></b></span></div>
+            <div class="cp-k"><div class="knob" id="kFeed" tabindex="0" aria-label="İlerleme topuzu"></div><span>İLERLEME <b id="kFeedV"></b></span></div>
+          </div>
+          <div class="cp-group mpg-g">
+            <div class="cp-k"><div class="knob small" id="kAxis" tabindex="0" aria-label="El çarkı ekseni"></div><span>EKSEN</span></div>
+            <div class="cp-k"><div class="knob small" id="kMul" tabindex="0" aria-label="El çarkı adımı"></div><span>ADIM</span></div>
+            <div class="cp-k"><div class="mpg" id="cpMpg" aria-label="El çarkı (MPG)"><i></i></div><span>EL ÇARKI <b id="cpMpgL">X ×1</b></span></div>
+          </div>
+          <div class="cp-group">
+            <div class="cp-cap">HAREKET</div>
+            <div class="cp-jog" id="cpJog">
+              <span></span><button data-j="y1">Y+</button><span></span><button data-j="z1">Z+</button>
+              <button data-j="x-1">X−</button><button class="rapid" id="cpRapid">HIZLI</button><button data-j="x1">X+</button><span></span>
+              <span></span><button data-j="y-1">Y−</button><span></span><button data-j="z-1">Z−</button>
+            </div>
+          </div>
+          <div class="cp-group last">
+            <div class="cp-lamps"><span class="lamp2 on g" title="Güç"></span><span class="lamp2 a" id="lpSpin" title="Mil"></span><span class="lamp2 r" id="lpAlarm" title="Alarm"></span></div>
+            <div class="cp-lampl"><span>GÜÇ</span><span>MİL</span><span>ALARM</span></div>
+            <button class="cp-estop" id="cpEstop" aria-label="Acil stop"><span>ACİL STOP</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec" data-panel="jobs">
+      <h2><span>İş emirleri</span><span id="starTotal">0 / 15 yıldız</span></h2>
+      <div class="mode-sw" id="modeSw"><button class="btn on" data-mode="free">Serbest atölye</button><button class="btn" data-mode="career">Kariyer</button></div>
+      <div class="career" id="career" hidden>
+        <div class="cr-head"><div><span class="k">Kasa</span><b id="crMoney"></b></div><div><span class="k">İtibar</span><b id="crRep"></b><small id="crLevel"></small></div><div><span class="k">Teslim</span><b id="crDone"></b></div></div>
+        <div class="sub">Sipariş panosu</div>
+        <div class="jobs orders" id="orderList"></div>
+        <div class="cr-foot"><button class="btn start" id="crShop">Dükkân</button><button class="btn" id="crRefresh">Panoyu yenile</button><button class="btn" id="crReset">Kariyeri sıfırla</button></div>
+      </div>
+      <div class="jobs" id="jobList"></div>
+      <div class="job-card" id="jobCard">
+        <div class="jc-head"><span class="jc-no" id="jcNo">SERBEST</span><b id="jcTitle">Serbest çalışma</b></div>
+        <p id="jcBrief">İş emri seçmeden tezgâhı serbestçe kullanın. Bir iş seçerseniz teknik resim açılır, teslimde parça ölçülür ve puanlanır.</p>
+        <div class="jc-meta" id="jcMeta"></div>
+        <div class="row2" id="jcBtns" hidden>
+          <button class="btn" id="jobStart">İşe başla</button>
+          <button class="btn start" id="jobSubmit">Parçayı teslim et</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec" data-panel="dro">
+      <h2><span>Dijital okuma (DRO)</span><span>mm</span></h2>
+      <div class="dro">
+        <div class="axis"><span class="ax">X</span><output id="droX">+0.000</output><input id="setX" inputmode="decimal" placeholder="değer" aria-label="X değeri ata"><button class="btn sm" data-set="x">Ata</button><button class="btn sm" data-zero="x">X0</button></div>
+        <div class="axis"><span class="ax">Y</span><output id="droY">+0.000</output><input id="setY" inputmode="decimal" placeholder="değer" aria-label="Y değeri ata"><button class="btn sm" data-set="y">Ata</button><button class="btn sm" data-zero="y">Y0</button></div>
+        <div class="axis"><span class="ax">Z</span><output id="droZ">+0.000</output><input id="setZ" inputmode="decimal" placeholder="değer" aria-label="Z değeri ata"><button class="btn sm" data-set="z">Ata</button><button class="btn sm" data-zero="z">Z0</button></div>
+      </div>
+      <div class="dro-note">Sıfır noktası başlangıçta parçanın sol-ön-üst köşesinde. Takım değişince boylar farklı olduğu için Z'yi yeniden sıfırlayın. Kenar bulucuyla X/Y alırken "Ata" ile yarıçapı girin (ör. -5).</div>
+    </div>
+
+    <div class="sec" data-panel="wheels">
+      <h2><span>El çarkları</span><span>sürükle · kaydır</span></h2>
+      <div class="seg" id="muls">
+        <button data-mul="0.01" class="on">×1 · 0.01</button><button data-mul="0.1">×10 · 0.1</button><button data-mul="1">×100 · 1</button>
+      </div>
+      <div class="wheels">
+        <figure><canvas id="hwx" aria-label="X el çarkı"></canvas><figcaption><b>X</b><span id="hwxv">+0.000</span></figcaption></figure>
+        <figure><canvas id="hwy" aria-label="Y el çarkı"></canvas><figcaption><b>Y</b><span id="hwyv">+0.000</span></figcaption></figure>
+        <figure><canvas id="hwz" aria-label="Z el çarkı"></canvas><figcaption><b>Z</b><span id="hwzv">+0.000</span></figcaption></figure>
+      </div>
+      <div class="dro-note">Kolu saat yönünde çevirmek eksende artı yöne götürür; çarkta 100 çentik var, çarpan bir çentiğin kaç mm olduğunu belirler. Ne kadar hızlı çevirirsen ilerleme o kadar artar, takım yükünü göstergeden izle.</div>
+    </div>
+
+    <div class="sec" data-panel="spindle">
+      <h2><span>İş mili</span><span id="spinState">DURUYOR</span></h2>
+      <canvas id="spGauge" class="gauge" aria-label="Devir göstergesi"></canvas>
+      <div class="spin-row">
+        <button class="btn big start" id="spStart">MİL START</button>
+        <button class="btn big stop" id="spStop">MİL STOP</button>
+      </div>
+      <button class="btn" id="spDir">Mil yönü: İLERİ ⟳</button>
+      <div class="field"><label for="rpm">Devir</label><input type="range" id="rpm" min="100" max="4200" step="10" value="2000"><output id="rpmOut">2000 dev/dk</output></div>
+      <div class="field"><label for="feed">İlerleme</label><input type="range" id="feed" min="10" max="1600" step="5" value="300"><output id="feedOut">300 mm/dk</output></div>
+      <div class="rec"><span>Önerilen: <b id="recTxt">—</b></span><button class="btn" id="applyRec">Uygula</button></div>
+      <div>
+        <button class="btn" id="coolant" style="width:100%">Soğutma sıvısı: KAPALI</button>
+        <button class="btn" id="mute" hidden>Ses: AÇIK</button>
+      </div>
+    </div>
+
+    <div class="sec" data-panel="jog">
+      <h2><span>Eksen hareketi</span><span id="rapidState">ilerleme</span></h2>
+      <div class="seg-label"><span>Kol adımı (mm)</span><span>tıkla: 1 adım · basılı tut: sürekli</span></div>
+      <div class="seg" id="steps">
+        <button data-step="0.01">0.01</button><button data-step="0.1">0.1</button><button data-step="1" class="on">1</button><button data-step="10">10</button>
+      </div>
+      <div class="jog" id="jog">
+        <span></span><button data-ax="y" data-dir="1" aria-label="Y artı">Y+</button><span></span><span></span><button data-ax="z" data-dir="1" aria-label="Z yukarı">Z+</button>
+        <button data-ax="x" data-dir="-1" aria-label="X eksi">X−</button><button class="hold-btn" id="feedHold">DUR</button><button data-ax="x" data-dir="1" aria-label="X artı">X+</button><span></span><button id="rapidBtn" class="hold-btn" style="color:var(--fg);border-color:var(--line);background:var(--panel-2)">HIZLI</button>
+        <span></span><button data-ax="y" data-dir="-1" aria-label="Y eksi">Y−</button><span></span><span></span><button data-ax="z" data-dir="-1" aria-label="Z aşağı">Z−</button>
+      </div>
+      <div class="seg-label"><span>Otomatik tabla ilerlemesi (X)</span><span id="autoState">kapalı</span></div>
+      <div class="row3" id="autoBtns"><button class="btn" data-af="-1">← Sola</button><button class="btn" data-af="0">Dur</button><button class="btn" data-af="1">Sağa →</button></div>
+      <button class="btn" id="drawMode" hidden>Fareyle sür: KAPALI</button>
+      <div class="seg-label"><span>Simülasyon hızı</span></div>
+      <div class="seg" id="sims">
+        <button data-sim="1" class="on">1×</button><button data-sim="2">2×</button><button data-sim="5">5×</button><button data-sim="10">10×</button>
+      </div>
+      <div class="goto"><span>X</span><input id="gx" inputmode="decimal" value="20"><span>Y</span><input id="gy" inputmode="decimal" value="20"><button class="btn" id="goBtn">XY'ye git</button></div>
+    </div>
+
+    <div class="sec" data-panel="tools">
+      <h2><span>Takım</span><span>dolap</span></h2>
+      <div class="cur-tool" id="curTool"><span class="tno" id="ctNo">T3</span><span class="tname" id="ctName">—</span><span class="tmeta" id="ctMeta">—</span></div>
+      <div class="stopline" style="grid-template-columns:1fr auto"><span class="dro-note" id="ctWear">VB 0.00 mm</span><button class="btn" id="renewTool">Takımı yenile</button></div>
+      <div class="holder-row" id="holderRow"><span class="hl-lab">Tutucu</span><div class="seg" id="holderSeg"><button data-h="er">ER</button><button data-h="weldon">Weldon</button><button data-h="shrink">Shrink</button><button data-h="hydro">Hidrolik</button></div></div>
+      <div class="dro-note" id="holderNote"></div>
+      <button class="btn" id="teOpen" style="width:100%" hidden>Takım editörü: bu takımı kopyala ya da düzenle</button>
+      <button class="btn" id="airBtn" style="width:100%" hidden>Hava tabancası: KAPALI</button>
+      <div class="sub">Dolap</div>
+      <div class="rack" id="rack"></div>
+      <div class="probe-box dial-box" id="dialBox" hidden>
+        <div class="sub">Mekanik 3B taster</div>
+        <div class="dt-row">
+          <svg viewBox="-50 -50 100 100" class="dt-dial" aria-hidden="true"><circle r="47" fill="#f3f1ea" stroke="#1b1d1f" stroke-width="2"/>
+            <g id="dtTicks"></g><circle cy="18" r="9" fill="none" stroke="#1b1d1f" stroke-width=".8"/>
+            <g id="dtTurns"><line x1="0" y1="18" x2="0" y2="11" stroke="#c0271c" stroke-width="1.6"/></g>
+            <g id="dtNeedle"><line x1="0" y1="8" x2="0" y2="-40" stroke="#1b1d1f" stroke-width="2" stroke-linecap="round"/><circle r="3" fill="#1b1d1f"/></g></svg>
+          <div><b class="dt-read" id="dtRead">temas yok</b><div class="dro-note" id="dtHint">Parçaya el çarkıyla yavaşça yaklaşın; bilye değince ibre döner.</div></div>
+        </div>
+      </div>
+      <div class="probe-box" id="probeBox" hidden>
+        <div class="sub">3B taster döngüleri</div>
+        <div class="pr-grid"><button class="btn" data-pr="x+">X+ kenar</button><button class="btn" data-pr="x-">X− kenar</button><button class="btn" data-pr="y+">Y+ kenar</button><button class="btn" data-pr="y-">Y− kenar</button>
+          <button class="btn start" data-pr="corner">Sol-ön köşe</button><button class="btn start" data-pr="hole">Delik merkezi</button><button class="btn" data-pr="z">Z yüzey</button><button class="btn" data-pr="stop">Dur</button></div>
+        <label class="pr-zero"><input type="checkbox" id="prZero" checked> Bulunan noktayı sıfır yap</label>
+        <div class="dro-note" id="prOut">Mil DURURKEN kullanın. Kenar: tasteri parçanın yanına, üst yüzeyin 2–4 mm altına getirip yönü seçin. Köşe: sol-ön köşenin 5–15 mm dışından başlayın. Delik: tasteri deliğin içine indirin.</div>
+      </div>
+    </div>
+
+    <div class="sec" data-panel="log">
+      <h2><span>Olay kaydı</span></h2>
+      <ul class="log" id="log"></ul>
+    </div>
+
+    <div class="sec" data-panel="part">
+      <h2><span>Parça</span></h2>
+      <div class="sub">Ham parça</div>
+      <select id="matSel" aria-label="Malzeme"><option value="al">Al 6061 alüminyum</option><option value="s235">S235 (St37) yapı çeliği</option><option value="c45">C45 ıslah çeliği</option><option value="ss304">304 paslanmaz çelik</option><option value="brass">Pirinç (CuZn39Pb3)</option><option value="gg25">GG25 gri döküm</option><option value="pom">Delrin (POM) plastik</option><option value="pa6">PA6 polyamid (naylon)</option></select>
+      <div class="stock-row"><label>X GENİŞLİK<input id="stW" type="number" min="20" max="220" step="0.5" value="150"></label><label>Y DERİNLİK<input id="stD" type="number" min="20" max="135" step="0.5" value="100"></label><label>Z YÜKSEKLİK<input id="stH" type="number" min="10" max="80" step="0.5" value="40"></label><button class="btn" id="stApply" title="Bu ölçülerde yeni ham parça bağla">Uygula</button></div>
+      <div class="row2">
+        <button class="btn" id="clearChips">Talaşları süpür</button>
+        <button class="btn" id="newPart">Yeni ham parça</button>
+      </div>
+      <div class="sub">Bağlama</div>
+      <div class="fix-row"><div class="seg" id="fixSeg"><button data-fx="vise" class="on">Mengene</button><button data-fx="clamp">Pabuç</button><button data-fx="vac">Vakum</button><button data-fx="rot">Döner</button><button data-fx="div">Divizör</button></div></div>
+      <div class="seg" id="clampLay" hidden><button data-cl="fb" class="on">Pabuç ön-arka</button><button data-cl="lr">Pabuç sol-sağ</button></div>
+      <div class="par-box" id="parBox">
+        <div class="holder-row"><span class="hl-lab">Paraleller</span><div class="par-off"><input type="range" id="parOff" min="0" max="35" step="1" value="3" aria-label="Paralellerin kenardan uzaklığı"><output id="parOffV">kenardan 3 mm</output></div></div>
+        <div class="seg" id="parW"><button data-pw="10" class="on">10 mm</button><button data-pw="6">6 mm</button><button data-pw="3">3 mm</button><button data-pw="sac">Kurban plaka</button></div>
+      </div>
+      <div class="vac-g" id="vacG" hidden><span>Vakum <b id="vgP">—</b></span><span>Tutma <b id="vgH">—</b></span><span>Kesme <b id="vgF">0 N</b></span><div class="meter"><i id="vgM"></i></div></div>
+      <div class="rot-box" id="rotBox" hidden>
+        <div class="rot-head"><span class="hl-lab" id="rotLab">C ekseni</span><b id="rotA">0.000°</b><button class="btn" id="rotLock">KİLİTLİ</button></div>
+        <div class="seg rot-steps" id="rotSteps"><button data-ra="-90">−90</button><button data-ra="-15">−15</button><button data-ra="-1">−1</button><button data-ra="-0.25">−¼</button><button data-ra="0.25">+¼</button><button data-ra="1">+1</button><button data-ra="15">+15</button><button data-ra="90">+90</button></div>
+        <div class="goto"><span>C</span><input id="rotTgt" inputmode="decimal" value="0"><button class="btn" id="rotGo">Açıya git</button><button class="btn" id="rotZero">C0</button></div>
+      </div>
+      <div class="dro-note" id="fixNote">Mengene: X 20–220, Y 20–135 mm parça. Çeneler üstten 5 mm aşağıda biter.</div>
+      <div class="sub">Bu parça</div>
+      <div class="stats">
+        <div class="stat"><span>Kaldırılan talaş</span><b id="stVol">0.00 cm³</b></div>
+        <div class="stat"><span>Kesme süresi</span><b id="stTime">0:00</b></div>
+      </div>
+      <button class="btn start" id="benchOpen" style="width:100%;margin-top:6px" hidden>Parça masası: incele, ölç, kesit al</button>
+      <div style="display:none">
+      </div>
+    </div>
+
+    <details open data-panel="keys">
+      <summary>Klavye kısayolları</summary>
+      <div class="keys">
+        <kbd>← →</kbd><span>X ekseni</span>
+        <kbd>↑ ↓</kbd><span>Y ekseni</span>
+        <kbd>PgUp PgDn</kbd><span>Z ekseni (ya da W / S)</span>
+        <kbd>Shift</kbd><span>basılıyken hızlı hareket (3000 mm/dk)</span>
+        <kbd>Boşluk</kbd><span>mil start / stop</span>
+        <kbd>1 2 3 4</kbd><span>kol adımı 0.01 / 0.1 / 1 / 10</span>
+        <kbd>C</kbd><span>soğutma sıvısı</span>
+        <kbd>R</kbd><span>mil yönü İLERİ / GERİ</span>
+        <kbd>G</kbd><span>fareyle sürme</span>
+        <kbd>B</kbd><span>hava tabancası (basılı tut, üfle)</span>
+        <kbd>Q</kbd><kbd>E</kbd><span>döner tablayı çevir (basılı tut)</span>
+        <kbd>Esc</kbd><span>acil stop: mil ve tüm hareketler</span>
+      </div>
+    </details>
+  </aside>
+  <div class="panel-layer" id="panelLayer"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
+<script>
+(() => {
+'use strict';
+//@JS@
+})();
+</script>

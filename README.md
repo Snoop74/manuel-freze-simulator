@@ -1,10 +1,21 @@
 # Manuel Freze Simülatörü
 
-Tarayıcıda çalışan, 3B bir manuel freze tezgâhı simülasyonu ve oyunu. Tek bir HTML dosyası; kurulum gerektirmez.
+Tarayıcıda çalışan, 3B bir manuel freze tezgâhı simülasyonu ve oyunu. Oynamak için tek bir HTML dosyası yeterli; kurulum gerektirmez.
 
 ## Çalıştırma
 
 `freze.html` dosyasını bir tarayıcıda açın (internet bağlantısı gerekir: three.js ve yazı tipleri CDN'den yüklenir).
+
+## Geliştirme
+
+Kaynak kod `src/` altında modüllere bölünmüştür (`src/js/00-temel.js` … `18-baslangic.js`, `src/stil.css`, `src/sayfa.html`). `freze.html` bunlardan üretilir:
+
+```bash
+node build.mjs           # bir kez derle
+node build.mjs --watch   # src/ değiştikçe derle
+```
+
+Node dışında bağımlılık yok. Ayrıntılar `CLAUDE.md` içinde.
 
 ## Özellikler
 

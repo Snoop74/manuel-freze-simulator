@@ -1,5 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
+<!-- Üretilmiş dosya: kaynak src/ altında. Değişikliği orada yapıp "node build.mjs" çalıştırın; bu dosya her derlemede yeniden yazılır. -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Manuel Freze Tezgâhı</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -955,6 +956,7 @@ table{color:inherit;font-size:inherit}
 <script>
 (() => {
 'use strict';
+// ── Temel: yardımcılar, takım ve malzeme tabloları, önerilen devir/ilerleme, makine durumu S, olay kaydı
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const TAU = Math.PI * 2;
@@ -1074,6 +1076,7 @@ function warnOnce(key, msg, lvl = 'warn', gap = 3000) {
    Saf ton yerine süzülmüş gürültü: motor uğultusu, dişli vınlaması, kesme hışırtısı, tırlama ötmesi.
    Tek seferlik sesler (kırılma, kavrama) metalin uyumsuz kısmi tonlarıyla çalınır;
    hepsi küçük bir atölye yankısından geçer. */
+// ── Ses motoru: motor, dişli, kesme, tırlama ve tek seferlik sesler (kayıt dosyası yok, gürültüden üretilir)
 let ac = null, master, bus, SN = null, lastSnd = 0;
 // Malzemeye göre kesme sesi: bant merkezi, keskinlik, gövde gürültüsü, çıtırtı
 const SND = {
@@ -1219,6 +1222,7 @@ function updateAudio() {
 }
 
 /* ---------------- Three.js sahnesi ---------------- */
+// ── Sahne ve tezgâh: renderer, ışık, malzemeler, atölye, gövde, kafa, kovan, kollar, soğutma hortumu
 const canvas = $('c'), stage = $('stage');
 let renderer;
 try {
@@ -1614,6 +1618,7 @@ function updateCoolant(dt, tip) {
   dropsVisible = any;
 }
 
+// ── Tabla ve parça: konsol, kızak, tabla, el çarkları, mengene gövdesi, parça yüzeyi (yükseklik haritası), döner tabla dönüşümü
 // Konsol (sabit), kızak (Y) ve tabla (X). Tabla grubu = parça koordinatları (x, z, -y)
 rbox(-210, 210, -310, -160, -330, 90, 12, M.paint);                         // konsol (knee)
 for (const x of [-196, 150]) rbox(x, x + 46, -162, -157, -320, 84, 2, M.ground);   // konsol üstü kızak yolları
@@ -1754,6 +1759,7 @@ function toLv(x, y, a = ROT.a) {
    Parçanın yerel ekseni: x divizör ekseni boyunca (0 = ayna yüzü), y yatay, z dikey; A açısı x çevresinde döndürür.
    Izgaranın her yanında 2 voksel boşluk vardır (uç yüzler kapalı çizilsin).
    Tezgâh (parça) koordinatında eksen y = DIVY, z = DIVZ çizgisidir. */
+// ── Voksel modeli (VX): divizör parçası, yumuşak doluluk, blok blok surface nets
 const DIVY = 0, DIVZ = 40;
 const VX = (() => {
   const R = 0.5, CH = 16, ISO = 128;
@@ -1906,6 +1912,7 @@ const VX = (() => {
   }
   return { grp, build, flush, work, local, setMat, get radius() { return RS; }, get length() { return L; }, get ready() { return !!F; }, stats:() => ({ voxels:nx * ny * nz, chunks:chunks.size, dirty:dirty.size }) };
 })();
+// ── Bağlama: divizör gövdesi, mengene, pabuç, paraleller, çarpışma kutuları, parça yüzeyinin çizimi
 // Divizör: tablaya cıvatalı gövde, arkada bölüntü diski ve kol; önde dönen üç ayaklı ayna (parçayla birlikte A açısında döner)
 const divG = new THREE.Group(), divRot = new THREE.Group(), divJaws = new THREE.Group(); divG.visible = false; table.add(divG);
 divRot.position.set(0, DIVZ, -DIVY); divG.add(divRot); divRot.add(VX.grp); divRot.add(divJaws);
@@ -2112,6 +2119,7 @@ function flushMesh() {
 /* ---- Talaşlar: yassı kesitli, kıvrık şeritler ----
    Freze talaşı bir ağzın kestiği virgül biçimli şerittir: bir ucu ince, öbür ucu kalın; bir yüzü takıma sürtünüp parlar, öbürü mat kalır.
    Her biçimin birkaç rastgele çeşidi üretilir. Talaşlar havada döner, sekip yatar ve düştükleri yerde yığılır (iç içe geçmez). */
+// ── Talaşlar ve partiküller: şerit talaş, yığın, savrulma, duman, kıvılcım, talaş biçimi
 const chipMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.3, metalness:0.85, side:THREE.DoubleSide });
 // Eğri boyunca dikdörtgen kesitli şerit. f(t) eğri; genişlik kıvrım ekseni (y) yönünde, kalınlık h(t) eğrinin iç-dış yönünde
 function ribbonGeo(f, seg, w, h) {
@@ -2458,6 +2466,7 @@ function chipsFor(nx, ny, z, T, vol, form, heat) {
    Kesit, açıya bağlı bir yarıçap profili r(θ): her ağız için fatura (land), kesme yüzü, kanal dibi (göbek) ve sırt.
    Bu kesit eksen boyunca helis açısına göre döndürülerek süpürülür; uçta düz, küresel ya da konik kapanış olur.
    Geometri tamamen parametrelerden üretilir (çap, ağız sayısı, helis açısı, kanal boyu, göbek, köşe), böylece takım ileride düzenlenebilir. */
+// ── Takım görselleri ve tutucular: helisli gövdeler, ER/Weldon/shrink/hidrolik, kadranlı taster, takım profili
 const TMAT = {
   carbide: smat(0xa3aaaf, 0.26, 0.92, 0.9),           // kaplamasız karbür
   altin:   smat(0x46424e, 0.32, 0.85, 0.9),           // AlTiN kaplama: koyu mor-gri
@@ -2687,6 +2696,7 @@ function profile(T, d, tip) {
     default: return tip;
   }
 }
+// ── Kesme: çarpışma, talaş kaldırma, alt adım denetimi, kılavuz, kesme yükü, döner tabla dönüşü, eksen hareketi
 // Tool silindirinin dairesi ile (x0..x1, y0..y1) dikdörtgeni arası mesafe
 function rectDist(x, y, x0, x1, y0, y1) {
   const dx = Math.max(x0 - x, 0, x - x1), dy = Math.max(y0 - y, 0, y - y1);
@@ -3129,6 +3139,7 @@ function motion(dt) {
 }
 
 /* ---------------- Arayüz ---------------- */
+// ── Kumanda: DRO, devir/ilerleme, takım dolabı, takım değişimi, mil, jog, el çarkları, malzeme ve parça sıfırlama
 const fmt = v => (v < -0.0005 ? '−' : '+') + Math.abs(v).toFixed(3);
 const droVals = () => ({ x: S.px - S.zx, y: S.py - S.zy, z: S.nose - S.zn });
 
@@ -3414,6 +3425,7 @@ function resetPart(k) {
 }
 
 /* ---------------- İş emirleri, muayene ve puanlama ---------------- */
+// ── İş emirleri: görevler, teknik resim, markalama, muayene ve puan, teslim raporu
 const JOBS = [
   { title:'Yüzey alma', target:180,
     brief:'Ham parçanın üst yüzeyinden 1.00 mm alın. Yüzeyin tamamı işlenmiş ve düz olmalı. T1 alın frezesi bu iş için uygundur.',
@@ -3918,6 +3930,7 @@ $('rpClose').addEventListener('click', () => { $('report').hidden = true; FW.sto
 
 /* ---------------- Havai fişek: başarılı teslimde ekranın üstünde patlar ----------------
    Yıldız sayısı gösteriyi büyütür; 2B tuval, olayı bitince kendini kapatır. Patlama sesi süzülmüş gürültü + kısa çıtırtı. */
+// ── Havai fişek (FW): kabul edilen parçada 2B tuvalde gösteri
 const FW = (() => {
   let cv = null, g = null, parts = [], rockets = [], raf = 0, left = 0, nextT = 0, last = 0;
   const COLS = [[255, 200, 70], [255, 120, 60], [120, 220, 255], [150, 255, 160], [255, 255, 230], [255, 110, 190]];
@@ -3977,6 +3990,7 @@ $('rpNext').addEventListener('click', () => { $('report').hidden = true; selectJ
 $('vDraw').addEventListener('click', () => { $('drawing').hidden = !$('drawing').hidden; });
 $('dwClose').addEventListener('click', () => { $('drawing').hidden = true; });
 
+// ── Ana döngü ve arayüz: klavye, kamera, frame(), HUD, üst çubuk simgeleri, paneller (PM), devir göstergesi, acil stop
 // Klavye
 const KEYMAP = { ArrowLeft:['x',-1], ArrowRight:['x',1], ArrowUp:['y',1], ArrowDown:['y',-1], PageUp:['z',1], PageDown:['z',-1], KeyW:['z',1], KeyS:['z',-1] };
 window.addEventListener('keydown', e => {
@@ -4432,6 +4446,7 @@ function updateLamps() {
 
 /* ---------------- Makine üstünde kumanda: çarkları çevir, düğmelere bas ----------------
    Fare bir kumandanın üstündeyken kamera dönmez; çark sürüklenerek ya da tekerlekle çevrilir, düğmelere tıklanır. */
+// ── Aletler: makine üstü etkileşim (IA), fareyle sürme (FD), hava tabancası (AG), mekanik taster (DT), 3B taster (PR), vakum (VAC), bağlama ve paralel seçimi
 const IA = (() => {
   const T = [
     { o:wheels[0].children[0], wheel:'x', tip:'Tabla çarkı (X) · sürükle ya da tekerlekle çevir' },
@@ -4941,6 +4956,7 @@ function chipsOnPart() {
 
 /* ---------------- Kumanda paneli: DRO ekranı, tuş takımı, topuzlar, el çarkı (MPG) ----------------
    Paneldeki tüm kumandalar mevcut işlevleri çağırır; böylece eski paneller ve makine üstü kumandalarla hep tutarlı kalır. */
+// ── Parça masası (CP): ayrı sahnede inceleme, kumpas, yükseklik, delik/cep, kesit; ham parça ölçüsü (BN)
 const CP = (() => {
   const st = { sel:null, buf:'', tgt:{}, page:1, axis:'x', mpgAcc:0, mpgAng:0, mpgLast:null };
   const SVG = 'http://www.w3.org/2000/svg';
@@ -5244,6 +5260,7 @@ const BN = (() => {
 /* ---------------- Takım editörü: kendi takımını tasarla ----------------
    Tip, çap, ağız sayısı, boylar, helis, köşe radyüsü, uç açısı, malzeme ve kaplama seçilir; takım T13'ten itibaren dolaba eklenir.
    Parametreler fiziğe bağlıdır (toolMods): önerilen hız ve ilerleme, aşınma, kırılma direnci, tırlama, yüzey, talaş sıkışması. */
+// ── Takım editörü (TE): tip, ölçüler, kaplama, fiyat, kesmeye etkiler, kayıt
 const TKEY = 'freze-tools-v1';
 const KIND = {
   end:     { name:'Parmak freze', d:[1, 25], z:[1, 6] },
@@ -5480,6 +5497,7 @@ const TE = (() => {
    Her şablon rastgele bir çeşit üretir: ölçüler, yükseklik işlevi H(x, y) ve yüzey türü Sf(x, y).
    Yüzey türü (SURF) yalnızca görünüm içindir; işlenen hücre işlenmiş rengine geçer. Parça yükseklik haritası olduğundan
    yukarıdan görülebilen her şekil olur (kademe, göbek, çukur, delik, kabarık dikiş, eğik yüzey); dış hat dışı boştur (H = 0). */
+// ── Hazır parçalar: yüzey türleri, tohumlu rastgele, BLANKS şablonları, loadBlank; GEÇİCİ galeri (BG)
 const SF = { raw:0, cast:1, ground:2, old:3, weld:4, scale:5 };
 const SFNAME = ['ham', 'döküm', 'taşlanmış', 'eski işleme', 'kaynak dikişi', 'hadde tufalı'];
 // pürüzsüz rastgele dalgalanma (döküm yüzeyi): birkaç sinüsün toplamı, sivri üçgen yapmaz
@@ -5679,6 +5697,7 @@ const BG = (() => {
    Serbest atölyede her şey açık ve ücretsiz. Kariyerde müşteriler sipariş verir: ham parça kasadan alınır,
    teslimde parça ölçülür (iş emirleriyle aynı muayene) ve ödeme yapılır. Takımlar satın alınır; kırılan takım gider,
    köreleni bilemek ücretlidir. İtibar arttıkça daha büyük, daha zor ve daha iyi ödeyen işler gelir. */
+// ── Kariyer (CR): kasa, itibar, sipariş üretimi, koşullar, dükkân, ekipman, teslimde ödeme
 const CR = (() => {
   const KEY = 'freze-career-v1', MKEY = 'freze-mode';
   const PRICE_KG = { al:180, s235:60, c45:80, ss304:220, brass:350, gg25:70, pom:250 };
@@ -6057,6 +6076,7 @@ const CR = (() => {
 })();
 
 
+// ── Başlangıç: ilk kurulum ve döngünün başlatılması
 // Başlangıç
 buildToolVisual(); updateToolUI(); updateRec(); updateSpindleUI();
 setRpm(4200); setFeed(500);
