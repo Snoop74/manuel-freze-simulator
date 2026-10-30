@@ -10,8 +10,12 @@
     "serve": "python -m http.server 8790"
   },
   "devDependencies": {
+    "@fontsource/chakra-petch": "^5.1.0",
+    "@fontsource/ibm-plex-sans": "^5.1.0",
+    "@fontsource/share-tech-mono": "^5.1.0",
     "acorn": "^8.14.0",
     "esbuild": "^0.24.2",
-    "eslint-scope": "^8.2.0"
+    "eslint-scope": "^8.2.0",
+    "three": "^0.128.0"
   }
 }

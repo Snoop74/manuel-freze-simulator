@@ -4,7 +4,7 @@ Tarayıcıda çalışan, 3B bir manuel freze tezgâhı simülasyonu ve oyunu. Oy
 
 ## Çalıştırma
 
-`freze.html` dosyasını bir tarayıcıda açın (internet bağlantısı gerekir: three.js ve yazı tipleri CDN'den yüklenir).
+`freze.html` dosyasını bir tarayıcıda açın. İnternet gerekmez: three.js ve yazı tipleri dosyanın içindedir.
 
 ## Geliştirme
 

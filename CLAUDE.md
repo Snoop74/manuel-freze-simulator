@@ -2,7 +2,8 @@
 
 ## Yapı
 - Kaynak `src/` altında. `freze.html` **üretilmiş dosyadır**, elle düzenlenmez; derleme her seferinde yeniden yazar. GitHub Pages bu dosyayı yayınlar, o yüzden derlenmiş hali de commit'lenir.
-- İlk kurulum: `npm install` (esbuild, acorn, eslint-scope; yalnızca geliştirme için).
+- İlk kurulum: `npm install` (esbuild, acorn, eslint-scope, three@0.128.0, @fontsource yazı tipleri; yalnızca geliştirme için).
+- İnternetsiz: three.js npm'den paketlenir (`src/js/three-kur.js` global THREE'yi kurar, OrbitControls ve RoomEnvironment dahil); yazı tipleri (Chakra Petch, IBM Plex Sans, Share Tech Mono; latin + latin-ext) derlemede CSS'e gömülür. dev.html 'three'yi import haritasıyla node_modules'tan alır. Paket boşluk/sözdizimi sıkıştırmalı, adlar korunur.
 - `npm run build`: önce `tools/analiz.mjs` denetler, sonra `build.mjs` esbuild ile paketleyip `freze.html` (tek dosya) ve `dev.html` üretir. `npm run watch` değiştikçe derler.
 - `dev.html`: aynı sayfa, modüller paketlenmeden `src/js/main.js`'ten doğrudan yüklenir; tarayıcıda dosya dosya hata ayıklama için. Derlemeye gerek kalmadan kaynak düzenlenip sayfa yenilenebilir.
 - `src/sayfa.html`: sayfa şablonu (paneller, düğmeler). `/*@CSS@*/` yerine `src/stil.css`, `//@JS@` yerine paket girer.
@@ -23,4 +24,4 @@
 2. ✅ Gerçek ES modülleri, esbuild paketi, dev.html, modül denetleyici (2026-10-30)
 3. TypeScript (önce JSDoc + `checkJs`, sonra dosya dosya `.ts`); modül adlarını numarasız klasörlere taşımak (fizik/, arayuz/, kariyer/...)
 4. Torna ile ortak kod (`ortak/`: ses, paneller, kasa), atölye birleştirmesi
-5. Steam/masaüstü hazırlığı: three.js'i npm'den paketle (CDN yok), kayıt katmanı (localStorage → dosya / Steam Cloud), ayarlar (çözünürlük, grafik kalitesi), Electron ya da Tauri kabuğu
+5. Steam/masaüstü hazırlığı: ✅ three.js ve yazı tipleri pakette, internetsiz (2026-10-30); kayıt katmanı (localStorage → dosya / Steam Cloud), ayarlar (çözünürlük, grafik kalitesi), Electron ya da Tauri kabuğu

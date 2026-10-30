@@ -13,6 +13,22 @@ const ROOT = dirname(fileURLToPath(import.meta.url));
 const SRC = join(ROOT, 'src');
 const rd = p => readFileSync(p, 'utf8');
 
+// Yazı tipleri @fontsource paketlerinden; yalnızca latin ve latin-ext (Türkçe harfler) woff2 dosyaları CSS'e gömülür
+const FONTS = [['chakra-petch', [500, 600, 700]], ['ibm-plex-sans', [400, 500, 600]], ['share-tech-mono', [400]]];
+function fontCss() {
+  let out = '';
+  for (const [pkg, weights] of FONTS) for (const w of weights) {
+    const dir = join(ROOT, 'node_modules', '@fontsource', pkg);
+    for (const blk of rd(join(dir, `${w}.css`)).split('@font-face').slice(1)) {
+      const sub = blk.match(/files\/[a-z-]+?-(latin|latin-ext)-\d+-normal\.woff2/);
+      if (!sub) continue;
+      const data = readFileSync(join(dir, sub[0])).toString('base64');
+      out += '@font-face' + blk.replace(/src:[^;]+;/, `src: url(data:font/woff2;base64,${data}) format('woff2');`).replace(/\/\*[^*]*\*\/\s*$/, '').trim() + '\n';
+    }
+  }
+  return out;
+}
+
 export function build() {
   const tpl = rd(join(SRC, 'sayfa.html'));
   for (const mark of ['/*@CSS@*/\n', '//@JS@\n'])
@@ -20,14 +36,17 @@ export function build() {
   const r = buildSync({
     entryPoints: [join(SRC, 'js', 'main.js')], bundle: true, write: false, format: 'iife',
     target: 'es2020', charset: 'utf8', legalComments: 'none', logLevel: 'silent',
+    minifyWhitespace: true, minifySyntax: true,   // adlar korunur: hata iletileri okunur kalsın
     banner: { js: "'use strict';" },
   });
   const js = r.outputFiles[0].text;
-  const page = tpl.replace('/*@CSS@*/\n', () => rd(join(SRC, 'stil.css')));
+  const page = tpl.replace('/*@CSS@*/\n', () => fontCss() + rd(join(SRC, 'stil.css')));
   writeFileSync(join(ROOT, 'freze.html'), page.replace('//@JS@\n', () => js));
-  // dev.html: aynı sayfa, modüller paketlenmeden yüklenir (tarayıcıda dosya dosya hata ayıklama)
+  // dev.html: aynı sayfa, modüller paketlenmeden yüklenir (tarayıcıda dosya dosya hata ayıklama);
+  // 'three' adı import haritasıyla node_modules'a yönlenir
+  const importMap = '<script type="importmap">{ "imports": { "three": "./node_modules/three/build/three.module.js", "three/": "./node_modules/three/" } }</script>\n';
   writeFileSync(join(ROOT, 'dev.html'), page
-    .replace('<script>\n//@JS@\n</script>', '<script type="module" src="src/js/main.js"></script>')
+    .replace('<script>\n//@JS@\n</script>', importMap + '<script type="module" src="src/js/main.js"></script>')
     .replace(/<!-- Üretilmiş dosya:[^\n]*-->/, '<!-- Geliştirme sayfası: modüller src/js altından doğrudan yüklenir (node build.mjs üretir). -->'));
   return { bytes: Buffer.byteLength(js) };
 }
