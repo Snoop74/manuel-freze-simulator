@@ -17,6 +17,21 @@ const TMAT = {
   led:     new THREE.MeshStandardMaterial({ color:0x111a14, emissive:0x0b3a12, roughness:0.3 }),
   red:     smat(0xb8442e, 0.4, 0.5, 0.6),
 };
+/* Kaplama görünümü: ince film girişimi. Kaplama birkaç mikron kalınlığında; ışık üst ve alt yüzeyinden yansıyıp girişim
+   yapar, renk bakış açısıyla kayar. Karşıdan bakınca a, yüzeye sıyırarak bakınca b rengine döner (doğrusal renk);
+   str: etkinin şiddeti. AlTiN mor-gri → bronz, DLC siyah → mavi, TiN altın → bakır. Doku gerekmez. */
+function coatFX(m, a, b, str) {
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, { fA:{ value:new THREE.Vector3(...a) }, fB:{ value:new THREE.Vector3(...b) }, fStr:{ value:str } });
+    sh.fragmentShader = 'uniform vec3 fA, fB;\nuniform float fStr;\n' + sh.fragmentShader.replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      float ndv = clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0);
+      diffuseColor.rgb = mix(diffuseColor.rgb, mix(fA, fB, pow(1.0 - ndv, 1.4)), fStr);`);
+  };
+  m.customProgramCacheKey = () => 'coat';
+}
+coatFX(TMAT.altin, [0.085, 0.06, 0.12], [0.36, 0.22, 0.12], 0.75);
+coatFX(TMAT.dlc, [0.025, 0.026, 0.032], [0.07, 0.12, 0.3], 0.7);
+coatFX(TMAT.tin, [0.6, 0.38, 0.08], [0.62, 0.24, 0.08], 0.45);
 /* ---- Takım tutucular: parmak, küresel ve pah frezeleri için ----
    ro: salgı (mm) · slip: ağır yükte takımın kayma eğilimi · damp: tırlama çarpanı · rh: tutucu burnunun çarpışma yarıçapı.
    Salgıda bir ağız ötekilerden fazla keser: küçük diş başına ilerlemede yük, aşınma ve yüzey bundan çok etkilenir. */
@@ -63,7 +78,9 @@ function fluteGeo(r, z, len, g, opt = {}) {
   for (let k = 0; k < nTip; k++) ys.push(tipH * Math.pow(k / nTip, g.tip === 'ball' || rad ? 1.6 : 1));
   const rest = Math.max(4, Math.ceil((len - tipH) / (opt.p ? opt.p / 8 : Math.min(1.2, r * 0.25))));   // kılavuzda diş adımının 1/8'i
   for (let k = 0; k <= rest; k++) ys.push(tipH + (len - tipH) * k / rest);
-  const pos = [], idx = [];
+  const pos = [], idx = [], uv = [];
+  // kanal çıkışı: taşlama diski şafta doğru çıkarken kanal derinliği yumuşakça azalır (kılavuz ve alın frezesi gövdesi hariç)
+  const runL = opt.p || opt.noRun ? 0 : Math.min(len * 0.3, r * 1.6);
   for (const y of ys) {
     let sc = 1;
     if (g.tip === 'ball' && y < r) sc = Math.sqrt(Math.max(0, 1 - Math.pow((r - y) / r, 2)));
@@ -78,7 +95,8 @@ function fluteGeo(r, z, len, g, opt = {}) {
         const ph = ((y / opt.p - th / TAU) % 1 + 1) % 1;
         rr -= Math.min(rr * 0.12, opt.p * 0.55) * Math.abs(ph * 2 - 1) * (y > tipH * 0.4 ? 1 : 0.4);
       }
-      pos.push(Math.cos(th) * rr, y, Math.sin(th) * rr);
+      if (runL && y > len - runL) { const b = (y - (len - runL)) / runL, s2 = b * b * (3 - 2 * b); rr += (r * sc - rr) * s2; }
+      pos.push(Math.cos(th) * rr, y, Math.sin(th) * rr); uv.push(j / seg, y / len);
     }
   }
   const W = seg + 1;
@@ -86,14 +104,15 @@ function fluteGeo(r, z, len, g, opt = {}) {
     const a = k * W + j, b = a + 1, c = a + W, d = c + 1;
     idx.push(a, c, b, b, c, d);
   }
-  if (g.tip === 'flat' || g.tip === 'lead') {                     // alt yüz
-    const c0 = pos.length / 3; pos.push(0, 0, 0);
+  if (g.tip === 'flat' || g.tip === 'lead') {                     // alt yüz: ortası hafif içbükey (alın dişlerinin çukurluk açısı)
+    const c0 = pos.length / 3; pos.push(0, g.tip === 'flat' ? r * 0.04 : 0, 0); uv.push(0.5, 0);
     for (let j = 0; j < seg; j++) idx.push(c0, j, j + 1);
   }
-  const top = pos.length / 3; pos.push(0, len, 0);                 // üst kapak (şaftın altında kalır)
+  const top = pos.length / 3; pos.push(0, len, 0); uv.push(0.5, 1);   // üst kapak (şaftın altında kalır)
   for (let j = 0; j < seg; j++) idx.push(top, (ys.length - 1) * W + j + 1, (ys.length - 1) * W + j);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   geo.setIndex(idx); geo.computeVertexNormals();
   return geo;
 }
@@ -171,7 +190,7 @@ function buildToolInto(grp, T, broken) {
   const flute = broken ? Math.max(2, T.flute * 0.3) : T.flute, off = broken ? T.flute - flute : 0;
   if (T.type === 'face') {
     // alın frezesi: talaş cepli gövde, vidalı kare karbür uçlar, merkez bağlama cıvatası
-    const body = new THREE.Mesh(fluteGeo(r - 3, T.z, T.stick - 2, g), TMAT.holder); body.castShadow = true; place(body, 2);
+    const body = new THREE.Mesh(fluteGeo(r - 3, T.z, T.stick - 2, g, { noRun:true }), TMAT.holder); body.castShadow = true; place(body, 2);
     place(latheMesh([[r - 3, 0], [r - 3, 1.5], [r - 6, 2]], TMAT.holder), 0);
     if (!broken) for (let k = 0; k < T.z; k++) {
       const a = k / T.z * TAU + 0.22, ins = new THREE.Group(); ins.rotation.y = -a; place(ins, 0);
@@ -215,9 +234,38 @@ function buildToolInto(grp, T, broken) {
   }
   // şaft: kanalın üstünden tutucuya kadar, üstte pah
   place(latheMesh([[r * 0.97, 0], [r, 0.6], [r, T.stick - T.flute], [r * 0.9, T.stick - T.flute + 0.8]], coat === TMAT.tin ? TMAT.tin : T.type === 'tap' || T.tm === 'hss' ? TMAT.hss : TMAT.carbide, 40), T.flute);
+  markShank(T, r, g, place);
   const fg = fluteGeo(r, T.z, flute, broken ? Object.assign({}, g, { tip:'flat', corner:0 }) : g, T.type === 'tap' ? { p:T.p } : {});
   const body = new THREE.Mesh(fg, coat); body.castShadow = true; place(body, off);
   if (broken) place(latheMesh([[0, -0.6], [r * 0.95, -0.6], [r * 0.9, 0.4], [0, 0.4]], TMAT.broken, 24), off);
+}
+
+// şaft üstündeki lazer yazısı: eksen boyunca, operatöre bakan yüzde; takımla birlikte döner
+const COATNAME = { altin:'AlTiN', tin:'TiN', dlc:'DLC', carbide:'K20F', hss:'HSS-Co' };
+const markCache = {};
+function markShank(T, r, g, place) {
+  const shank = T.stick - T.flute;
+  if (shank < 6 || T.type === 'face') return;
+  const txt = T.type === 'tap' ? `SNOOP  M${T.d}×${T.p}  HSS-E` : `SNOOP  Ø${T.d}  ${isDrill(T) ? (T.tm === 'hss' || !T.tm ? 'HSS-Co' : 'VHM') : 'Z' + T.z}  ${COATNAME[g.coat] || ''}`;
+  // yazı alanı: eksen boyunca h, çevre boyunca arc·r (mm); tuval bu orana göre, harf yüksekliği ~1.6 mm (küçük takımda çapın üçte biri)
+  const h = Math.min(shank * 0.85, r * 9), arc = Math.min(1.4, 9 / r), wmm = arc * r;
+  const key = `${txt}|${h.toFixed(1)}|${wmm.toFixed(1)}`;
+  if (!markCache[key]) {
+    const W = 96, Hp = Math.max(64, Math.round(W * h / wmm));
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = Hp;
+    const c = cv.getContext('2d');
+    c.translate(W / 2, Hp / 2); c.rotate(-Math.PI / 2);
+    c.fillStyle = 'rgba(16,16,20,0.9)'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    let fs = W * Math.min(0.45, Math.min(1.6, r * 0.66) / wmm);
+    c.font = `600 ${fs}px "Chakra Petch", "Segoe UI", sans-serif`;
+    const tw = c.measureText(txt).width; if (tw > Hp * 0.94) { fs *= Hp * 0.94 / tw; c.font = `600 ${fs}px "Chakra Petch", "Segoe UI", sans-serif`; }
+    c.fillText(txt, 0, 0);
+    const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+    markCache[key] = new THREE.MeshStandardMaterial({ map:tex, transparent:true, depthWrite:false, roughness:0.7, metalness:0.2,
+      polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2 });
+  }
+  const sl = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.003, r * 1.003, h, 24, 1, true, -arc / 2, arc), markCache[key]);
+  place(sl, T.flute + 1 + shank * 0.45);
 }
 
 /* ---------------- Kesme / çarpışma mantığı ---------------- */
