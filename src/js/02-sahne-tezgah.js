@@ -293,11 +293,7 @@ floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR_Y; floor.receiveShadow
   rbox(bx - 700, bx + 700, FLOOR_Y + 820, FLOOR_Y + 880, bz - 300, bz + 300, 6, MX.wood);
   for (const sx of [-650, 650]) for (const sz of [-250, 250]) rbox(bx + sx - 30, bx + sx + 30, FLOOR_Y, FLOOR_Y + 820, bz + sz - 30, bz + sz + 30, 4, MX.cabinetDark);
   rbox(bx - 680, bx + 680, FLOOR_Y + 120, FLOOR_Y + 150, bz - 280, bz + 280, 4, MX.cabinetDark);
-  rbox(bx + 300, bx + 520, FLOOR_Y + 880, FLOOR_Y + 1010, bz + 150, bz + 290, 8, M.paint);
-  rbox(bx + 280, bx + 540, FLOOR_Y + 1000, FLOOR_Y + 1060, bz + 170, bz + 270, 6, M.ground);
-  // talaş varili
-  const drum = cyl(280, 280, 880, smat(0x2f4f7a, 0.55, 0.3), 32); drum.position.set(2500, FLOOR_Y + 440, -700); scene.add(drum);
-  for (const y of [180, 700]) { const r = new THREE.Mesh(new THREE.TorusGeometry(282, 7, 8, 48), MX.tray); r.rotation.x = Math.PI / 2; r.position.set(2500, FLOOR_Y + y, -700); scene.add(r); }
+  // talaş varili: hazır model (19-atolye.js)
 }
 
 /* -- konsollu dik freze gövdesi (Bridgeport tarzı) --

@@ -21,25 +21,26 @@ const blackBar = smat(0x2a2c2e, 0.6, 0.6, 0.3);          // haddeden çıkmış,
 const wood = smat(0x9a7a52, 0.9, 0, 0.1), woodDark = smat(0x6b5236, 0.9, 0, 0.1);
 const add = (m, x, y, z) => { m.position.set(x, y, z); scene.add(m); return m; };
 
-/* ---- Sütunlu matkap (sol arka, dolapla tezgâh arasında) ---- */
-{
-  const x = -1300, z = -1320;
-  rbox(x - 220, x + 220, F, F + 70, z - 180, z + 220, 10, P.grey);                       // ayak
-  const col = add(cyl(48, 48, 1750, M.steel, 24), x, F + 70 + 875, z - 60);
-  rbox(x - 170, x + 170, F + 780, F + 820, z - 90, z + 240, 8, P.grey);                   // tabla
-  rbox(x - 60, x + 60, F + 740, F + 790, z - 110, z - 10, 6, P.grey);                     // tabla kolu bileziği
-  rbox(x - 150, x + 150, F + 1480, F + 1760, z - 150, z + 230, 20, P.grey);               // kafa
-  rbox(x - 120, x + 120, F + 1760, F + 1830, z - 120, z + 200, 14, P.grey);               // kayış kapağı
-  add(cyl(95, 95, 260, P.dark, 24), x, F + 1620, z - 250).rotation.x = Math.PI / 2;      // motor (arkada)
-  add(cyl(30, 30, 160, M.steel, 16), x, F + 1400, z + 140);                              // kovan
-  add(cyl(22, 12, 70, M.steel, 16), x, F + 1295, z + 140);                               // mandren
-  const hub = add(cyl(24, 24, 40, M.steel, 16), x + 170, F + 1560, z + 80); hub.rotation.z = Math.PI / 2;
-  for (let k = 0; k < 3; k++) {                                                         // ilerleme kolları
-    const g = new THREE.Group(); g.position.set(x + 190, F + 1560, z + 80); g.rotation.x = k * TAU / 3 + 0.4; scene.add(g);
-    const rod = cyl(5, 5, 200, M.steel, 8); rod.position.y = 100; g.add(rod);
-    const kn = new THREE.Mesh(new THREE.SphereGeometry(14, 12, 10), M.black); kn.position.y = 200; g.add(kn);
-  }
+/* ---- Hazır modeller (assets/model, Poly Haven CC0, glTF; metre → mm) ----
+   Sayfa açıldıktan sonra arka planda yüklenir; yüklenemezse (file://) yeri boş kalır, oyun etkilenmez.
+   x, z: taban ortası; y: tabanın oturduğu yükseklik; ry: Y ekseninde dönüş; wallZ verilirse arkası o duvara dayanır. */
+const gltf = new THREE.GLTFLoader();
+function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6 }) {
+  gltf.load(`assets/model/${id}/${id}.gltf`, g => {
+    const o = g.scene; o.scale.setScalar(1000); o.rotation.y = ry;
+    o.traverse(c => { if (c.isMesh) { c.castShadow = c.receiveShadow = true; if (c.material) c.material.envMapIntensity = env; } });
+    o.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(o);
+    o.position.set(x - (bb.min.x + bb.max.x) / 2, y - bb.min.y, wallZ != null ? wallZ - bb.min.z : z - (bb.min.z + bb.max.z) / 2);
+    scene.add(o);
+  }, undefined, () => {});
 }
+// sol arka: takım arabası ve üstünde takım sandığı; sağ arka: çalışma tezgâhında masa matkabı ve tezgâh mengenesi, önünde tabure
+model('tool_cart', { x:-1250, z:-1200 });
+model('metal_tool_chest', { x:-1400, z:-1230, y:F + 965 });
+model('drill_press_01', { x:1600, z:-1420, y:F + 880, ry:0 });
+model('bench_vice_01', { x:2420, z:-1180, y:F + 880, ry:0 });
+model('metal_stool_01', { x:1850, z:-750 });
 
 /* ---- Taş motoru ayağıyla (sağ arka, tezgâhın solunda) ---- */
 {
@@ -66,15 +67,12 @@ const add = (m, x, y, z) => { m.position.set(x, y, z); scene.add(m); return m; }
   add(cyl(55, 55, 30, smat(0xeeeeea, 0.4, 0.1), 24), x + 160, F + 640, z + 420).rotation.z = Math.PI / 2;   // manometre
 }
 
-/* ---- Variller (sağda): yağ varili el pompasıyla ve talaş varili yanında sarı varil ---- */
+/* ---- Variller (sağda, damlama tavasında): hazır modeller ---- */
 {
-  const tray = smat(0x31363a, 0.6, 0.5, 0.3);
-  rbox(2440, 3800, F, F + 60, -400, 200, 8, tray);
-  const d1 = add(cyl(290, 290, 880, P.red, 32), 2780, F + 60 + 440, -110);
-  const d2 = add(cyl(290, 290, 880, P.yellow, 32), 3440, F + 60 + 440, -110);   // aralarında 60 mm boşluk
-  for (const d of [d1, d2]) for (const y of [-260, 260]) { const r = new THREE.Mesh(new THREE.TorusGeometry(292, 8, 8, 48), tray); r.rotation.x = Math.PI / 2; r.position.set(0, y, 0); d.add(r); }
-  add(cyl(18, 18, 700, M.steel, 10), 2780, F + 60 + 880 + 250, -110);                  // pompa gövdesi
-  const h = add(cyl(8, 8, 300, M.steel, 8), 2780, F + 60 + 880 + 560, -110); h.rotation.z = Math.PI / 2 - 0.5;
+  rbox(2440, 3800, F, F + 60, -400, 200, 8, smat(0x31363a, 0.6, 0.5, 0.3));
+  model('Barrel_01', { x:2790, z:-100, y:F + 60 });
+  model('barrel_03', { x:3450, z:-100, y:F + 60, ry:0.6 });
+  model('barrel_03', { x:2500, z:-760, ry:2.2 });                                    // talaş varili
 }
 
 /* ---- Malzeme rafı (sol duvar): konsol kollarda yuvarlak çubuklar, lamalar ---- */
@@ -136,10 +134,8 @@ const add = (m, x, y, z) => { m.position.set(x, y, z); scene.add(m); return m; }
 /* ---- Elektrik panosu ve kablo kanalı (arka duvar) ---- */
 {
   const x = -480;
-  rbox(x - 260, x + 260, F + 1150, F + 1950, WALL_Z, WALL_Z + 200, 10, P.grey);
-  rbox(x - 240, x + 240, F + 1170, F + 1930, WALL_Z + 200, WALL_Z + 206, 4, P.grey);
-  rbox(x + 150, x + 200, F + 1500, F + 1580, WALL_Z + 206, WALL_Z + 236, 6, P.dark);   // kol
-  rbox(x - 60, x + 60, F + 1950, F + 2700, WALL_Z, WALL_Z + 90, 6, P.dark).castShadow = false;
+  model('power_box_01', { x, y:F + 1300, wallZ:WALL_Z });                                // sigorta kutusu (hazır model)
+  rbox(x - 50, x + 50, F + 1800, F + 2700, WALL_Z, WALL_Z + 80, 6, P.dark).castShadow = false;
   rbox(-3300, 3500, F + 2700, F + 2760, WALL_Z, WALL_Z + 110, 4, P.dark).castShadow = false;
   for (const px of [-2000, 1400]) add(cyl(18, 18, 2100, P.dark, 10), px, F + 1650, WALL_Z + 30).castShadow = false;   // boru inişleri
 }
