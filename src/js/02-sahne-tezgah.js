@@ -62,6 +62,13 @@ if (THREE.RoomEnvironment) {
   for (const k of ['paint', 'paintDark', 'dark', 'black', 'yellow', 'floor']) M[k].envMapIntensity = 0.25;
   M.steel.envMapIntensity = 0.45; M.ground.envMapIntensity = 0.5;   // makine mat; parlak kalan tek şey işlenen parça
 }
+// gerçek atölye ortamı (assets/hdri, CC0): metaller tavan vincini, pencereleri ve tezgâhları yansıtır; yüklenemezse yapay oda kalır
+new THREE.RGBELoader().setDataType(THREE.UnsignedByteType).load('assets/hdri/machine_shop_02_1k.hdr', hdr => {
+  const pm = new THREE.PMREMGenerator(renderer);
+  const old = scene.environment;
+  scene.environment = pm.fromEquirectangular(hdr).texture;
+  pm.dispose(); hdr.dispose(); if (old) old.dispose();
+}, undefined, () => {});
 // gövde renkleri sRGB olarak verildi; doğrusal uzaya çevrilmezse soluk, beyazımsı görünür
 M.paint = new THREE.MeshStandardMaterial({ color:0x5f7d72, roughness:0.86, metalness:0.04 });
 M.paintDark = new THREE.MeshStandardMaterial({ color:0x44574f, roughness:0.88, metalness:0.04 });
@@ -96,8 +103,78 @@ function smat(hex, rough, metal, env = 0.3, extra) {
   const m = new THREE.MeshStandardMaterial(Object.assign({ color:lin(hex), roughness:rough, metalness:metal }, extra || {}));
   m.envMapIntensity = env; return m;
 }
-addMottle(M.paint, 0.08, 0.07); addMottle(M.paintDark, 0.08, 0.07);
-M.floor = smat(0x5a5e5c, 0.92, 0, 0.15); addMottle(M.floor, 0.004, 0.16);
+/* ---- Dokular (assets/doku, CC0): üç düzlemli kaplama ----
+   Tezgâh kodla kurulan kutu/silindirlerden oluşuyor, düzgün UV yok; doku dünya konumundan üç eksende yansıtılıp
+   yüzey normaline göre karıştırılır (whiteout normal karışımı). Doku yüklenene kadar ve yüklenemezse (file://)
+   yalnızca gürültü dalgalanması kalır. alb: dokunun rengi ne kadar kullanılsın (0: yalnızca açık-koyu detay, rengi
+   malzemeden; 1: dokunun kendi rengi), sc: 1 / doku boyu (mm), nStr: normal haritası şiddeti, det: açık-koyu detayın şiddeti. */
+const TEX_DIR = 'assets/doku/';
+const texLoader = new THREE.TextureLoader();
+const blankTex = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1, THREE.RGBAFormat);
+const texCache = {};
+function loadTex(name) {
+  if (!texCache[name]) {
+    texCache[name] = new Promise(res => texLoader.load(TEX_DIR + name, t => {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      res(t);
+    }, undefined, () => res(null)));
+  }
+  return texCache[name];
+}
+function addSurface(m, set, o) {
+  const u = {
+    mSc: { value:o.mSc }, mAmt: { value:o.mAmt },
+    tDiff: { value:blankTex }, tNor: { value:blankTex }, tRough: { value:blankTex },
+    tOn: { value:0 }, tSc: { value:o.sc }, tAlb: { value:o.alb || 0 }, tMean: { value:o.mean || 0.5 },
+    tRgh: { value:o.rough == null ? 1 : o.rough }, tNStr: { value:o.nStr == null ? 1 : o.nStr }, tDet: { value:o.det == null ? 1 : o.det },
+  };
+  Promise.all(['diff', 'nor_gl', 'rough'].map(k => loadTex(`${set}_${k}_1k.jpg`))).then(([d, n, r]) => {
+    if (!d || !n || !r) return;
+    u.tDiff.value = d; u.tNor.value = n; u.tRough.value = r; u.tOn.value = 1;
+  });
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, u);
+    sh.vertexShader = 'varying vec3 vWp;\nvarying vec3 vWn;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+      '#include <begin_vertex>\n  vWp = (modelMatrix * vec4(position, 1.0)).xyz;\n  vWn = normalize(mat3(modelMatrix) * objectNormal);');
+    sh.fragmentShader = `uniform float mSc, mAmt, tOn, tSc, tAlb, tMean, tRgh, tNStr, tDet;
+uniform sampler2D tDiff, tNor, tRough;
+varying vec3 vWp;
+varying vec3 vWn;
+${NOISE_GLSL}
+vec3 triW(vec3 n) { vec3 b = pow(abs(n), vec3(4.0)); return b / (b.x + b.y + b.z); }
+vec4 tri(sampler2D t, vec3 p, vec3 w) { return texture2D(t, p.zy) * w.x + texture2D(t, p.xz) * w.y + texture2D(t, p.xy) * w.z; }
+` + sh.fragmentShader
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        vec3 tn0 = normalize(vWn), tw = triW(tn0), tp = vWp * tSc;
+        float nz = vnoise(vWp * mSc) * 0.55 + vnoise(vWp * mSc * 4.3) * 0.3 + vnoise(vWp * mSc * 17.0) * 0.15;
+        diffuseColor.rgb *= 1.0 - mAmt + 2.0 * mAmt * nz;
+        if (tOn > 0.5) {
+          vec3 tc = pow(tri(tDiff, tp, tw).rgb, vec3(2.2));
+          float lum = dot(tc, vec3(0.2126, 0.7152, 0.0722));
+          diffuseColor.rgb = mix(diffuseColor.rgb * mix(1.0, clamp(lum / tMean, 0.25, 1.8), tDet), tc * diffuseColor.rgb * 2.0, tAlb);
+        }`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        roughnessFactor = clamp(roughnessFactor + (nz - 0.5) * mAmt * 1.6, 0.05, 1.0);
+        if (tOn > 0.5) roughnessFactor = clamp(mix(roughnessFactor, tri(tRough, tp, tw).g, tRgh), 0.05, 1.0);`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        if (tOn > 0.5 && tNStr > 0.0) {
+          vec3 nx = texture2D(tNor, tp.zy).xyz * 2.0 - 1.0, ny = texture2D(tNor, tp.xz).xyz * 2.0 - 1.0, nzz = texture2D(tNor, tp.xy).xyz * 2.0 - 1.0;
+          nx = vec3(nx.xy + tn0.zy, abs(nx.z) * tn0.x); ny = vec3(ny.xy + tn0.xz, abs(ny.z) * tn0.y); nzz = vec3(nzz.xy + tn0.xy, abs(nzz.z) * tn0.z);
+          vec3 wn = normalize(nx.zyx * tw.x + ny.xzy * tw.y + nzz.xyz * tw.z);
+          normal = normalize(mix(normal, normalize((viewMatrix * vec4(wn, 0.0)).xyz), tNStr));
+        }`);
+  };
+  m.customProgramCacheKey = () => 'surface';
+}
+// tezgâh boyası: yeşil rengimiz kalır, dokudan çizik/aşınma detayı, pürüzlülük ve normal gelir (doku ~700 mm)
+addSurface(M.paint, 'green_metal_rust', { mSc:0.08, mAmt:0.05, sc:1 / 700, alb:0, mean:0.063, rough:0.7, nStr:0.6, det:0.55 });
+addSurface(M.paintDark, 'green_metal_rust', { mSc:0.08, mAmt:0.05, sc:1 / 700, alb:0, mean:0.063, rough:0.7, nStr:0.6, det:0.55 });
+// zemin: lekeli beton, dokunun kendi rengi (doku ~2 m)
+M.floor = smat(0x8a8a86, 0.92, 0, 0.15);
+addSurface(M.floor, 'garage_floor', { mSc:0.004, mAmt:0.08, sc:1 / 2000, alb:1, rough:1, nStr:1 });
+// çelik ve taşlanmış tabla: boya dokusunun çizik ve leke detayı, hafif (metal parlak kalır, kullanılmış görünür)
+addSurface(M.steel, 'green_metal_rust', { mSc:0.05, mAmt:0.04, sc:1 / 450, alb:0, mean:0.063, rough:0.35, nStr:0.25 });
+addSurface(M.ground, 'green_metal_rust', { mSc:0.05, mAmt:0.03, sc:1 / 600, alb:0, mean:0.063, rough:0.3, nStr:0.2 });
 const MX = {
   cream: smat(0xc9c6b6, 0.8, 0.02, 0.2),
   wallLow: smat(0x3f5a51, 0.9, 0, 0.12), wallHigh: smat(0x9fa39a, 0.95, 0, 0.1),
@@ -109,7 +186,10 @@ const MX = {
   wood: smat(0x7a5a3a, 0.85, 0, 0.1), chrome: smat(0xd8dde0, 0.18, 1, 0.8),
   glow: new THREE.MeshBasicMaterial({ color:0xf4f1e6 }),
 };
-addMottle(MX.wallLow, 0.006, 0.08); addMottle(MX.wallHigh, 0.006, 0.08); addMottle(MX.cabinet, 0.05, 0.05);
+// duvarlar: boyalı beton (beton dokusunun detayı, rengi duvar boyasından)
+addSurface(MX.wallLow, 'garage_floor', { mSc:0.006, mAmt:0.06, sc:1 / 1800, alb:0, mean:0.161, rough:0.6, nStr:0.7 });
+addSurface(MX.wallHigh, 'garage_floor', { mSc:0.006, mAmt:0.06, sc:1 / 1800, alb:0, mean:0.161, rough:0.6, nStr:0.7 });
+addMottle(MX.cabinet, 0.05, 0.05);
 // Yuvarlatılmış kenarlı kutu (döküm ve sac parçalar için)
 function rbox(x0, x1, y0, y1, z0, z1, r, mat, parent, shadow = true) {
   const w = x1 - x0, h = y1 - y0, d = z1 - z0;

@@ -6,6 +6,8 @@
 - İnternetsiz: three.js npm'den paketlenir (`src/js/three-kur.js` global THREE'yi kurar, OrbitControls ve RoomEnvironment dahil); yazı tipleri (Chakra Petch, IBM Plex Sans, Share Tech Mono; latin + latin-ext) derlemede CSS'e gömülür. dev.html 'three'yi import haritasıyla node_modules'tan alır. Paket boşluk/sözdizimi sıkıştırmalı, adlar korunur.
 - `npm run build`: önce `tools/analiz.mjs` denetler, sonra `build.mjs` esbuild ile paketleyip `freze.html` (tek dosya) ve `dev.html` üretir. `npm run watch` değiştikçe derler.
 - `dev.html`: aynı sayfa, modüller paketlenmeden `src/js/main.js`'ten doğrudan yüklenir; tarayıcıda dosya dosya hata ayıklama için. Derlemeye gerek kalmadan kaynak düzenlenip sayfa yenilenebilir.
+- `assets/`: oyunla birlikte dağıtılan dosyalar (paketlenmez, sayfa çalışırken yükler): `hdri/` ortam yansıması, `doku/` dokular. Kaynak ve lisanslar `assets/LISANS.md` (yalnızca CC0 ya da açıkça izinli dosyalar). Dosya yüklenemezse (örn. freze.html tek başına file:// ile açılırsa) oyun dokusuz çalışır.
+- Dokular `02-sahne-tezgah.js` içinde `addSurface(malzeme, 'set_adı', {...})` ile üç düzlemli (triplanar) kaplanır; tezgâhın UV'si yok. `alb` 0 ise dokunun yalnızca açık-koyu detayı alınır, renk malzemeden gelir.
 - `src/sayfa.html`: sayfa şablonu (paneller, düğmeler). `/*@CSS@*/` yerine `src/stil.css`, `//@JS@` yerine paket girer.
 - `src/js/NN-ad.js`: gerçek ES modülleri (`import`/`export`). Her modülün ilk satırı ne içerdiğini söyler. `main.js` hepsini sırayla yükler.
 
