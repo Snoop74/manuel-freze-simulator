@@ -121,7 +121,31 @@ function loadTex(name) {
   }
   return texCache[name];
 }
+/* Doku parçaya yapışık kalsın: her mesh ilk çizildiğinde köşelerinin o anki dünya konumu ve normali (duruş konumu)
+   restPos/restNor özniteliği olarak kaydedilir; doku hep bu konumdan yansıtılır. Tabla, kızak ya da çark hareket edince
+   doku parçayla birlikte gider. Aynı geometriyi paylaşan ikinci mesh kendi kopyasını alır. */
+const _nm = new THREE.Matrix3(), _v = new THREE.Vector3();
+function bakeRest(obj, g) {
+  if (g.userData.restOwner != null && g.userData.restOwner !== obj.id) { obj.geometry = g = g.clone(); }
+  const P = g.attributes.position, N = g.attributes.normal, n = P.count;
+  const rp = new Float32Array(n * 3), rn = new Float32Array(n * 3);
+  _nm.getNormalMatrix(obj.matrixWorld);
+  for (let i = 0; i < n; i++) {
+    _v.fromBufferAttribute(P, i).applyMatrix4(obj.matrixWorld); rp[i*3] = _v.x; rp[i*3+1] = _v.y; rp[i*3+2] = _v.z;
+    if (N) { _v.fromBufferAttribute(N, i).applyMatrix3(_nm).normalize(); rn[i*3] = _v.x; rn[i*3+1] = _v.y; rn[i*3+2] = _v.z; }
+  }
+  g.setAttribute('restPos', new THREE.BufferAttribute(rp, 3));
+  g.setAttribute('restNor', new THREE.BufferAttribute(rn, 3));
+  g.userData.restOwner = obj.id;
+}
+// Sahne çizimine başlamadan (dünya matrisleri güncel, nesneler GPU'ya yüklenmeden) yeni mesh'ler kaydedilir.
+// Mesh.onBeforeRender'da eklenen öznitelik o karede yüklenmiyor ve three.js bağlantıyı öyle önbelleğe alıyor (yüzey kararır).
+const surfMesh = o => o.isMesh && o.material && (Array.isArray(o.material) ? o.material.some(m => m.userData.restSurface) : o.material.userData.restSurface);
+scene.onBeforeRender = () => {
+  scene.traverseVisible(o => { if (surfMesh(o) && (!o.geometry.attributes.restPos || o.geometry.userData.restOwner !== o.id)) bakeRest(o, o.geometry); });
+};
 function addSurface(m, set, o) {
+  m.userData.restSurface = true;
   const u = {
     mSc: { value:o.mSc }, mAmt: { value:o.mAmt },
     tDiff: { value:blankTex }, tNor: { value:blankTex }, tRough: { value:blankTex },
@@ -134,13 +158,16 @@ function addSurface(m, set, o) {
   });
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, u);
-    sh.vertexShader = 'varying vec3 vWp;\nvarying vec3 vWn;\n' + sh.vertexShader.replace('#include <begin_vertex>',
-      '#include <begin_vertex>\n  vWp = (modelMatrix * vec4(position, 1.0)).xyz;\n  vWn = normalize(mat3(modelMatrix) * objectNormal);');
+    sh.vertexShader = 'attribute vec3 restPos;\nattribute vec3 restNor;\nvarying vec3 vWp;\nvarying vec3 vWn;\nvarying vec3 vCn;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+      '#include <begin_vertex>\n  vWp = restPos;\n  vWn = restNor;\n  vCn = normalize(mat3(modelMatrix) * objectNormal);');
     sh.fragmentShader = `uniform float mSc, mAmt, tOn, tSc, tAlb, tMean, tRgh, tNStr, tDet;
 uniform sampler2D tDiff, tNor, tRough;
 varying vec3 vWp;
 varying vec3 vWn;
+varying vec3 vCn;
 ${NOISE_GLSL}
+// a yönünü b yönüne getiren dönüşü v'ye uygula (duruştaki normal haritasını parçanın şimdiki yönüne çevirir)
+vec3 rotTo(vec3 v, vec3 a, vec3 b) { vec3 c = cross(a, b); float d = dot(a, b); return d < -0.999 ? -v : v * d + cross(c, v) + c * dot(c, v) / (1.0 + d); }
 vec3 triW(vec3 n) { vec3 b = pow(abs(n), vec3(4.0)); return b / (b.x + b.y + b.z); }
 vec4 tri(sampler2D t, vec3 p, vec3 w) { return texture2D(t, p.zy) * w.x + texture2D(t, p.xz) * w.y + texture2D(t, p.xy) * w.z; }
 ` + sh.fragmentShader
@@ -160,7 +187,7 @@ vec4 tri(sampler2D t, vec3 p, vec3 w) { return texture2D(t, p.zy) * w.x + textur
         if (tOn > 0.5 && tNStr > 0.0) {
           vec3 nx = texture2D(tNor, tp.zy).xyz * 2.0 - 1.0, ny = texture2D(tNor, tp.xz).xyz * 2.0 - 1.0, nzz = texture2D(tNor, tp.xy).xyz * 2.0 - 1.0;
           nx = vec3(nx.xy + tn0.zy, abs(nx.z) * tn0.x); ny = vec3(ny.xy + tn0.xz, abs(ny.z) * tn0.y); nzz = vec3(nzz.xy + tn0.xy, abs(nzz.z) * tn0.z);
-          vec3 wn = normalize(nx.zyx * tw.x + ny.xzy * tw.y + nzz.xyz * tw.z);
+          vec3 wn = rotTo(normalize(nx.zyx * tw.x + ny.xzy * tw.y + nzz.xyz * tw.z), tn0, normalize(vCn));
           normal = normalize(mix(normal, normalize((viewMatrix * vec4(wn, 0.0)).xyz), tNStr));
         }`);
   };
