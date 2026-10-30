@@ -266,28 +266,8 @@ floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR_Y; floor.receiveShadow
   for (let x = -390; x < 600; x += 40) boxR(x, x + 14, FLOOR_Y + 14, FLOOR_Y + 17, 310, 870, MX.rubber).castShadow = false;
   // duvarlar: altı boyalı lambri, üstü açık renk
   const wall = (x0, x1, z0, z1) => { boxR(x0, x1, FLOOR_Y, FLOOR_Y + 1300, z0, z1, MX.wallLow).castShadow = false; boxR(x0, x1, FLOOR_Y + 1300, FLOOR_Y + 3600, z0, z1, MX.wallHigh).castShadow = false; boxR(x0 - 4, x1 + 4, FLOOR_Y + 1290, FLOOR_Y + 1320, z0 - 4, z1 + 4, MX.stripe).castShadow = false; };
-  wall(-3400, 3600, -1640, -1600); wall(-3400, -3360, -1600, 3000);
-  // tavan floresanları
-  for (const x of [-1200, 300, 1800]) for (const z of [-700, 700]) {
-    boxR(x - 600, x + 600, 2450, 2480, z - 60, z + 60, MX.cabinetDark).castShadow = false;
-    boxR(x - 580, x + 580, 2440, 2452, z - 40, z + 40, MX.glow).castShadow = false;
-  }
-  // takım dolabı (sol arka)
-  const cx = -2300, cz = -1480;
-  rbox(cx - 380, cx + 380, FLOOR_Y, FLOOR_Y + 1050, cz - 120, cz + 120, 8, MX.cabinet);
-  for (let k = 0; k < 6; k++) {
-    const y0 = FLOOR_Y + 70 + k * 160;
-    rbox(cx - 360, cx + 360, y0, y0 + 140, cz + 120, cz + 128, 3, MX.cabinet);
-    rbox(cx - 120, cx + 120, y0 + 100, y0 + 112, cz + 128, cz + 142, 4, MX.chrome);
-  }
-  rbox(cx - 400, cx + 400, FLOOR_Y + 1050, FLOOR_Y + 1080, cz - 140, cz + 140, 5, MX.wood);
-  // dolabın üstünde kumpas kutusu ve yağdanlık
-  rbox(cx - 250, cx - 30, FLOOR_Y + 1080, FLOOR_Y + 1130, cz - 60, cz + 40, 4, MX.cabinetDark);
-  const can = cyl(55, 70, 150, MX.stripe, 24); can.position.set(cx + 200, FLOOR_Y + 1155, cz); scene.add(can);
-  const spout = cyl(6, 9, 180, MX.chrome, 10); spout.position.set(cx + 270, FLOOR_Y + 1280, cz); spout.rotation.z = -0.9; scene.add(spout);
-  // delikli pano ve anahtarlar
-  rbox(cx - 380, cx + 380, FLOOR_Y + 1250, FLOOR_Y + 1900, -1600, -1585, 3, MX.cream);
-  for (let k = 0; k < 7; k++) { const w = rbox(cx - 320 + k * 100, cx - 300 + k * 100, FLOOR_Y + 1380, FLOOR_Y + 1620 - k * 18, -1585, -1575, 6, MX.chrome); w.castShadow = false; }
+  wall(-3400, 3640, -1640, -1600); wall(-3400, -3360, -1600, 3000); wall(3600, 3640, -1600, 3000);   // arka, sol, sağ
+  // tavan lambaları, takım rafı ve üstündekiler: hazır modeller (19-atolye.js)
   // sağ arkada çalışma tezgâhı ve mengene
   const bx = 2000, bz = -1350;
   rbox(bx - 700, bx + 700, FLOOR_Y + 820, FLOOR_Y + 880, bz - 300, bz + 300, 6, MX.wood);

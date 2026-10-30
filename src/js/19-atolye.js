@@ -7,9 +7,9 @@ const F = FLOOR_Y;
 const WALL_Z = -1600, WALL_X = -3360;   // arka duvarın ve sol duvarın iç yüzü
 
 // boyalı makine ve eşya malzemeleri: renk bizden, aşınma detayı tezgâh boyasının dokusundan
-function paint(hex, rough = 0.8, metal = 0.08) {
+function paint(hex, rough = 0.8, metal = 0.08, o) {
   const m = smat(hex, rough, metal, 0.25);
-  addSurface(m, 'green_metal_rust', { mSc:0.08, mAmt:0.05, sc:1 / 700, alb:0, mean:0.063, rough:0.7, nStr:0.6, det:0.5 });
+  addSurface(m, 'green_metal_rust', Object.assign({ mSc:0.08, mAmt:0.05, sc:1 / 700, alb:0, mean:0.063, rough:0.7, nStr:0.6, det:0.5 }, o));
   return m;
 }
 const P = {
@@ -18,28 +18,37 @@ const P = {
 };
 const steelBar = smat(0x8d9499, 0.42, 0.85, 0.6), aluBar = smat(0xc4c9cc, 0.3, 0.9, 0.7), brass = smat(0xc8a252, 0.35, 0.9, 0.6);
 const blackBar = smat(0x2a2c2e, 0.6, 0.6, 0.3);          // haddeden çıkmış, tufallı çelik
+// çubuklara metal yüzey detayı (çizik, leke, tufal): tezgâh boyası dokusunun açık-koyu deseni, ince ölçekte
+for (const [m, det, rough, n] of [[steelBar, 0.7, 0.4, 0.35], [blackBar, 1, 0.6, 0.6], [aluBar, 0.35, 0.3, 0.2], [brass, 0.5, 0.35, 0.25]])
+  addSurface(m, 'green_metal_rust', { mSc:0.05, mAmt:0.04, sc:1 / 300, alb:0, mean:0.063, rough, nStr:n, det });
+const rackPaint = paint(0x3b5a7a, 0.75, 0.1, { det:1, nStr:1, rough:0.8, sc:1 / 500 });   // malzeme rafı: belirgin aşınma
+const extRed = paint(0xb3221a, 0.45, 0.1, { det:0.9, nStr:0.8, rough:0.5, sc:1 / 400 });   // yangın tüpü
 const wood = smat(0x9a7a52, 0.9, 0, 0.1), woodDark = smat(0x6b5236, 0.9, 0, 0.1);
 const add = (m, x, y, z) => { m.position.set(x, y, z); scene.add(m); return m; };
 
 /* ---- Hazır modeller (assets/model, Poly Haven CC0, glTF; metre → mm) ----
    Sayfa açıldıktan sonra arka planda yüklenir; yüklenemezse (file://) yeri boş kalır, oyun etkilenmez.
    x, z: taban ortası; y: tabanın oturduğu yükseklik; ry: Y ekseninde dönüş; wallZ verilirse arkası o duvara dayanır;
-   on: başka bir modelin sözü (Promise) verilirse model onun (x, z) noktasındaki gerçek yüzeyine oturur (aşağı ışın). */
-const gltf = new THREE.GLTFLoader(), ray = new THREE.Raycaster();
-function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on }) {
-  const load = new Promise(res => gltf.load(`assets/model/${id}/${id}.gltf`, g => res(g.scene), undefined, () => res(null)));
+   on: başka bir modelin sözü (Promise) verilirse model onun (x, z) noktasındaki gerçek yüzeyine oturur (aşağı ışın);
+   fromY: ışının başladığı yükseklik (rafın alt katı için üst katın hemen altı); topY: üstü bu yüksekliğe asılır (tavan).
+   Aynı model bir kez indirilir, sonraki kullanımlar kopyadır (geometri ve doku paylaşılır). */
+const gltf = new THREE.GLTFLoader(), ray = new THREE.Raycaster(), gltfCache = {};
+function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on, fromY = F + 5000, topY }) {
+  if (!gltfCache[id]) gltfCache[id] = new Promise(res => gltf.load(`assets/model/${id}/${id}.gltf`, g => res(g.scene), undefined, () => res(null)));
+  const load = gltfCache[id].then(s => s && (s.parent || s.userData.used ? s.clone(true) : (s.userData.used = true, s)));
   return Promise.all([load, on]).then(([o, base]) => {
     if (!o) return null;
     o.scale.setScalar(1000); o.rotation.y = ry;
     o.traverse(c => { if (c.isMesh) { c.castShadow = c.receiveShadow = true; if (c.material) c.material.envMapIntensity = env; } });
     o.updateMatrixWorld(true);
-    if (base) {   // altındaki modelin yüzeyi: yukarıdan aşağı ışın, ilk çarptığı nokta
-      ray.set(new THREE.Vector3(x, F + 5000, z), new THREE.Vector3(0, -1, 0));
+    if (base) {   // altındaki modelin yüzeyi: aşağı ışın, ilk çarptığı nokta
+      ray.set(new THREE.Vector3(x, fromY, z), new THREE.Vector3(0, -1, 0));
       const hit = ray.intersectObject(base, true)[0];
       if (hit) y = hit.point.y;
     }
     const bb = new THREE.Box3().setFromObject(o);
-    o.position.set(x - (bb.min.x + bb.max.x) / 2, y - bb.min.y, wallZ != null ? wallZ - bb.min.z : z - (bb.min.z + bb.max.z) / 2);
+    const py = topY != null ? topY - bb.max.y : y - bb.min.y;
+    o.position.set(x - (bb.min.x + bb.max.x) / 2, py, wallZ != null ? wallZ - bb.min.z : z - (bb.min.z + bb.max.z) / 2);
     scene.add(o); o.updateMatrixWorld(true);
     return o;
   });
@@ -51,36 +60,27 @@ model('drill_press_01', { x:1600, z:-1420, y:F + 880, ry:0 });
 model('bench_vice_01', { x:2420, z:-1180, y:F + 880, ry:0 });
 model('metal_stool_01', { x:1850, z:-750 });
 
-/* ---- Taş motoru ayağıyla (sağ arka, tezgâhın solunda) ---- */
-{
-  const x = 950, z = -1380;
-  rbox(x - 200, x + 200, F, F + 40, z - 200, z + 200, 8, P.grey);
-  add(cyl(55, 70, 900, P.grey, 20), x, F + 470, z);
-  rbox(x - 120, x + 120, F + 920, F + 950, z - 90, z + 90, 6, P.grey);
-  const mot = add(cyl(85, 85, 260, P.blue, 24), x, F + 1050, z); mot.rotation.z = Math.PI / 2;
-  for (const s of [-1, 1]) {
-    const wheel = add(cyl(95, 95, 28, smat(0xb8b3a6, 0.95, 0, 0.1), 32), x + s * 190, F + 1050, z); wheel.rotation.z = Math.PI / 2;
-    const guard = add(cyl(110, 110, 50, P.blue, 24, ), x + s * 190, F + 1065, z - 10); guard.rotation.z = Math.PI / 2; guard.scale.set(1, 1, 0.55);
-    rbox(x + s * 190 - 45, x + s * 190 + 45, F + 1170, F + 1180, z + 20, z + 130, 2, smat(0xbfd8e0, 0.1, 0, 0.6, { transparent:true, opacity:0.35 }));
-  }
-}
-
-/* ---- Kompresör (sağ arka köşe) ---- */
-{
-  const x = 3150, z = -1250;
-  const tank = add(cyl(230, 230, 1100, P.red, 32), x, F + 300, z); tank.rotation.x = Math.PI / 2;
-  for (const s of [-1, 1]) { const cap = new THREE.Mesh(new THREE.SphereGeometry(230, 24, 12, 0, TAU, 0, Math.PI / 2), P.red); cap.rotation.x = s * Math.PI / 2; add(cap, x, F + 300, z + s * 550); cap.scale.y = 0.35; }
-  for (const s of [-1, 1]) rbox(x - 200, x + 200, F, F + 90, z + s * 380 - 40, z + s * 380 + 40, 6, P.dark);
-  rbox(x - 150, x + 150, F + 520, F + 720, z - 380, z + 20, 12, P.dark);                // motor
-  rbox(x - 120, x + 120, F + 520, F + 800, z + 80, z + 330, 12, P.grey);                 // pompa
-  add(cyl(55, 55, 30, smat(0xeeeeea, 0.4, 0.1), 24), x + 160, F + 640, z + 420).rotation.z = Math.PI / 2;   // manometre
-}
+// oksijen-asetilen arabası (tezgâhın solunda), kompresör (sağ ön), el arabası, ıslak zemin levhası (soğutma sıvısı)
+model('portable_welding_cart', { x:950, z:-1300, ry:0.3 });
+model('old_military_compressor', { x:2750, z:800, ry:Math.PI / 2 });
+model('hand_truck', { x:3350, z:-900, ry:-0.6 });
+model('WetFloorSign_01', { x:1200, z:450, ry:-0.4 });
+// sol arka köşe: eski metal raf (dolabın yerinde) ve katlarında koli, yağ tenekesi, yağdanlık; yanında ahşap sandık
+const rack = model('worn_metal_rack', { x:-2400, wallZ:WALL_Z + 10 });
+const RZ = -1310;   // rafın orta derinliği (600 derin, duvara dayalı)
+model('cardboard_box_01', { x:-2550, z:RZ, on:rack, fromY:F + 1150 });
+model('oil_tin', { x:-2150, z:RZ, on:rack, fromY:F + 1150 });
+model('small_oil_can_01', { x:-2350, z:RZ, on:rack, fromY:F + 1600, ry:0.8 });
+model('cardboard_box_01', { x:-2450, z:RZ, on:rack, fromY:F + 650, ry:0.15 });
+model('wooden_crate_01', { x:-2250, z:-750, ry:0.1 });
+// tavan lambaları (eski floresan şeritlerin yerinde)
+for (const lx of [-1200, 300, 1800]) for (const lz of [-700, 700]) model('hanging_industrial_lamp', { x:lx, z:lz, topY:2480 });
 
 /* ---- Variller (sağda, damlama tavasında): hazır modeller ---- */
 {
-  rbox(2440, 3800, F, F + 60, -400, 200, 8, smat(0x31363a, 0.6, 0.5, 0.3));
-  model('Barrel_01', { x:2790, z:-100, y:F + 60 });
-  model('barrel_03', { x:3450, z:-100, y:F + 60, ry:0.6 });
+  rbox(2300, 3580, F, F + 60, -400, 200, 8, smat(0x31363a, 0.6, 0.5, 0.3));
+  model('Barrel_01', { x:2620, z:-100, y:F + 60 });
+  model('barrel_03', { x:3240, z:-100, y:F + 60, ry:0.6 });
   model('barrel_03', { x:2500, z:-760, ry:2.2 });                                    // talaş varili
 }
 
@@ -88,9 +88,9 @@ model('metal_stool_01', { x:1850, z:-750 });
 {
   const x0 = WALL_X, ups = [-900, -100, 700], lev = [F + 380, F + 900, F + 1420];
   for (const z of ups) {
-    rbox(x0, x0 + 90, F, F + 1900, z - 45, z + 45, 4, P.blue);
-    rbox(x0, x0 + 520, F, F + 60, z - 60, z + 60, 4, P.blue);                             // ayak
-    for (const y of lev) rbox(x0 + 90, x0 + 480, y - 35, y, z - 30, z + 30, 4, P.blue);
+    rbox(x0, x0 + 90, F, F + 1900, z - 45, z + 45, 4, rackPaint);
+    rbox(x0, x0 + 520, F, F + 60, z - 60, z + 60, 4, rackPaint);                          // ayak
+    for (const y of lev) rbox(x0 + 90, x0 + 480, y - 35, y, z - 30, z + 30, 4, rackPaint);
   }
   const bar = (mat, r, len, y, xo, zc) => { const b = add(cyl(r, r, len, mat, 18), x0 + xo, y + r, zc); b.rotation.x = Math.PI / 2; return b; };
   const L0 = lev[0], L1 = lev[1], L2 = lev[2];
@@ -152,8 +152,10 @@ model('metal_stool_01', { x:1850, z:-750 });
 /* ---- Yangın tüpü (sol duvar) ---- */
 {
   const z = -1200;
-  add(cyl(80, 80, 520, P.red, 24), WALL_X + 100, F + 640, z);
-  add(cyl(30, 40, 80, M.black, 12), WALL_X + 100, F + 940, z);
+  add(cyl(80, 80, 520, extRed, 32), WALL_X + 100, F + 640, z);
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(80, 32, 12, 0, TAU, 0, Math.PI / 2), extRed);
+  add(dome, WALL_X + 100, F + 900, z).scale.y = 0.45;                                    // omuz
+  add(cyl(30, 40, 80, M.black, 12), WALL_X + 100, F + 955, z);
   rbox(WALL_X + 120, WALL_X + 200, F + 960, F + 990, z - 15, z + 15, 4, M.black);
   rbox(WALL_X, WALL_X + 20, F + 600, F + 700, z - 60, z + 60, 2, M.steel);
 }
@@ -245,4 +247,22 @@ setInterval(clock.redraw, 30000);
     g.font = `700 ${Math.round(h * 0.17)}px ${FONT}`; g.fillText('YANGIN', w / 2, h * 0.38); g.fillText('TÜPÜ', w / 2, h * 0.62);
   });
   add(t.m, WALL_X + 3, F + 1250, -1200).rotation.y = Math.PI / 2;
+  // tüpün üstündeki kıvrık etiket (odaya, +X yönüne bakar)
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 320;
+  const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding;
+  const draw = () => {
+    const g = cv.getContext('2d'), w = cv.width, h = cv.height;
+    g.fillStyle = '#f1efe6'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#b3221a'; g.fillRect(0, 0, w, h * 0.2);
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, 'YANGIN SÖNDÜRÜCÜ', w / 2, h * 0.1, w * 0.9, 30, 700);
+    g.fillStyle = '#16191b'; fitText(g, 'ABC', w / 2, h * 0.36, w * 0.8, 74, 700);
+    fitText(g, 'KURU KİMYEVİ TOZ', w / 2, h * 0.54, w * 0.9, 28, 600);
+    fitText(g, '6 kg', w / 2, h * 0.68, w * 0.8, 40, 700);
+    g.fillStyle = '#4a4f50'; fitText(g, 'Pimi çek · Hortumu yönelt · Bas', w / 2, h * 0.86, w * 0.92, 18, 500);
+  };
+  draw(); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { draw(); tex.needsUpdate = true; });
+  const lab = new THREE.Mesh(new THREE.CylinderGeometry(81, 81, 240, 24, 1, true, Math.PI / 2 - 0.85, 1.7),
+    new THREE.MeshStandardMaterial({ map:tex, roughness:0.6, metalness:0 }));
+  lab.material.envMapIntensity = 0.3;
+  add(lab, WALL_X + 100, F + 620, -1200);
 }
