@@ -69,12 +69,12 @@ const add = (m, x, y, z) => { m.position.set(x, y, z); scene.add(m); return m; }
 /* ---- Variller (sağda): yağ varili el pompasıyla ve talaş varili yanında sarı varil ---- */
 {
   const tray = smat(0x31363a, 0.6, 0.5, 0.3);
-  rbox(2650, 3400, F, F + 60, -420, 200, 8, tray);
-  const d1 = add(cyl(290, 290, 880, P.red, 32), 2850, F + 60 + 440, -110);
-  const d2 = add(cyl(290, 290, 880, P.yellow, 32), 3200, F + 60 + 440, -110);
+  rbox(2440, 3800, F, F + 60, -400, 200, 8, tray);
+  const d1 = add(cyl(290, 290, 880, P.red, 32), 2780, F + 60 + 440, -110);
+  const d2 = add(cyl(290, 290, 880, P.yellow, 32), 3440, F + 60 + 440, -110);   // aralarında 60 mm boşluk
   for (const d of [d1, d2]) for (const y of [-260, 260]) { const r = new THREE.Mesh(new THREE.TorusGeometry(292, 8, 8, 48), tray); r.rotation.x = Math.PI / 2; r.position.set(0, y, 0); d.add(r); }
-  add(cyl(18, 18, 700, M.steel, 10), 2850, F + 60 + 880 + 250, -110);                  // pompa gövdesi
-  const h = add(cyl(8, 8, 300, M.steel, 8), 2850, F + 60 + 880 + 560, -110); h.rotation.z = Math.PI / 2 - 0.5;
+  add(cyl(18, 18, 700, M.steel, 10), 2780, F + 60 + 880 + 250, -110);                  // pompa gövdesi
+  const h = add(cyl(8, 8, 300, M.steel, 8), 2780, F + 60 + 880 + 560, -110); h.rotation.z = Math.PI / 2 - 0.5;
 }
 
 /* ---- Malzeme rafı (sol duvar): konsol kollarda yuvarlak çubuklar, lamalar ---- */
