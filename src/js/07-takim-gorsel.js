@@ -1,4 +1,5 @@
 // ── Takım görselleri ve tutucular: helisli gövdeler, ER/Weldon/shrink/hidrolik, kadranlı taster, takım profili
+import { kayit } from './00-kayit.js';
 import { S, TAN59, TAU, app, isDrill, tool } from './00-temel.js';
 import { box, cyl, smat, toolRot } from './02-sahne-tezgah.js';
 
@@ -27,7 +28,7 @@ const HOLDERS = {
 };
 const HKEY = 'freze-holders';
 let HSEL = {};
-try { HSEL = JSON.parse(localStorage.getItem(HKEY) || '{}') || {}; } catch (e) { HSEL = {}; }
+HSEL = kayit.oku(HKEY, {}) || {};
 const holds = T => T.type === 'end' || T.type === 'ball' || T.type === 'chamfer';
 const holderOf = T => holds(T) ? (HOLDERS[HSEL[T.no]] ? HSEL[T.no] : 'er') : null;
 const holderR = T => T.type === 'face' ? 25 : holds(T) ? HOLDERS[holderOf(T)].rh : 22;

@@ -1,4 +1,5 @@
 // ── Kumanda: DRO, devir/ilerleme, takım dolabı, takım değişimi, mil, jog, el çarkları, malzeme ve parça sıfırlama
+import { kayit } from './00-kayit.js';
 import { $, CUT, EDGE, H, INSP, MATS, NX, NY, PD, PH, PW, S, SURF, TOOLS, app, isDrill, isProbe, isTaster, log,
   mat, rapid, recFeed, recRpm, setMat, tipZ, tool, unslip } from './00-temel.js';
 import { ac, initAudio, master, noiseHit, thud } from './01-ses.js';
@@ -68,7 +69,7 @@ $('holderSeg').addEventListener('click', e => {
   if (holderOf(T) === k && !T.slipped) return;
   const was = T.slipped;
   unslip(T); HSEL[T.no] = k;
-  try { localStorage.setItem(HKEY, JSON.stringify(HSEL)); } catch (_) {}
+  kayit.yaz(HKEY, HSEL);
   buildToolVisual(); updateToolUI(); thud(200, 0.12, 0.1);
   log(was ? `${T.no} ${HOLDERS[k].n} tutucuya yeniden bağlandı; takım boyu düzeldi. Z'yi kontrol edin.` : `${T.no} artık ${HOLDERS[k].n} tutucuda: salgı ${Math.round(HOLDERS[k].ro * 1000)} µm.`, 'ok');
 });

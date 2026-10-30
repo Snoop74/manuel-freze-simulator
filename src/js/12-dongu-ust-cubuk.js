@@ -1,4 +1,5 @@
 // ── Ana döngü ve arayüz: klavye, kamera, frame(), HUD, üst çubuk simgeleri, paneller (PM), devir göstergesi, acil stop
+import { kayit } from './00-kayit.js';
 import { $, C, H, NX, NY, PD, PW, RAPID, S, TAU, app, clamp, isDrill, log, mat, rapid, tipZ, tool } from './00-temel.js';
 import { initAudio, thud, updateAudio } from './01-ses.js';
 import { camera, controls, motorSwitch, mush, quill, renderer, scene, spLampMat, spindleG, stage, startBtnMat,
@@ -250,11 +251,11 @@ const PM = (() => {
   };
   const P = {};
   let z = 30, store = {}, leftEdge = 310;
-  try { store = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { store = {}; }
+  store = kayit.oku(KEY, {}) || {};
   const save = () => {
     const o = {};
     for (const id in P) { const p = P[id]; o[id] = { x:p.x, y:p.y, w:p.w, h:p.h, vis:p.vis, col:p.collapsed }; }
-    try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {}
+    kayit.yaz(KEY, o);
   };
   const narrow = () => window.innerWidth <= 900;
   const vh = () => window.innerHeight - TOP;
@@ -365,7 +366,7 @@ const PM = (() => {
         return;
       }
       if (b.dataset.p) { setVis(b.dataset.p, !P[b.dataset.p].vis); return; }
-      if (b.dataset.l) { closeMenus(); if (b.dataset.l === 'reset') { try { localStorage.removeItem(KEY); } catch (_) {} preset('kumanda'); } else preset(b.dataset.l); return; }
+      if (b.dataset.l) { closeMenus(); if (b.dataset.l === 'reset') { kayit.sil(KEY); preset('kumanda'); } else preset(b.dataset.l); return; }
       if (b.dataset.v) { closeMenus(); const v = $(b.dataset.v); if (v) v.click(); return; }
       const a = b.dataset.act; if (!a) return;
       initAudio(); closeMenus();

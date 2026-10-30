@@ -1,4 +1,5 @@
 // ── İş emirleri: görevler, teknik resim, markalama, muayene ve puan, teslim raporu
+import { kayit } from './00-kayit.js';
 import { $, C, CUT, EDGE, H, INSP, NX, NY, PD, PH, PW, S, TOOLS, app, clamp, isDrill, log } from './00-temel.js';
 import { beep, initAudio } from './01-ses.js';
 import { rotIn } from './03-tabla-parca.js';
@@ -49,8 +50,8 @@ const HOLE_TOL0 = 0.2, DEPTH_TOL0 = 0.1, SIZE_TOL0 = 0.3;
 let HOLE_TOL = HOLE_TOL0, DEPTH_TOL = DEPTH_TOL0, SIZE_TOL = SIZE_TOL0;
 
 let progress = {};
-try { progress = JSON.parse(localStorage.getItem('freze-progress') || '{}') || {}; } catch (e) { progress = {}; }
-function saveProgress() { try { localStorage.setItem('freze-progress', JSON.stringify(progress)); } catch (e) {} }
+progress = kayit.oku('freze-progress', {}) || {};
+function saveProgress() { kayit.yaz('freze-progress', progress); }
 const bestStars = i => (progress['j' + i] && progress['j' + i].stars) || 0;
 const unlocked = i => i === 0 || bestStars(i - 1) >= 1;
 

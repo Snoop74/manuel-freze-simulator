@@ -1,4 +1,5 @@
 // ── Kariyer (CR): kasa, itibar, sipariş üretimi, koşullar, dükkân, ekipman, teslimde ödeme
+import { kayit } from './00-kayit.js';
 import { $, MATS, PD, PH, PW, S, TOOLS, app, isProbe, isTaster, log } from './00-temel.js';
 import { beep, initAudio } from './01-ses.js';
 import { FIXLIM } from './03-tabla-parca.js';
@@ -40,15 +41,15 @@ const CR = (() => {
   let st = null, on = false, sel = null, arm = { i:-1, t:0 };
   const fresh = () => ({ money:1500, rep:0, done:0, earned:0, owned:Object.fromEntries(START.map(n => [n, 1])), eq:{}, orders:[], seq:1 });
   function load() {
-    try { st = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { st = null; }
+    st = kayit.oku(KEY, null);
     if (!st || typeof st.money !== 'number' || !Number.isFinite(st.money)) st = fresh();
     if (!st.owned || typeof st.owned !== 'object') st.owned = {};
     if (!st.eq || typeof st.eq !== 'object') st.eq = {};
     st.orders = Array.isArray(st.orders) ? st.orders.filter(o => o && o.J && MATS[o.mat]) : [];
     st.orders.forEach(o => (o.J.pockets || []).forEach(p => { if (p.r == null) p.r = 5; }));
-    try { on = localStorage.getItem(MKEY) === 'career'; } catch (e) { on = false; }
+    on = kayit.oku(MKEY) === 'career';
   }
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); localStorage.setItem(MKEY, on ? 'career' : 'free'); } catch (e) {} };
+  const save = () => { kayit.yaz(KEY, st); kayit.yaz(MKEY, on ? 'career' : 'free'); };
   const tl = v => Math.round(v).toLocaleString('tr-TR') + ' ₺';
   const level = () => { let l = 0; LEVELS.forEach(([r], i) => { if (st.rep >= r) l = i; }); return l; };
   const priceOf = T => T.price || BUILTIN_PRICE[T.no] || toolPrice(TE.specOf(T));

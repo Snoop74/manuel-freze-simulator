@@ -36,6 +36,9 @@ for (const [i, f] of files.entries()) {
   }
   for (const r of mod.through) {
     const n = r.identifier.name;
+    if (n === 'localStorage' && f !== '00-kayit.js') {   // kalıcı veri yalnızca kayıt katmanından (masaüstünde dosyaya gider)
+      console.log(`✗ ${f}:${r.identifier.loc.start.line}: localStorage yerine kayit.oku/yaz kullanın`); bad++; continue;
+    }
     if (GLOBALS.has(n)) continue;
     if (!unknown.has(n)) unknown.set(n, []);
     unknown.get(n).push(`${f}:${r.identifier.loc.start.line}`);

@@ -14,6 +14,7 @@
 - **Değişkenin sahibi yazar:** import edilen bir `let` başka modülde atanamaz (ES kuralı). Sahibi olan modül bir ayarlayıcı verir: `setMat`, `allocGrid`, `setFIX`, `markThrough`, `withSeed`, ... Nesne özelliklerini (S.x, PAR.w) değiştirmek serbesttir.
 - **Tanımsız ad yok:** import edilmeyen ve tarayıcıda olmayan ad hata sayılır (eksik import). Yeni bir tarayıcı globali gerekirse analiz.mjs'deki GLOBALS listesine eklenir.
 - Yeni modül: numaralı dosya ekle ve `main.js`'e sırasıyla yaz.
+- **Kalıcı veri yalnızca `kayit` ile** (`00-kayit.js`): `kayit.oku(ad, varsayilan)`, `kayit.yaz(ad, deger)`, `kayit.sil(ad)`, `kayit.hepsi()`/`kayit.yukle(o)`. Arka uç tarayıcıda localStorage; masaüstü kabuğu `window.frezeMasaustu.kayit` (get/set/remove/keys, eşzamanlı) verirse dosya. Anahtarlar `freze-` ile başlar ve eski kayıtlar kaybolmasın diye adları değiştirilmez (freze-career-v1, freze-mode, freze-tools-v1, freze-holders, freze-progress, panel düzeni). Varsayılan nesne/dizi ise bozuk ya da yanlış türde kayıt varsayılana düşer. Başka yerde localStorage kullanmak denetleyicide hatadır.
 
 ## Test
 - `file://` çalışmaz; `python -m http.server <port>` ile aç (her oturumda farklı port). Hem `freze.html` hem `dev.html` denenmeli.
@@ -24,4 +25,4 @@
 2. ✅ Gerçek ES modülleri, esbuild paketi, dev.html, modül denetleyici (2026-10-30)
 3. TypeScript (önce JSDoc + `checkJs`, sonra dosya dosya `.ts`); modül adlarını numarasız klasörlere taşımak (fizik/, arayuz/, kariyer/...)
 4. Torna ile ortak kod (`ortak/`: ses, paneller, kasa), atölye birleştirmesi
-5. Steam/masaüstü hazırlığı: ✅ three.js ve yazı tipleri pakette, internetsiz (2026-10-30); kayıt katmanı (localStorage → dosya / Steam Cloud), ayarlar (çözünürlük, grafik kalitesi), Electron ya da Tauri kabuğu
+5. Steam/masaüstü hazırlığı: ✅ three.js ve yazı tipleri pakette, internetsiz (2026-10-30); ✅ kayıt katmanı (2026-10-30) (localStorage → dosya / Steam Cloud), ayarlar (çözünürlük, grafik kalitesi), Electron ya da Tauri kabuğu

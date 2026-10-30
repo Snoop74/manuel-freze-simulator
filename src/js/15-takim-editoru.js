@@ -1,4 +1,5 @@
 // ── Takım editörü (TE): tip, ölçüler, kaplama, fiyat, kesmeye etkiler, kayıt
+import { kayit } from './00-kayit.js';
 import { $, S, TOOLS, app, clamp, isDrill, log, mat, recFeed, recRpm } from './00-temel.js';
 import { initAudio } from './01-ses.js';
 import { HOLDERS, buildToolInto, buildToolVisual, geoOf, holderOf } from './07-takim-gorsel.js';
@@ -73,14 +74,15 @@ function toolMods(T) {
 TOOLS.forEach(T => { T.tm = /HSS/.test(T.mat) ? 'hss' : 'carbide'; });
 const nextToolNo = () => 'T' + (Math.max(...TOOLS.filter(T => !T.gone).map(T => parseInt(String(T.no).slice(1)) || 0)) + 1);
 try {
-  for (const sp of JSON.parse(localStorage.getItem(TKEY) || '[]')) {
+  const kayitli = kayit.oku(TKEY, []);
+  for (const sp of Array.isArray(kayitli) ? kayitli : []) {
     if (!sp || typeof sp !== 'object') continue;
     if (!/^T\d+$/.test(sp.no) || TOOLS.some(T => T.no === sp.no)) sp.no = nextToolNo();
     TOOLS.push(toolDef(fixSpec(sp))); S.wear.push(0);
   }
 } catch (e) {}
 function saveTools() {
-  try { localStorage.setItem(TKEY, JSON.stringify(TOOLS.filter(T => T.custom && !T.gone).map(T => T.spec))); } catch (e) {}
+  kayit.yaz(TKEY, TOOLS.filter(T => T.custom && !T.gone).map(T => T.spec));
 }
 renderRack();
 
