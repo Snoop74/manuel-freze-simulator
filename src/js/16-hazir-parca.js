@@ -4,6 +4,8 @@ const SFNAME = ['ham', 'döküm', 'taşlanmış', 'eski işleme', 'kaynak dikiş
 // pürüzsüz rastgele dalgalanma (döküm yüzeyi): birkaç sinüsün toplamı, sivri üçgen yapmaz
 // tohumlu rastgele: sipariş panoda beklerken, iş başlarken ve muayenede aynı parça yeniden kurulur
 let RNG = Math.random;
+// fn içindeki rastgele sayılar tohumdan gelir (aynı sipariş aynı parçayı verir)
+function withSeed(seed, fn) { RNG = mulberry(seed); try { return fn(); } finally { RNG = Math.random; } }
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function castNoise() {
   const w = Array.from({ length:5 }, (_, k) => ({ a:RNG() * 6.28, b:RNG() * 6.28, f:0.08 + k * 0.07 + RNG() * 0.05, g:0.06 + RNG() * 0.2 }));
@@ -162,11 +164,11 @@ function loadBlank(id, seed = Math.random() * 1e9 | 0, force = false) {
     const k = j * NX + i, x = i * C, y = j * C;
     H[k] = clamp(P.H(x, y), 0, PH); SURF[k] = P.Sf(x, y);
   }
-  throughDirty = true; markDirty(0, NX - 1, 0, NY - 1);
+  markThrough(); markDirty(0, NX - 1, 0, NY - 1);
   // çeneler parçanın ön ve arka kenarına basar: kenar yüksekliğinin 3 mm altında biter
   let fr = 0, bk = 0;
   for (let i = 0; i < NX; i++) { fr = Math.max(fr, H[2 * NX + i]); bk = Math.max(bk, H[(NY - 3) * NX + i]); }
-  jawOverride = clamp(Math.min(fr, bk) - 3, 4, 22); buildVise();
+  setJawOverride(clamp(Math.min(fr, bk) - 3, 4, 22)); buildVise();
   S.blank = { id, name:B.name, ...P };
   log(`Hazır parça bağlandı: ${B.name} (${P.info}). ${MATS[P.mat].short}.`, 'ok');
   return P;
@@ -198,3 +200,4 @@ const BG = (() => {
    Serbest atölyede her şey açık ve ücretsiz. Kariyerde müşteriler sipariş verir: ham parça kasadan alınır,
    teslimde parça ölçülür (iş emirleriyle aynı muayene) ve ödeme yapılır. Takımlar satın alınır; kırılan takım gider,
    köreleni bilemek ücretlidir. İtibar arttıkça daha büyük, daha zor ve daha iyi ödeyen işler gelir. */
+Object.assign(app, { BG, SF });   // önceki modüllerin geç başvuruları

@@ -345,3 +345,4 @@ function chipsFor(nx, ny, z, T, vol, form, heat) {
    Kesit, açıya bağlı bir yarıçap profili r(θ): her ağız için fatura (land), kesme yüzü, kanal dibi (göbek) ve sırt.
    Bu kesit eksen boyunca helis açısına göre döndürülerek süpürülür; uçta düz, küresel ya da konik kapanış olur.
    Geometri tamamen parametrelerden üretilir (çap, ağız sayısı, helis açısı, kanal boyu, göbek, köşe), böylece takım ileride düzenlenebilir. */
+Object.assign(app, { groundAt });   // önceki modüllerin geç başvuruları

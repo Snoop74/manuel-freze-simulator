@@ -126,7 +126,7 @@ const VX = (() => {
           const f = F[n]; if (!f) continue;
           const qx = (i - 2) * R - xm, d2 = qx * qx + qy * qy;
           if (d2 > rr) continue;
-          const rho = Math.sqrt(d2), zb = profile(T, Math.min(rho, r), tip);
+          const rho = Math.sqrt(d2), zb = app.profile(T, Math.min(rho, r), tip);
           if (test) {
             if (f >= ISO && rho < r) { if (pzp > out.maxH) out.maxH = pzp; if (pzp >= zb && pzp - zb > out.over) out.over = pzp - zb; }
             continue;

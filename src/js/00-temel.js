@@ -9,6 +9,15 @@ let PW = 150, PD = 100, PH = 40;       // ham parça ölçüsü (X genişlik, Y 
 let NX, NY, H, CUT, INSP, EDGE, SURF;  // SURF: hazır parçanın yüzey türü (0 ham, 1 döküm, 2 taşlanmış, 3 eski işleme, 4 kaynak, 5 tufal)
         // yükseklik haritası, hücreyi kesen takım (indeks + 1), muayene (1 = fazla kesilmiş),
                                         // EDGE: kesilmeyen hücreden takım kenarına en kısa uzaklık (ızgaradan ince duvar ölçüsü için)
+// ham parça ölçüsünü değiştirir, yükseklik haritası dizilerini sıfırdan kurar (buildStock çağırır); hücre sayısını döndürür
+function allocGrid(w, d, h) {
+  PW = w; PD = d; PH = h;
+  NX = Math.round(PW / C) + 1; NY = Math.round(PD / C) + 1; const n = NX * NY;
+  H = new Float32Array(n).fill(PH); CUT = new Uint8Array(n); INSP = new Uint8Array(n); EDGE = new Float32Array(n).fill(9); SURF = new Uint8Array(n);
+  return n;
+}
+// geç bağlanan başvurular: bir modül, kendisinden SONRA gelen modülün adını app.X diye çağırır; X kendi modülünde kaydolur
+const app = {};
 
 /* ---------------- Takım dolabı ---------------- */
 // len: mil burnundan uca boy, stick: tutucudan çıkan boy, flute: kesici ağız boyu
@@ -54,6 +63,7 @@ const MATS = {
            raw:[0.92,0.90,0.82], cut:[0.95,0.94,0.88], chipCol:[0.95,0.93,0.85] },
 };
 let mat = MATS.al;
+const setMat = m => { mat = m; };
 // köşe renkleri doğrusal uzayda okunur; tablodaki sRGB değerleri çevrilir
 const toLin = c => c.map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
 for (const k in MATS) { MATS[k].rawL = toLin(MATS[k].raw); MATS[k].cutL = toLin(MATS[k].cut); }

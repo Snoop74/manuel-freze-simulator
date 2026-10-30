@@ -142,7 +142,7 @@ const CP = (() => {
   return { update };
 })();
 
-stockReady = true; syncFixtures();
+markStockReady(); syncFixtures();
 /* ---------------- Ham parça ölçüsü ---------------- */
 function setStock(w, d, h, quiet) {
   const L = FIXLIM[FIX];
@@ -156,7 +156,7 @@ function setStock(w, d, h, quiet) {
   $('brandMat').textContent = $('tbMat').textContent = `${mat.short} · ${w}×${d}×${h}`;
   if (!quiet) log(`Yeni ham parça: ${w} × ${d} × ${h} mm. Sıfır noktası sol-ön-üst köşede; Z0 yeni üst yüzeyde.`, 'ok');
 }
-$('stApply').addEventListener('click', () => CR.on ? log('Kariyerde ham parça ölçüsünü sipariş belirler.', 'warn') : setStock(+$('stW').value, +$('stD').value, +$('stH').value));
+$('stApply').addEventListener('click', () => app.CR.on ? log('Kariyerde ham parça ölçüsünü sipariş belirler.', 'warn') : setStock(+$('stW').value, +$('stD').value, +$('stH').value));
 
 /* ---------------- Parça masası: incele, ölç, kesit al ----------------
    Parça ayrı bir sahnede granit pleyt üstünde durur; aynı geometri paylaşılır, kesilen her şey burada da görünür.
@@ -302,3 +302,4 @@ const BN = (() => {
 /* ---------------- Takım editörü: kendi takımını tasarla ----------------
    Tip, çap, ağız sayısı, boylar, helis, köşe radyüsü, uç açısı, malzeme ve kaplama seçilir; takım T13'ten itibaren dolaba eklenir.
    Parametreler fiziğe bağlıdır (toolMods): önerilen hız ve ilerleme, aşınma, kırılma direnci, tırlama, yüzey, talaş sıkışması. */
+Object.assign(app, { CP, setStock });   // önceki modüllerin geç başvuruları

@@ -10,8 +10,8 @@ window.addEventListener('keydown', e => {
   if (e.repeat) return;
   if (e.code === 'Space') { e.preventDefault(); spindle(!S.spindle); }
   else if (e.code === 'KeyC') toggleCoolant();
-  else if (e.code === 'KeyG') FD.setOn(!FD.on);
-  else if (e.code === 'KeyB') AG.setOn(!AG.on);
+  else if (e.code === 'KeyG') app.FD.setOn(!app.FD.on);
+  else if (e.code === 'KeyB') app.AG.setOn(!app.AG.on);
   else if (e.code === 'KeyR') $('spDir').click();
   else if (e.code === 'Escape') estop();
   else if (/^Digit[1-4]$/.test(e.code)) setStep([0.01, 0.1, 1, 10][+e.code.slice(5) - 1]);
@@ -48,7 +48,7 @@ function resize() {
 new ResizeObserver(resize).observe(stage); resize();
 
 /* ---------------- Ana döngü ---------------- */
-let last = performance.now(), uiT = 0, spinAng = 0;
+let last = performance.now(), uiT = 0;
 const vA = new THREE.Vector3(), vB = new THREE.Vector3();
 function frame(now) {
   S.realDt = Math.max(0.001, (now - last) / 1000);
@@ -61,7 +61,7 @@ function frame(now) {
   if ((S.hcT = (S.hcT || 0) + dt) > 0.5) { S.hcT = 0; let v = 0; for (let k = 0; k < nV; k++) v += H[k]; S.heatCap = v * C * C * mat.rho * 1e-3 * mat.c; }
   S.cutting += ((S.cutAcc > 0 ? Math.min(0.3, 0.05 + S.cutAcc / (dt * 4000)) : 0) - S.cutting) * Math.min(1, dt * 12);
   flushMesh();
-  updateChips(dt); AG.update(dt); PR.update(dt); VAC.update(dt); DT.update();
+  updateChips(dt); app.AG.update(dt); app.PR.update(dt); app.VAC.update(dt); app.DT.update();
 
   const T = tool(), tip = tipZ();
   saddle.position.z = S.py;
@@ -81,14 +81,14 @@ function frame(now) {
   startBtnMat.emissiveIntensity = S.spindle ? 0.9 : 0;
   mush.position.z = S.alarm ? 29 : 34;
   motorSwitch.rotation.x += ((S.spindle ? (S.dir < 0 ? 0.7 : -0.7) : 0) - motorSwitch.rotation.x) * Math.min(1, dt * 12);
-  if (S.spindle) spinAng -= S.dir * Math.min(S.rpm / 60, 14) * Math.PI * 2 * dt * 0.35;
+  if (S.spindle) addSpin(-S.dir * Math.min(S.rpm / 60, 14) * Math.PI * 2 * dt * 0.35);
   toolRot.rotation.y = spinAng;
   yWheel.rotation.z = -S.py / 5 * Math.PI * 2;
   updateCoolant(dt, tip);
   ambientParticles(dt, tip);
   updatePS(psAdd, dt); updatePS(psAlpha, dt);
   if (S.job && !S.job.done && (S.spindle || now - S.lastMove < 120)) S.job.time += dt * S.sim;
-  drawWheels(); drawGauge(); IA.update(dt);
+  drawWheels(); drawGauge(); app.IA.update(dt);
   zFine.rotation.z = -S.nose / 2;
   pfLever.parent.rotation.z += (-S.autoX * 0.5 - pfLever.parent.rotation.z) * Math.min(1, dt * 12);
   if (camAnim) {
@@ -107,7 +107,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 function updateHud(T, tip) {
-  updateLamps(); CP.update(T);
+  updateLamps(); app.CP.update(T);
   { const vc = Math.PI * T.d * (S.spindle ? S.rpmEff : S.rpm) / 1000, rec = T.vc * mat.vcf;
     $('hMat').textContent = mat.short;
     $('hVc').textContent = T.type === 'edge' ? '—' : `${Math.round(vc)} m/dk (öneri ${Math.round(rec)})`;
@@ -356,12 +356,12 @@ const PM = (() => {
       const a = b.dataset.act; if (!a) return;
       initAudio(); closeMenus();
       if (a === 'drawing') $('drawing').hidden = !$('drawing').hidden;
-      else if (a === 'air') AG.setOn(!AG.on);
-      else if (a === 'fd') FD.setOn(!FD.on);
+      else if (a === 'air') app.AG.setOn(!app.AG.on);
+      else if (a === 'fd') app.FD.setOn(!app.FD.on);
       else if (a === 'bench') $('benchOpen').click();
-      else if (a === 'editor') TE.show(S.tool);
-      else if (a === 'shop') CR.openShop();
-      else if (a === 'blanks') BG.toggle();
+      else if (a === 'editor') app.TE.show(S.tool);
+      else if (a === 'shop') app.CR.openShop();
+      else if (a === 'blanks') app.BG.toggle();
       else if (a === 'keys') setVis('keys', true);
       else if (a === 'sound') { $('mute').click(); b.innerHTML = `<svg viewBox="0 0 24 24">${TBICON[S.muted ? 'mute' : 'sound']}</svg>`; b.classList.toggle('on', S.muted); }
     });
@@ -433,9 +433,6 @@ function estop() {
   stopMotion();
   if (was) { log('ACİL STOP: mil ve tüm hareketler durduruldu.', 'bad'); thud(70, 0.3, 0.25); }
 }
-{ const _crash = crash;
-  crash = function (msg) { _crash(msg); PM.flash('tools'); };
-}
 $('alarmFix').addEventListener('click', () => {
   S.alarm = false; $('alarm').hidden = true;
   if (S.broken) requestToolChange(S.tool);
@@ -448,9 +445,10 @@ function updateLamps() {
   PM.lamp('hud', S.alarm ? 'bad' : S.lastStress > 1.2 || S.damage > 0.5 ? 'warn' : S.spindle ? 'on' : '');
   PM.lamp('jobs', S.job && !S.job.done ? 'on' : '');
   PM.lamp('console', S.alarm ? 'bad' : S.spindle ? 'on' : '');
-  PM.lamp('jog', S.autoX ? 'warn' : FD.on ? 'on' : '');
+  PM.lamp('jog', S.autoX ? 'warn' : app.FD.on ? 'on' : '');
   PM.lamp('spindle', S.spindle ? (S.dir < 0 ? 'warn' : 'on') : '');
 }
 
 /* ---------------- Makine üstünde kumanda: çarkları çevir, düğmelere bas ----------------
    Fare bir kumandanın üstündeyken kamera dönmez; çark sürüklenerek ya da tekerlekle çevrilir, düğmelere tıklanır. */
+Object.assign(app, { PM, toolIcon });   // önceki modüllerin geç başvuruları

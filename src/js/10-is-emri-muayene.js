@@ -54,7 +54,7 @@ function blankTop(J, x, y) {
   const P = J._P, o = P.H(x, y);
   if (J.levels) { const g = P.geo, r = Math.hypot(x - g.c, y - g.c); for (const L of J.levels) if (r >= (L.rmin || 0) && r <= L.rmax) return Math.min(o, L.z); }
   if (J.flush && o > J.flush.top) return J.flush.top;
-  if (J.deck && P.Sf(x, y) === (J.deck.sf ?? SF.old) && o >= J.deck.base) return Math.min(o, J.deck.floor + J.deck.maxCut * 0.5);
+  if (J.deck && P.Sf(x, y) === (J.deck.sf ?? app.SF.old) && o >= J.deck.base) return Math.min(o, J.deck.floor + J.deck.maxCut * 0.5);
   if (J.pads) for (const q of J.pads) if (inRect(x, y, q)) return Math.min(o, q.z);
   if (J.face) return Math.min(o, jobTop(J));
   return o;
@@ -76,7 +76,7 @@ function allowedAt(J, x, y) {
   if (J._P) {                                                      // hazır parça: istenmeyen yerde parçanın kendi yüzeyi sınırdır
     const P = J._P, o = P.H(x, y);
     let e = o;
-    if (J.deck && P.Sf(x, y) === (J.deck.sf ?? SF.old) && o >= J.deck.base) e = Math.min(o, J.deck.floor);
+    if (J.deck && P.Sf(x, y) === (J.deck.sf ?? app.SF.old) && o >= J.deck.base) e = Math.min(o, J.deck.floor);
     if (J.pads) for (const q of J.pads) if (inRect(x, y, q, 1)) e = Math.min(e, q.z - q.tol);
     if (J.levels) { const g = P.geo, r = Math.hypot(x - g.c, y - g.c), [Lh, Lf] = J.levels; e = Math.min(e, r <= g.Rh ? Lh.z - Lh.tol : Lf.z - Lf.tol); }   // göbek dibi ve kenar pahı da alın seviyesine inebilir
     if (J.flush) e = Math.min(e, J.flush.top - 0.2);
@@ -308,7 +308,7 @@ function inspect(J) {
     let n = 0, cut = 0, sum = 0, mn = 1e9, mx = -1e9;
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
       const x = i * C, y = j * C;
-      if (J._P.Sf(x, y) !== (J.deck.sf ?? SF.old) || J._P.H(x, y) < J.deck.base) continue;
+      if (J._P.Sf(x, y) !== (J.deck.sf ?? app.SF.old) || J._P.H(x, y) < J.deck.base) continue;
       const k = j * NX + i, h = H[k]; n++; if (CUT[k]) cut++; sum += h; if (h < mn) mn = h; if (h > mx) mx = h;
     }
     const cov = n ? cut / n : 0, mean = n ? sum / n : 0, flat = mx - mn, take = J.deck.top0 - mean;
@@ -340,7 +340,7 @@ function inspect(J) {
   if (J.flush) {                                                   // kaynaklı plaka: dikiş yüzeyle sıfır
     let n = 0, hi = 0, mx = -1e9;
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
-      const x = i * C, y = j * C; if (J._P.Sf(x, y) !== SF.weld) continue;
+      const x = i * C, y = j * C; if (J._P.Sf(x, y) !== app.SF.weld) continue;
       const h = H[j * NX + i]; n++; if (h > J.flush.top + J.flush.tol) hi++; if (h > mx) mx = h;
     }
     const ok = n ? 1 - hi / n : 0;
@@ -377,6 +377,7 @@ function scoreJob(J, run, items) {
 /* -- Arayüz -- */
 const mmss = t => { t = Math.max(0, Math.floor(t)); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
 let selJob = -1;
+const setSelJob = i => { selJob = i; };
 function renderJobs() {
   const L = $('jobList'); L.innerHTML = '';
   JOBS.forEach((J, i) => {
@@ -393,7 +394,7 @@ function renderJobs() {
   f.addEventListener('click', () => selectJob(-1));
   L.append(f);
   const tot = JOBS.reduce((s, J, i) => s + bestStars(i), 0);
-  if (!CR.on) $('starTotal').textContent = `${tot} / ${JOBS.length * 3} yıldız`;
+  if (!app.CR.on) $('starTotal').textContent = `${tot} / ${JOBS.length * 3} yıldız`;
 }
 function selectJob(i) {
   selJob = i;
@@ -402,8 +403,8 @@ function selectJob(i) {
   renderJobs();
   $('jcBtns').hidden = !J; $('vDraw').hidden = !J;
   if (!J) {
-    $('jcNo').textContent = CR.on ? 'KARİYER' : 'SERBEST'; $('jcTitle').textContent = CR.on ? 'Sipariş seçin' : 'Serbest çalışma';
-    $('jcBrief').textContent = CR.on ? 'Panodan bir sipariş seçin: teknik resim açılır, "İşe başla" ile ham parça kasadan alınır ve mengeneye bağlanır. Teslimde parça ölçülür, müşteri ödemeyi yapar.'
+    $('jcNo').textContent = app.CR.on ? 'KARİYER' : 'SERBEST'; $('jcTitle').textContent = app.CR.on ? 'Sipariş seçin' : 'Serbest çalışma';
+    $('jcBrief').textContent = app.CR.on ? 'Panodan bir sipariş seçin: teknik resim açılır, "İşe başla" ile ham parça kasadan alınır ve mengeneye bağlanır. Teslimde parça ölçülür, müşteri ödemeyi yapar.'
       : 'İş emri seçmeden tezgâhı serbestçe kullanın. Bir iş seçerseniz teknik resim açılır, teslimde parça ölçülür ve puanlanır.';
     $('jcMeta').innerHTML = ''; $('drawing').hidden = true; buildScribe(null); S.job = null;
     return;
@@ -420,11 +421,11 @@ function selectJob(i) {
 }
 function startJob() {
   initAudio();
-  if (CR.on) { CR.start(); return; }
+  if (app.CR.on) { app.CR.start(); return; }
   if (selJob < 0) return;
-  if (JOBS[selJob].rot && FIX !== 'rot') setFix('rot', true);
-  else if (FIX === 'div') setFix('vise', true);
-  if (PW !== 150 || PD !== 100 || PH !== 40) setStock(150, 100, 40, true);   // iş emirleri standart ham parçayla
+  if (JOBS[selJob].rot && FIX !== 'rot') app.setFix('rot', true);
+  else if (FIX === 'div') app.setFix('vise', true);
+  if (PW !== 150 || PD !== 100 || PH !== 40) app.setStock(150, 100, 40, true);   // iş emirleri standart ham parçayla
   resetPart(JOBS[selJob].mat || 'al');
   S.job = { idx:selJob, J:JOBS[selJob], time:0, done:false, stats:{ breaks:0, load:0, spot:0, peck:0, rub:0 } };
   setTimeout(() => warnParallels(JOBS[selJob] || S.job.J), 300);
@@ -441,12 +442,12 @@ function submitJob() {
   const r = scoreJob(J, run, items);
   run.done = true;
   if (run.order) {
-    const res = CR.settle(run, r);
+    const res = app.CR.settle(run, r);
     showReport(run, items, r, false);
     showPayout(res);
     $('rpVerdict').textContent = res.txt; $('rpVerdict').style.color = r.allOk ? 'var(--ok)' : r.stars ? 'var(--warn)' : 'var(--bad)';
-    $('rpRetry').hidden = !CR.sel;   // hurda ya da seri iş: sipariş panoda
-    $('rpRetry').textContent = CR.sel && CR.sel.qty && CR.sel.doneQty && res.pay > 0 ? 'Sıradaki adet' : 'Tekrar dene';
+    $('rpRetry').hidden = !app.CR.sel;   // hurda ya da seri iş: sipariş panoda
+    $('rpRetry').textContent = app.CR.sel && app.CR.sel.qty && app.CR.sel.doneQty && res.pay > 0 ? 'Sıradaki adet' : 'Tekrar dene';
   } else {
     const key = 'j' + run.idx, prev = progress[key];
     const record = !prev || r.total > prev.score;
@@ -461,7 +462,7 @@ function submitJob() {
   const cx = 75 - S.px, cz = -50 + S.py, cy = jobTop(J) + 2;
   if (r.stars) for (let s = 0; s < r.stars; s++) setTimeout(() => { burst('gold', 110, cx, cy, cz, 260, 900, 1.8); beep(1200 + s * 300); }, 250 + s * 250);
   else burst('smoke', 30, cx, cy, cz, 60, 80, 2.2);
-  if (r.allOk) setTimeout(() => FW.show(r.stars), 700);           // kabul edilen parça: havai fişek
+  if (r.allOk) setTimeout(() => app.FW.show(r.stars), 700);           // kabul edilen parça: havai fişek
 }
 const STAR = '<svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6 6.5.8-4.8 4.5 1.2 6.5L12 17.3l-5.8 3.1 1.2-6.5L2.6 9.4l6.5-.8z" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 function showReport(run, items, r, newBest) {
@@ -499,7 +500,7 @@ function showPayout(res) {
   $('rpTags').innerHTML = res.tags.map(([t, c]) => `<span class="rp-tag ${c}">${t}</span>`).join('');
 }
 $('rpMore').addEventListener('click', () => { const open = $('rpDetail').hidden; $('rpDetail').hidden = !open; $('rpMore').setAttribute('aria-expanded', String(open)); $('rpMore').firstChild.textContent = open ? 'Detayları gizle ' : 'Detayları gör '; });
-$('rpClose').addEventListener('click', () => { $('report').hidden = true; FW.stop(); });
+$('rpClose').addEventListener('click', () => { $('report').hidden = true; app.FW.stop(); });
 
 /* ---------------- Havai fişek: başarılı teslimde ekranın üstünde patlar ----------------
    Yıldız sayısı gösteriyi büyütür; 2B tuval, olayı bitince kendini kapatır. Patlama sesi süzülmüş gürültü + kısa çıtırtı. */

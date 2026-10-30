@@ -188,7 +188,7 @@ const TE = (() => {
     let i = editIdx;
     if (i >= 0 && i === S.tool && (S.spindle || S.changing)) { log('Takılı takımı değiştirmek için önce mili durdurun.', 'warn'); return; }
     sp.name = $('teName').value.trim(); fixSpec(sp);
-    if (i >= 0) { sp.no = TOOLS[i].no; TOOLS[i] = toolDef(Object.assign({}, sp)); S.wear[i] = 0; CR.forget(sp.no); }   // değişen takım yeniden alınır
+    if (i >= 0) { sp.no = TOOLS[i].no; TOOLS[i] = toolDef(Object.assign({}, sp)); S.wear[i] = 0; app.CR.forget(sp.no); }   // değişen takım yeniden alınır
     else { sp.no = nextToolNo(); TOOLS.push(toolDef(Object.assign({}, sp))); S.wear.push(0); i = TOOLS.length - 1; }
     const T = TOOLS[i];
     saveTools(); renderRack(); updateToolUI();
@@ -200,7 +200,7 @@ const TE = (() => {
   function remove() {
     if (editIdx < 0) return;
     if (editIdx === S.tool) { log('Takılı takım silinemez; önce başka bir takım takın.', 'warn'); return; }
-    const T = TOOLS[editIdx]; T.gone = true; CR.forget(T.no);                       // dizin yerinde kalır (parçadaki iz kayıtları takım sırasına bağlı)
+    const T = TOOLS[editIdx]; T.gone = true; app.CR.forget(T.no);                       // dizin yerinde kalır (parçadaki iz kayıtları takım sırasına bağlı)
     saveTools(); renderRack(); updateToolUI();
     log(`${T.no} ${T.name} dolaptan çıkarıldı.`);
     fillBase(); load(-1);
@@ -235,3 +235,4 @@ const TE = (() => {
    Her şablon rastgele bir çeşit üretir: ölçüler, yükseklik işlevi H(x, y) ve yüzey türü Sf(x, y).
    Yüzey türü (SURF) yalnızca görünüm içindir; işlenen hücre işlenmiş rengine geçer. Parça yükseklik haritası olduğundan
    yukarıdan görülebilen her şekil olur (kademe, göbek, çukur, delik, kabarık dikiş, eğik yüzey); dış hat dışı boştur (H = 0). */
+Object.assign(app, { TE, toolMods });   // önceki modüllerin geç başvuruları

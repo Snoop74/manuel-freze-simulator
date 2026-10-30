@@ -1,4 +1,78 @@
 // ── Bağlama: divizör gövdesi, mengene, pabuç, paraleller, çarpışma kutuları, parça yüzeyinin çizimi
+/* ---- Parça mesh'i: ham parça ölçüsü değişince (buildStock) yükseklik haritası, mesh ve mengene yeniden kurulur ---- */
+const topMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.34, metalness:0.62 });
+topMat.envMapIntensity = 0.45; M.raw.envMapIntensity = 0.45;   // düz üst yüzey ortamın parlak tavanını yansıtıp beyaza dönmesin
+// Alın ve parmak frezenin taban izleri: takımın arka kenarının çizdiği yaylar, devir başına ilerleme aralığıyla ("balık pulu").
+// Yay ailesi |p − (c0 + s·d)| = R; s = p·d + √(R² − dik²) mutlak koordinatta hesaplanır, böylece komşu hücreler aynı deseni paylaşır.
+topMat.extensions = { derivatives:true };
+topMat.onBeforeCompile = sh => {
+  sh.vertexShader = 'attribute vec4 mk1;\nattribute vec4 mk2;\nvarying vec4 vK1;\nvarying vec4 vK2;\nvarying vec3 vLoc;\nvarying float vUp;\n' +
+    sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vK1 = mk1; vK2 = mk2; vLoc = position; vUp = normal.y;');
+  sh.fragmentShader = 'varying vec4 vK1;\nvarying vec4 vK2;\nvarying vec3 vLoc;\nvarying float vUp;\n' + sh.fragmentShader
+    .replace('#include <color_fragment>', `#include <color_fragment>
+      float mkAmp = 0.0, mkG = 0.0, rip = 0.0;
+      if (vK2.x > 0.001 && vUp > 0.6) {
+        vec2 p = vec2(vLoc.x, -vLoc.z), q = p - vK1.xy;
+        float al = dot(q, vK1.zw); float dp = length(q - al * vK1.zw);
+        float sArc = dot(p, vK1.zw) + sqrt(max(vK2.y * vK2.y - dp * dp, 0.0));
+        float ph = sArc / vK2.x;
+        float aa = clamp(1.0 - fwidth(ph) * 1.2, 0.0, 1.0);
+        mkG = 0.5 + 0.5 * cos(6.2831853 * ph);
+        mkAmp = clamp(vK2.z / 3.0, 0.08, 0.9) * aa;
+      }
+      if (vK2.w > 0.01) rip = vK2.w * (0.5 + 0.5 * sin(dot(vec2(vLoc.x, -vLoc.z), vec2(1.7, 1.1)) * 2.4));
+      diffuseColor.rgb *= 1.0 - 0.16 * mkAmp * mkG - 0.12 * rip;`)
+    .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+      roughnessFactor = clamp(roughnessFactor + mkAmp * (mkG - 0.35) * 0.45 + rip * 0.3, 0.05, 1.0);`);
+};
+let nV, pos, nor, col, topGeo, MK1, MK2, TINTC, TAPC, topMesh = null, walls = [], stockBase = null;
+function makeWall(n, place, normal) {
+  const g = new THREE.BufferGeometry();
+  const p = new Float32Array(n * 2 * 3), nn = new Float32Array(n * 2 * 3);
+  for (let k = 0; k < n; k++) { place(p, k); for (const v of [k, n + k]) nn.set(normal, v * 3); }
+  const ix = [];
+  for (let k = 0; k < n - 1; k++) ix.push(k, k + 1, n + k, k + 1, n + k + 1, n + k);
+  g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nn, 3));
+  g.setIndex(ix);
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(PW/2, PH/2, -PD/2), Math.hypot(PW, PD, PH));
+  const m = new THREE.Mesh(g, M.raw); m.castShadow = true; m.receiveShadow = true; rotIn.add(m);
+  return { g, n, m };
+}
+function buildStock(w, d, h) {
+  jawOverride = null;
+  nV = allocGrid(w, d, h);
+  if (topMesh) { rotIn.remove(topMesh); topGeo.dispose(); }
+  for (const w of walls) { rotIn.remove(w.w.m); w.w.g.dispose(); }
+  if (stockBase) { rotIn.remove(stockBase); stockBase.geometry.dispose(); }
+  pos = new Float32Array(nV * 3); nor = new Float32Array(nV * 3); col = new Float32Array(nV * 3);
+  for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const k = j * NX + i; pos[k*3] = i * C; pos[k*3+1] = PH; pos[k*3+2] = -j * C; }
+  topGeo = new THREE.BufferGeometry();
+  topGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  topGeo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  topGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  topGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(PW/2, PH/2, -PD/2), Math.hypot(PW, PD, PH));
+  MK1 = new Float32Array(nV * 4); MK2 = new Float32Array(nV * 4); TINTC = new Float32Array(nV); TAPC = new Uint8Array(nV);
+  topGeo.setAttribute('mk1', new THREE.BufferAttribute(MK1, 4));
+  topGeo.setAttribute('mk2', new THREE.BufferAttribute(MK2, 4));
+  topMesh = new THREE.Mesh(topGeo, topMat); topMesh.castShadow = true; topMesh.receiveShadow = true; rotIn.add(topMesh);
+  // Her duvar: üst sıra (0..n-1) yüksekliği izler, alt sıra y=0
+  walls = [
+    { w: makeWall(NX, (p, k) => { p.set([k*C, PH, 0], k*3); p.set([k*C, 0, 0], (NX+k)*3); }, [0,0,1]), at: k => H[k] },
+    { w: makeWall(NX, (p, k) => { p.set([k*C, PH, -PD], k*3); p.set([k*C, 0, -PD], (NX+k)*3); }, [0,0,-1]), at: k => H[(NY-1)*NX + k] },
+    { w: makeWall(NY, (p, k) => { p.set([0, PH, -k*C], k*3); p.set([0, 0, -k*C], (NY+k)*3); }, [-1,0,0]), at: k => H[k*NX] },
+    { w: makeWall(NY, (p, k) => { p.set([PW, PH, -k*C], k*3); p.set([PW, 0, -k*C], (NY+k)*3); }, [1,0,0]), at: k => H[k*NX + NX - 1] },
+  ];
+  // alt yüz: üst yüzle aynı ızgara, y = 0'da ve aşağı bakar; delinip geçilen hücreler ikisinden de çıkarılır
+  const bp = new Float32Array(nV * 3), bn = new Float32Array(nV * 3);
+  for (let k = 0; k < nV; k++) { bp[k*3] = pos[k*3]; bp[k*3+1] = 0.01; bp[k*3+2] = pos[k*3+2]; bn[k*3+1] = -1; }
+  const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(bp, 3)); bg.setAttribute('normal', new THREE.BufferAttribute(bn, 3));
+  bg.boundingSphere = topGeo.boundingSphere.clone();
+  stockBase = new THREE.Mesh(bg, M.raw); stockBase.receiveShadow = true; rotIn.add(stockBase);
+  throughDirty = true; rebuildIndex();
+  dirty = { i0:0, i1:NX - 1, j0:0, j1:NY - 1 }; isDirty = true;
+  buildVise();
+}
 // Divizör: tablaya cıvatalı gövde, arkada bölüntü diski ve kol; önde dönen üç ayaklı ayna (parçayla birlikte A açısında döner)
 const divG = new THREE.Group(), divRot = new THREE.Group(), divJaws = new THREE.Group(); divG.visible = false; table.add(divG);
 divRot.position.set(0, DIVZ, -DIVY); divG.add(divRot); divRot.add(VX.grp); divRot.add(divJaws);
@@ -26,6 +100,7 @@ function buildDivJaws(rs) {
   }
 }
 let FIX = 'vise', clampLay = 'fb', straps = [];
+const setFIX = k => { FIX = k; }, setClampLay = v => { clampLay = v; };
 const viseG = new THREE.Group(); rotIn.add(viseG);
 const rotBase = new THREE.Group(); table.add(rotBase);   // döner tablanın sabit gövdesi
 let rotCrank = null;
@@ -49,6 +124,7 @@ function warnParallels(J) {
   if (c.length) log(`${c.join(', ')} paralel altlığın üstüne denk geliyor: delip geçerken matkap paralele çarpar. Parça panelinde paralelleri kaydırın, ince paralel seçin ya da kurban plaka kullanın.`, 'warn');
 }
 let jawTop = 22, jawOverride = null;      // hazır parçada çene, parçanın kenar yüksekliğine göre
+const setJawOverride = v => { jawOverride = v; };
 // pabuç: kenara basan lama, kademeli destek, saplama ve somun; side f/b (ön/arka) ya da l/r (sol/sağ), c kenar boyunca konum
 function strap(c, side) {
   const t = PH, X = side === 'l' || side === 'r';
@@ -68,7 +144,7 @@ function buildVise() {
   while (viseG.children.length) { const o = viseG.children[0]; viseG.remove(o); if (o.geometry) o.geometry.dispose(); }
   while (rotBase.children.length) { const o = rotBase.children[0]; rotBase.remove(o); if (o.geometry) o.geometry.dispose(); }
   viseBase.visible = FIX === 'vise'; straps = []; rotCrank = null;
-  if (stockReady) syncParUI();
+  if (stockReady) app.syncParUI();
   divG.visible = FIX === 'div'; rotIn.visible = FIX !== 'div';
   if (FIX === 'div') { buildDivBody(); buildDivJaws(PD / 2); }
   ROT.on = FIX === 'rot'; ROT.a = ROT.a0 = ROT.pend = ROT.hold = ROT.z0 = 0; ROT.cx = PW / 2; ROT.cy = PD / 2;
@@ -78,14 +154,14 @@ function buildVise() {
     // sabit gövde: tablaya cıvatalı kutu, önde kırmızı gösterge ve sonsuz vida krankı (90:1)
     rbox(cx - 125, cx + 125, -60, -30, cz - 115, cz + 115, 6, M.paintDark, rotBase);
     const bd = cyl(118, 122, 8, M.paint, 64); bd.position.set(cx, -26, cz); rotBase.add(bd);
-    box(5, 4, 12, TMAT.red, cx, -9, cz + 118, rotBase);
+    box(5, 4, 12, app.TMAT.red, cx, -9, cz + 118, rotBase);
     const cr = new THREE.Group(); cr.position.set(cx + 80, -46, cz + 124); rotBase.add(cr);
     const ci = new THREE.Group(); ci.scale.setScalar(0.5); cr.add(ci); hwheel(ci, 44); rotCrank = ci;
     // dönen plaka (parçayla birlikte döner): T kanalları, 5°'lik derece çizgileri
     const pl = cyl(112, 112, 18, M.ground, 72); pl.position.set(cx, -13, cz); viseG.add(pl);
     for (let k = 0; k < 4; k++) { const ts = box(200, 0.8, 10, M.black, cx, -3.95, cz, viseG, false); ts.rotation.y = k * Math.PI / 4; }
     for (let k = 0; k < 72; k++) {
-      const a = k * 5 * Math.PI / 180, big = k % 2 === 0, tk = box(0.9, big ? 9 : 5, 0.6, k === 0 ? TMAT.red : TMAT.bright, cx + Math.cos(a) * 112.3, -8 - (big ? 0 : 2), cz - Math.sin(a) * 112.3, viseG, false);
+      const a = k * 5 * Math.PI / 180, big = k % 2 === 0, tk = box(0.9, big ? 9 : 5, 0.6, k === 0 ? app.TMAT.red : app.TMAT.bright, cx + Math.cos(a) * 112.3, -8 - (big ? 0 : 2), cz - Math.sin(a) * 112.3, viseG, false);
       tk.rotation.y = a + Math.PI / 2;
     }
     // parça iki ince paralel üstünde (X yanlarında; ortadan boydan boya delik açılabilsin) ve dört pabuçla bağlı
@@ -122,6 +198,7 @@ function buildVise() {
 }
 // çarpışma kutuları çenelerle birlikte taşınır (FIXTURES dosyada daha aşağıda tanımlı; başlangıçta bir kez eşitlenir)
 let stockReady = false, throughDirty = false;
+const markThrough = () => { throughDirty = true; }, markStockReady = () => { stockReady = true; };
 // Üçgenler: dört köşesi de tabana inmiş (boydan boya delinmiş) dörtgen çizilmez; böylece delikten karşısı görünür
 function rebuildIndex() {
   const thr = 0.02, n = (NX - 1) * (NY - 1) * 6, ti = new Uint32Array(n), bi = new Uint32Array(n);
@@ -138,15 +215,15 @@ function rebuildIndex() {
   throughDirty = false;
 }
 function syncFixtures() {
-  FIXTURES.length = 0;
-  if (FIX === 'vise') FIXTURES.push({ n:'mengene ön çenesine', b:[-35, 185, -25, 0], top:jawTop }, { n:'mengene arka çenesine', b:[-35, 185, PD, PD + 25], top:jawTop },
+  app.FIXTURES.length = 0;
+  if (FIX === 'vise') app.FIXTURES.push({ n:'mengene ön çenesine', b:[-35, 185, -25, 0], top:jawTop }, { n:'mengene arka çenesine', b:[-35, 185, PD, PD + 25], top:jawTop },
     ...parBands().map(([a, b]) => ({ n:'paralel altlığa', b:[-10, 160, a, b], top:-sacT() })), { n:'mengene gövdesine', b:[-40, 190, -60, 160], top:-35 });
-  else if (FIX === 'clamp') FIXTURES.push(...straps, ...parBands().map(([a, b]) => ({ n:'altlığa', b:[4, PW - 4, a, b], top:-sacT() })));
-  else if (FIX === 'div') FIXTURES.push({ n:'divizör aynasına', b:[-46, 0.5, DIVY - 52, DIVY + 52], top:DIVZ + 52 }, { n:'divizör gövdesine', b:[-152, -46, -57, 57], top:DIVZ + 47 });
-  else if (FIX === 'rot') FIXTURES.push(...straps.map(f => Object.assign({ rot:true }, f)), ...(PAR.sac ? [] : parBands().map(([a, b]) => ({ n:'paralel altlığa', b:[a, b, 4, PD - 4], top:0, rot:true }))),
+  else if (FIX === 'clamp') app.FIXTURES.push(...straps, ...parBands().map(([a, b]) => ({ n:'altlığa', b:[4, PW - 4, a, b], top:-sacT() })));
+  else if (FIX === 'div') app.FIXTURES.push({ n:'divizör aynasına', b:[-46, 0.5, DIVY - 52, DIVY + 52], top:DIVZ + 52 }, { n:'divizör gövdesine', b:[-152, -46, -57, 57], top:DIVZ + 47 });
+  else if (FIX === 'rot') app.FIXTURES.push(...straps.map(f => Object.assign({ rot:true }, f)), ...(PAR.sac ? [] : parBands().map(([a, b]) => ({ n:'paralel altlığa', b:[a, b, 4, PD - 4], top:0, rot:true }))),
     { n:'döner tabla plakasına', c:[ROT.cx, ROT.cy, 112], top:-4 }, { n:'döner tabla gövdesine', b:[ROT.cx - 125, ROT.cx + 125, ROT.cy - 115, ROT.cy + 115], top:-26 });
-  else FIXTURES.push({ n:'vakum tablasına (kurban plakasını geçti)', b:[-30, 290, -25, 165], top:-5 });
-  FIXTURES.push({ n:'tablaya', b:[-400, 550, -50, 150], top:-60 });
+  else app.FIXTURES.push({ n:'vakum tablasına (kurban plakasını geçti)', b:[-30, 290, -25, 165], top:-5 });
+  app.FIXTURES.push({ n:'tablaya', b:[-400, 550, -50, 150], top:-60 });
 }
 let dirty = { i0:0, i1:0, j0:0, j1:0 }, isDirty = true;
 buildStock(PW, PD, PH);

@@ -368,7 +368,7 @@ function updateCoolant(dt, tip) {
       if (S.spindle) d.v.set(nz * surf + nx * (120 + Math.random() * 220), 40 + Math.random() * 160, -nx * surf + nz * (120 + Math.random() * 220));
       else d.v.set(nx * 60, -40, nz * 60);
     }
-    const gh = groundAt(d.p.x + S.px, S.py - d.p.z);
+    const gh = app.groundAt(d.p.x + S.px, S.py - d.p.z);
     if (d.p.y <= gh) {
       if (!d.splash && gh > -9000 && Math.random() < 0.75) {
         for (let k = 0; k < 2; k++) {

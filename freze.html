@@ -967,6 +967,15 @@ let PW = 150, PD = 100, PH = 40;       // ham parça ölçüsü (X genişlik, Y 
 let NX, NY, H, CUT, INSP, EDGE, SURF;  // SURF: hazır parçanın yüzey türü (0 ham, 1 döküm, 2 taşlanmış, 3 eski işleme, 4 kaynak, 5 tufal)
         // yükseklik haritası, hücreyi kesen takım (indeks + 1), muayene (1 = fazla kesilmiş),
                                         // EDGE: kesilmeyen hücreden takım kenarına en kısa uzaklık (ızgaradan ince duvar ölçüsü için)
+// ham parça ölçüsünü değiştirir, yükseklik haritası dizilerini sıfırdan kurar (buildStock çağırır); hücre sayısını döndürür
+function allocGrid(w, d, h) {
+  PW = w; PD = d; PH = h;
+  NX = Math.round(PW / C) + 1; NY = Math.round(PD / C) + 1; const n = NX * NY;
+  H = new Float32Array(n).fill(PH); CUT = new Uint8Array(n); INSP = new Uint8Array(n); EDGE = new Float32Array(n).fill(9); SURF = new Uint8Array(n);
+  return n;
+}
+// geç bağlanan başvurular: bir modül, kendisinden SONRA gelen modülün adını app.X diye çağırır; X kendi modülünde kaydolur
+const app = {};
 
 /* ---------------- Takım dolabı ---------------- */
 // len: mil burnundan uca boy, stick: tutucudan çıkan boy, flute: kesici ağız boyu
@@ -1012,6 +1021,7 @@ const MATS = {
            raw:[0.92,0.90,0.82], cut:[0.95,0.94,0.88], chipCol:[0.95,0.93,0.85] },
 };
 let mat = MATS.al;
+const setMat = m => { mat = m; };
 // köşe renkleri doğrusal uzayda okunur; tablodaki sRGB değerleri çevrilir
 const toLin = c => c.map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
 for (const k in MATS) { MATS[k].rawL = toLin(MATS[k].raw); MATS[k].cutL = toLin(MATS[k].cut); }
@@ -1592,7 +1602,7 @@ function updateCoolant(dt, tip) {
       if (S.spindle) d.v.set(nz * surf + nx * (120 + Math.random() * 220), 40 + Math.random() * 160, -nx * surf + nz * (120 + Math.random() * 220));
       else d.v.set(nx * 60, -40, nz * 60);
     }
-    const gh = groundAt(d.p.x + S.px, S.py - d.p.z);
+    const gh = app.groundAt(d.p.x + S.px, S.py - d.p.z);
     if (d.p.y <= gh) {
       if (!d.splash && gh > -9000 && Math.random() < 0.75) {
         for (let k = 0; k < 2; k++) {
@@ -1660,82 +1670,6 @@ rbox(-40, 190, -60, -35, -160, 60, 3, M.paint, viseBase);                 // gö
   const hd = cyl(5, 5, 110, MX.chrome, 10); hd.rotation.z = Math.PI / 2; hd.position.set(75, -40, 120); viseBase.add(hd);
   for (const x of [20, 130]) { const k = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 8), M.black); k.position.set(x, -40, 120); viseBase.add(k); } }
 
-/* ---- Parça mesh'i: ham parça ölçüsü değişince (buildStock) yükseklik haritası, mesh ve mengene yeniden kurulur ---- */
-const topMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.34, metalness:0.62 });
-topMat.envMapIntensity = 0.45; M.raw.envMapIntensity = 0.45;   // düz üst yüzey ortamın parlak tavanını yansıtıp beyaza dönmesin
-// Alın ve parmak frezenin taban izleri: takımın arka kenarının çizdiği yaylar, devir başına ilerleme aralığıyla ("balık pulu").
-// Yay ailesi |p − (c0 + s·d)| = R; s = p·d + √(R² − dik²) mutlak koordinatta hesaplanır, böylece komşu hücreler aynı deseni paylaşır.
-topMat.extensions = { derivatives:true };
-topMat.onBeforeCompile = sh => {
-  sh.vertexShader = 'attribute vec4 mk1;\nattribute vec4 mk2;\nvarying vec4 vK1;\nvarying vec4 vK2;\nvarying vec3 vLoc;\nvarying float vUp;\n' +
-    sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vK1 = mk1; vK2 = mk2; vLoc = position; vUp = normal.y;');
-  sh.fragmentShader = 'varying vec4 vK1;\nvarying vec4 vK2;\nvarying vec3 vLoc;\nvarying float vUp;\n' + sh.fragmentShader
-    .replace('#include <color_fragment>', `#include <color_fragment>
-      float mkAmp = 0.0, mkG = 0.0, rip = 0.0;
-      if (vK2.x > 0.001 && vUp > 0.6) {
-        vec2 p = vec2(vLoc.x, -vLoc.z), q = p - vK1.xy;
-        float al = dot(q, vK1.zw); float dp = length(q - al * vK1.zw);
-        float sArc = dot(p, vK1.zw) + sqrt(max(vK2.y * vK2.y - dp * dp, 0.0));
-        float ph = sArc / vK2.x;
-        float aa = clamp(1.0 - fwidth(ph) * 1.2, 0.0, 1.0);
-        mkG = 0.5 + 0.5 * cos(6.2831853 * ph);
-        mkAmp = clamp(vK2.z / 3.0, 0.08, 0.9) * aa;
-      }
-      if (vK2.w > 0.01) rip = vK2.w * (0.5 + 0.5 * sin(dot(vec2(vLoc.x, -vLoc.z), vec2(1.7, 1.1)) * 2.4));
-      diffuseColor.rgb *= 1.0 - 0.16 * mkAmp * mkG - 0.12 * rip;`)
-    .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-      roughnessFactor = clamp(roughnessFactor + mkAmp * (mkG - 0.35) * 0.45 + rip * 0.3, 0.05, 1.0);`);
-};
-let nV, pos, nor, col, topGeo, MK1, MK2, TINTC, TAPC, topMesh = null, walls = [], stockBase = null;
-function makeWall(n, place, normal) {
-  const g = new THREE.BufferGeometry();
-  const p = new Float32Array(n * 2 * 3), nn = new Float32Array(n * 2 * 3);
-  for (let k = 0; k < n; k++) { place(p, k); for (const v of [k, n + k]) nn.set(normal, v * 3); }
-  const ix = [];
-  for (let k = 0; k < n - 1; k++) ix.push(k, k + 1, n + k, k + 1, n + k + 1, n + k);
-  g.setAttribute('position', new THREE.BufferAttribute(p, 3));
-  g.setAttribute('normal', new THREE.BufferAttribute(nn, 3));
-  g.setIndex(ix);
-  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(PW/2, PH/2, -PD/2), Math.hypot(PW, PD, PH));
-  const m = new THREE.Mesh(g, M.raw); m.castShadow = true; m.receiveShadow = true; rotIn.add(m);
-  return { g, n, m };
-}
-function buildStock(w, d, h) {
-  jawOverride = null;
-  PW = w; PD = d; PH = h;
-  NX = Math.round(PW / C) + 1; NY = Math.round(PD / C) + 1; nV = NX * NY;
-  H = new Float32Array(nV).fill(PH); CUT = new Uint8Array(nV); INSP = new Uint8Array(nV); EDGE = new Float32Array(nV).fill(9); SURF = new Uint8Array(nV);
-  if (topMesh) { rotIn.remove(topMesh); topGeo.dispose(); }
-  for (const w of walls) { rotIn.remove(w.w.m); w.w.g.dispose(); }
-  if (stockBase) { rotIn.remove(stockBase); stockBase.geometry.dispose(); }
-  pos = new Float32Array(nV * 3); nor = new Float32Array(nV * 3); col = new Float32Array(nV * 3);
-  for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const k = j * NX + i; pos[k*3] = i * C; pos[k*3+1] = PH; pos[k*3+2] = -j * C; }
-  topGeo = new THREE.BufferGeometry();
-  topGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  topGeo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-  topGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  topGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(PW/2, PH/2, -PD/2), Math.hypot(PW, PD, PH));
-  MK1 = new Float32Array(nV * 4); MK2 = new Float32Array(nV * 4); TINTC = new Float32Array(nV); TAPC = new Uint8Array(nV);
-  topGeo.setAttribute('mk1', new THREE.BufferAttribute(MK1, 4));
-  topGeo.setAttribute('mk2', new THREE.BufferAttribute(MK2, 4));
-  topMesh = new THREE.Mesh(topGeo, topMat); topMesh.castShadow = true; topMesh.receiveShadow = true; rotIn.add(topMesh);
-  // Her duvar: üst sıra (0..n-1) yüksekliği izler, alt sıra y=0
-  walls = [
-    { w: makeWall(NX, (p, k) => { p.set([k*C, PH, 0], k*3); p.set([k*C, 0, 0], (NX+k)*3); }, [0,0,1]), at: k => H[k] },
-    { w: makeWall(NX, (p, k) => { p.set([k*C, PH, -PD], k*3); p.set([k*C, 0, -PD], (NX+k)*3); }, [0,0,-1]), at: k => H[(NY-1)*NX + k] },
-    { w: makeWall(NY, (p, k) => { p.set([0, PH, -k*C], k*3); p.set([0, 0, -k*C], (NY+k)*3); }, [-1,0,0]), at: k => H[k*NX] },
-    { w: makeWall(NY, (p, k) => { p.set([PW, PH, -k*C], k*3); p.set([PW, 0, -k*C], (NY+k)*3); }, [1,0,0]), at: k => H[k*NX + NX - 1] },
-  ];
-  // alt yüz: üst yüzle aynı ızgara, y = 0'da ve aşağı bakar; delinip geçilen hücreler ikisinden de çıkarılır
-  const bp = new Float32Array(nV * 3), bn = new Float32Array(nV * 3);
-  for (let k = 0; k < nV; k++) { bp[k*3] = pos[k*3]; bp[k*3+1] = 0.01; bp[k*3+2] = pos[k*3+2]; bn[k*3+1] = -1; }
-  const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(bp, 3)); bg.setAttribute('normal', new THREE.BufferAttribute(bn, 3));
-  bg.boundingSphere = topGeo.boundingSphere.clone();
-  stockBase = new THREE.Mesh(bg, M.raw); stockBase.receiveShadow = true; rotIn.add(stockBase);
-  throughDirty = true; rebuildIndex();
-  dirty = { i0:0, i1:NX - 1, j0:0, j1:NY - 1 }; isDirty = true;
-  buildVise();
-}
 /* ---- Bağlama: mengene, pabuç ya da vakum tabla ----
    Mengene: çeneler parçaya göre; arka çene parçanın arkasına dayanır, çene yüksekliği parçanın 5 mm altında biter.
    Pabuç: parça iki altlık üstünde tablaya bağlanır; dört pabuç kenarın 12 mm'sini kapatır (takım çarparsa kırılır).
@@ -1887,7 +1821,7 @@ const VX = (() => {
           const f = F[n]; if (!f) continue;
           const qx = (i - 2) * R - xm, d2 = qx * qx + qy * qy;
           if (d2 > rr) continue;
-          const rho = Math.sqrt(d2), zb = profile(T, Math.min(rho, r), tip);
+          const rho = Math.sqrt(d2), zb = app.profile(T, Math.min(rho, r), tip);
           if (test) {
             if (f >= ISO && rho < r) { if (pzp > out.maxH) out.maxH = pzp; if (pzp >= zb && pzp - zb > out.over) out.over = pzp - zb; }
             continue;
@@ -1913,6 +1847,80 @@ const VX = (() => {
   return { grp, build, flush, work, local, setMat, get radius() { return RS; }, get length() { return L; }, get ready() { return !!F; }, stats:() => ({ voxels:nx * ny * nz, chunks:chunks.size, dirty:dirty.size }) };
 })();
 // ── Bağlama: divizör gövdesi, mengene, pabuç, paraleller, çarpışma kutuları, parça yüzeyinin çizimi
+/* ---- Parça mesh'i: ham parça ölçüsü değişince (buildStock) yükseklik haritası, mesh ve mengene yeniden kurulur ---- */
+const topMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.34, metalness:0.62 });
+topMat.envMapIntensity = 0.45; M.raw.envMapIntensity = 0.45;   // düz üst yüzey ortamın parlak tavanını yansıtıp beyaza dönmesin
+// Alın ve parmak frezenin taban izleri: takımın arka kenarının çizdiği yaylar, devir başına ilerleme aralığıyla ("balık pulu").
+// Yay ailesi |p − (c0 + s·d)| = R; s = p·d + √(R² − dik²) mutlak koordinatta hesaplanır, böylece komşu hücreler aynı deseni paylaşır.
+topMat.extensions = { derivatives:true };
+topMat.onBeforeCompile = sh => {
+  sh.vertexShader = 'attribute vec4 mk1;\nattribute vec4 mk2;\nvarying vec4 vK1;\nvarying vec4 vK2;\nvarying vec3 vLoc;\nvarying float vUp;\n' +
+    sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vK1 = mk1; vK2 = mk2; vLoc = position; vUp = normal.y;');
+  sh.fragmentShader = 'varying vec4 vK1;\nvarying vec4 vK2;\nvarying vec3 vLoc;\nvarying float vUp;\n' + sh.fragmentShader
+    .replace('#include <color_fragment>', `#include <color_fragment>
+      float mkAmp = 0.0, mkG = 0.0, rip = 0.0;
+      if (vK2.x > 0.001 && vUp > 0.6) {
+        vec2 p = vec2(vLoc.x, -vLoc.z), q = p - vK1.xy;
+        float al = dot(q, vK1.zw); float dp = length(q - al * vK1.zw);
+        float sArc = dot(p, vK1.zw) + sqrt(max(vK2.y * vK2.y - dp * dp, 0.0));
+        float ph = sArc / vK2.x;
+        float aa = clamp(1.0 - fwidth(ph) * 1.2, 0.0, 1.0);
+        mkG = 0.5 + 0.5 * cos(6.2831853 * ph);
+        mkAmp = clamp(vK2.z / 3.0, 0.08, 0.9) * aa;
+      }
+      if (vK2.w > 0.01) rip = vK2.w * (0.5 + 0.5 * sin(dot(vec2(vLoc.x, -vLoc.z), vec2(1.7, 1.1)) * 2.4));
+      diffuseColor.rgb *= 1.0 - 0.16 * mkAmp * mkG - 0.12 * rip;`)
+    .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+      roughnessFactor = clamp(roughnessFactor + mkAmp * (mkG - 0.35) * 0.45 + rip * 0.3, 0.05, 1.0);`);
+};
+let nV, pos, nor, col, topGeo, MK1, MK2, TINTC, TAPC, topMesh = null, walls = [], stockBase = null;
+function makeWall(n, place, normal) {
+  const g = new THREE.BufferGeometry();
+  const p = new Float32Array(n * 2 * 3), nn = new Float32Array(n * 2 * 3);
+  for (let k = 0; k < n; k++) { place(p, k); for (const v of [k, n + k]) nn.set(normal, v * 3); }
+  const ix = [];
+  for (let k = 0; k < n - 1; k++) ix.push(k, k + 1, n + k, k + 1, n + k + 1, n + k);
+  g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nn, 3));
+  g.setIndex(ix);
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(PW/2, PH/2, -PD/2), Math.hypot(PW, PD, PH));
+  const m = new THREE.Mesh(g, M.raw); m.castShadow = true; m.receiveShadow = true; rotIn.add(m);
+  return { g, n, m };
+}
+function buildStock(w, d, h) {
+  jawOverride = null;
+  nV = allocGrid(w, d, h);
+  if (topMesh) { rotIn.remove(topMesh); topGeo.dispose(); }
+  for (const w of walls) { rotIn.remove(w.w.m); w.w.g.dispose(); }
+  if (stockBase) { rotIn.remove(stockBase); stockBase.geometry.dispose(); }
+  pos = new Float32Array(nV * 3); nor = new Float32Array(nV * 3); col = new Float32Array(nV * 3);
+  for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const k = j * NX + i; pos[k*3] = i * C; pos[k*3+1] = PH; pos[k*3+2] = -j * C; }
+  topGeo = new THREE.BufferGeometry();
+  topGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  topGeo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  topGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  topGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(PW/2, PH/2, -PD/2), Math.hypot(PW, PD, PH));
+  MK1 = new Float32Array(nV * 4); MK2 = new Float32Array(nV * 4); TINTC = new Float32Array(nV); TAPC = new Uint8Array(nV);
+  topGeo.setAttribute('mk1', new THREE.BufferAttribute(MK1, 4));
+  topGeo.setAttribute('mk2', new THREE.BufferAttribute(MK2, 4));
+  topMesh = new THREE.Mesh(topGeo, topMat); topMesh.castShadow = true; topMesh.receiveShadow = true; rotIn.add(topMesh);
+  // Her duvar: üst sıra (0..n-1) yüksekliği izler, alt sıra y=0
+  walls = [
+    { w: makeWall(NX, (p, k) => { p.set([k*C, PH, 0], k*3); p.set([k*C, 0, 0], (NX+k)*3); }, [0,0,1]), at: k => H[k] },
+    { w: makeWall(NX, (p, k) => { p.set([k*C, PH, -PD], k*3); p.set([k*C, 0, -PD], (NX+k)*3); }, [0,0,-1]), at: k => H[(NY-1)*NX + k] },
+    { w: makeWall(NY, (p, k) => { p.set([0, PH, -k*C], k*3); p.set([0, 0, -k*C], (NY+k)*3); }, [-1,0,0]), at: k => H[k*NX] },
+    { w: makeWall(NY, (p, k) => { p.set([PW, PH, -k*C], k*3); p.set([PW, 0, -k*C], (NY+k)*3); }, [1,0,0]), at: k => H[k*NX + NX - 1] },
+  ];
+  // alt yüz: üst yüzle aynı ızgara, y = 0'da ve aşağı bakar; delinip geçilen hücreler ikisinden de çıkarılır
+  const bp = new Float32Array(nV * 3), bn = new Float32Array(nV * 3);
+  for (let k = 0; k < nV; k++) { bp[k*3] = pos[k*3]; bp[k*3+1] = 0.01; bp[k*3+2] = pos[k*3+2]; bn[k*3+1] = -1; }
+  const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(bp, 3)); bg.setAttribute('normal', new THREE.BufferAttribute(bn, 3));
+  bg.boundingSphere = topGeo.boundingSphere.clone();
+  stockBase = new THREE.Mesh(bg, M.raw); stockBase.receiveShadow = true; rotIn.add(stockBase);
+  throughDirty = true; rebuildIndex();
+  dirty = { i0:0, i1:NX - 1, j0:0, j1:NY - 1 }; isDirty = true;
+  buildVise();
+}
 // Divizör: tablaya cıvatalı gövde, arkada bölüntü diski ve kol; önde dönen üç ayaklı ayna (parçayla birlikte A açısında döner)
 const divG = new THREE.Group(), divRot = new THREE.Group(), divJaws = new THREE.Group(); divG.visible = false; table.add(divG);
 divRot.position.set(0, DIVZ, -DIVY); divG.add(divRot); divRot.add(VX.grp); divRot.add(divJaws);
@@ -1940,6 +1948,7 @@ function buildDivJaws(rs) {
   }
 }
 let FIX = 'vise', clampLay = 'fb', straps = [];
+const setFIX = k => { FIX = k; }, setClampLay = v => { clampLay = v; };
 const viseG = new THREE.Group(); rotIn.add(viseG);
 const rotBase = new THREE.Group(); table.add(rotBase);   // döner tablanın sabit gövdesi
 let rotCrank = null;
@@ -1963,6 +1972,7 @@ function warnParallels(J) {
   if (c.length) log(`${c.join(', ')} paralel altlığın üstüne denk geliyor: delip geçerken matkap paralele çarpar. Parça panelinde paralelleri kaydırın, ince paralel seçin ya da kurban plaka kullanın.`, 'warn');
 }
 let jawTop = 22, jawOverride = null;      // hazır parçada çene, parçanın kenar yüksekliğine göre
+const setJawOverride = v => { jawOverride = v; };
 // pabuç: kenara basan lama, kademeli destek, saplama ve somun; side f/b (ön/arka) ya da l/r (sol/sağ), c kenar boyunca konum
 function strap(c, side) {
   const t = PH, X = side === 'l' || side === 'r';
@@ -1982,7 +1992,7 @@ function buildVise() {
   while (viseG.children.length) { const o = viseG.children[0]; viseG.remove(o); if (o.geometry) o.geometry.dispose(); }
   while (rotBase.children.length) { const o = rotBase.children[0]; rotBase.remove(o); if (o.geometry) o.geometry.dispose(); }
   viseBase.visible = FIX === 'vise'; straps = []; rotCrank = null;
-  if (stockReady) syncParUI();
+  if (stockReady) app.syncParUI();
   divG.visible = FIX === 'div'; rotIn.visible = FIX !== 'div';
   if (FIX === 'div') { buildDivBody(); buildDivJaws(PD / 2); }
   ROT.on = FIX === 'rot'; ROT.a = ROT.a0 = ROT.pend = ROT.hold = ROT.z0 = 0; ROT.cx = PW / 2; ROT.cy = PD / 2;
@@ -1992,14 +2002,14 @@ function buildVise() {
     // sabit gövde: tablaya cıvatalı kutu, önde kırmızı gösterge ve sonsuz vida krankı (90:1)
     rbox(cx - 125, cx + 125, -60, -30, cz - 115, cz + 115, 6, M.paintDark, rotBase);
     const bd = cyl(118, 122, 8, M.paint, 64); bd.position.set(cx, -26, cz); rotBase.add(bd);
-    box(5, 4, 12, TMAT.red, cx, -9, cz + 118, rotBase);
+    box(5, 4, 12, app.TMAT.red, cx, -9, cz + 118, rotBase);
     const cr = new THREE.Group(); cr.position.set(cx + 80, -46, cz + 124); rotBase.add(cr);
     const ci = new THREE.Group(); ci.scale.setScalar(0.5); cr.add(ci); hwheel(ci, 44); rotCrank = ci;
     // dönen plaka (parçayla birlikte döner): T kanalları, 5°'lik derece çizgileri
     const pl = cyl(112, 112, 18, M.ground, 72); pl.position.set(cx, -13, cz); viseG.add(pl);
     for (let k = 0; k < 4; k++) { const ts = box(200, 0.8, 10, M.black, cx, -3.95, cz, viseG, false); ts.rotation.y = k * Math.PI / 4; }
     for (let k = 0; k < 72; k++) {
-      const a = k * 5 * Math.PI / 180, big = k % 2 === 0, tk = box(0.9, big ? 9 : 5, 0.6, k === 0 ? TMAT.red : TMAT.bright, cx + Math.cos(a) * 112.3, -8 - (big ? 0 : 2), cz - Math.sin(a) * 112.3, viseG, false);
+      const a = k * 5 * Math.PI / 180, big = k % 2 === 0, tk = box(0.9, big ? 9 : 5, 0.6, k === 0 ? app.TMAT.red : app.TMAT.bright, cx + Math.cos(a) * 112.3, -8 - (big ? 0 : 2), cz - Math.sin(a) * 112.3, viseG, false);
       tk.rotation.y = a + Math.PI / 2;
     }
     // parça iki ince paralel üstünde (X yanlarında; ortadan boydan boya delik açılabilsin) ve dört pabuçla bağlı
@@ -2036,6 +2046,7 @@ function buildVise() {
 }
 // çarpışma kutuları çenelerle birlikte taşınır (FIXTURES dosyada daha aşağıda tanımlı; başlangıçta bir kez eşitlenir)
 let stockReady = false, throughDirty = false;
+const markThrough = () => { throughDirty = true; }, markStockReady = () => { stockReady = true; };
 // Üçgenler: dört köşesi de tabana inmiş (boydan boya delinmiş) dörtgen çizilmez; böylece delikten karşısı görünür
 function rebuildIndex() {
   const thr = 0.02, n = (NX - 1) * (NY - 1) * 6, ti = new Uint32Array(n), bi = new Uint32Array(n);
@@ -2052,15 +2063,15 @@ function rebuildIndex() {
   throughDirty = false;
 }
 function syncFixtures() {
-  FIXTURES.length = 0;
-  if (FIX === 'vise') FIXTURES.push({ n:'mengene ön çenesine', b:[-35, 185, -25, 0], top:jawTop }, { n:'mengene arka çenesine', b:[-35, 185, PD, PD + 25], top:jawTop },
+  app.FIXTURES.length = 0;
+  if (FIX === 'vise') app.FIXTURES.push({ n:'mengene ön çenesine', b:[-35, 185, -25, 0], top:jawTop }, { n:'mengene arka çenesine', b:[-35, 185, PD, PD + 25], top:jawTop },
     ...parBands().map(([a, b]) => ({ n:'paralel altlığa', b:[-10, 160, a, b], top:-sacT() })), { n:'mengene gövdesine', b:[-40, 190, -60, 160], top:-35 });
-  else if (FIX === 'clamp') FIXTURES.push(...straps, ...parBands().map(([a, b]) => ({ n:'altlığa', b:[4, PW - 4, a, b], top:-sacT() })));
-  else if (FIX === 'div') FIXTURES.push({ n:'divizör aynasına', b:[-46, 0.5, DIVY - 52, DIVY + 52], top:DIVZ + 52 }, { n:'divizör gövdesine', b:[-152, -46, -57, 57], top:DIVZ + 47 });
-  else if (FIX === 'rot') FIXTURES.push(...straps.map(f => Object.assign({ rot:true }, f)), ...(PAR.sac ? [] : parBands().map(([a, b]) => ({ n:'paralel altlığa', b:[a, b, 4, PD - 4], top:0, rot:true }))),
+  else if (FIX === 'clamp') app.FIXTURES.push(...straps, ...parBands().map(([a, b]) => ({ n:'altlığa', b:[4, PW - 4, a, b], top:-sacT() })));
+  else if (FIX === 'div') app.FIXTURES.push({ n:'divizör aynasına', b:[-46, 0.5, DIVY - 52, DIVY + 52], top:DIVZ + 52 }, { n:'divizör gövdesine', b:[-152, -46, -57, 57], top:DIVZ + 47 });
+  else if (FIX === 'rot') app.FIXTURES.push(...straps.map(f => Object.assign({ rot:true }, f)), ...(PAR.sac ? [] : parBands().map(([a, b]) => ({ n:'paralel altlığa', b:[a, b, 4, PD - 4], top:0, rot:true }))),
     { n:'döner tabla plakasına', c:[ROT.cx, ROT.cy, 112], top:-4 }, { n:'döner tabla gövdesine', b:[ROT.cx - 125, ROT.cx + 125, ROT.cy - 115, ROT.cy + 115], top:-26 });
-  else FIXTURES.push({ n:'vakum tablasına (kurban plakasını geçti)', b:[-30, 290, -25, 165], top:-5 });
-  FIXTURES.push({ n:'tablaya', b:[-400, 550, -50, 150], top:-60 });
+  else app.FIXTURES.push({ n:'vakum tablasına (kurban plakasını geçti)', b:[-30, 290, -25, 165], top:-5 });
+  app.FIXTURES.push({ n:'tablaya', b:[-400, 550, -50, 150], top:-60 });
 }
 let dirty = { i0:0, i1:0, j0:0, j1:0 }, isDirty = true;
 buildStock(PW, PD, PH);
@@ -2466,6 +2477,7 @@ function chipsFor(nx, ny, z, T, vol, form, heat) {
    Kesit, açıya bağlı bir yarıçap profili r(θ): her ağız için fatura (land), kesme yüzü, kanal dibi (göbek) ve sırt.
    Bu kesit eksen boyunca helis açısına göre döndürülerek süpürülür; uçta düz, küresel ya da konik kapanış olur.
    Geometri tamamen parametrelerden üretilir (çap, ağız sayısı, helis açısı, kanal boyu, göbek, köşe), böylece takım ileride düzenlenebilir. */
+Object.assign(app, { groundAt });   // önceki modüllerin geç başvuruları
 // ── Takım görselleri ve tutucular: helisli gövdeler, ER/Weldon/shrink/hidrolik, kadranlı taster, takım profili
 const TMAT = {
   carbide: smat(0xa3aaaf, 0.26, 0.92, 0.9),           // kaplamasız karbür
@@ -2696,6 +2708,7 @@ function profile(T, d, tip) {
     default: return tip;
   }
 }
+Object.assign(app, { TMAT, profile });   // önceki modüllerin geç başvuruları
 // ── Kesme: çarpışma, talaş kaldırma, alt adım denetimi, kılavuz, kesme yükü, döner tabla dönüşü, eksen hareketi
 // Tool silindirinin dairesi ile (x0..x1, y0..y1) dikdörtgeni arası mesafe
 function rectDist(x, y, x0, x1, y0, y1) {
@@ -2763,7 +2776,7 @@ function applyCut(x, y, tip, T, mx = 1, my = 0, mk = null) {
       }
       const p = Math.max(0, profile(T, Math.sqrt(d2), tip));
       if (H[k] > p) {
-        if (p <= 0.02) throughDirty = true;
+        if (p <= 0.02) markThrough();
         vol += H[k] - p; H[k] = p; CUT[k] = S.tool + 1;
         if (mk) { const o = k * 4; MK1[o] = x; MK1[o+1] = y; MK1[o+2] = mx / ml; MK1[o+3] = my / ml; MK2[o] = mk.f; MK2[o+1] = r; MK2[o+2] = mk.ra; MK2[o+3] = mk.chat; TINTC[k] = mk.tint; }
       }
@@ -2780,16 +2793,17 @@ function crash(msg) {
   burst('smoke', 10, 0, ct + 4, 0, 40, 60, 1.8);
   if (S.job && !S.job.done) S.job.stats.breaks++;
   S.alarm = true; S.spindle = false; S.broken = true;
-  CR.lost(S.tool);
+  app.CR.lost(S.tool);
   stopMotion();
   buildToolVisual();
   $('alarmMsg').textContent = msg;
   $('alarm').hidden = false;
   crashSound();
   log(msg, 'bad');
-  updateSpindleUI(); updateToolUI();
+  app.updateSpindleUI(); app.updateToolUI();
+  app.PM.flash('tools');
 }
-function stopMotion() { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0; S.autoX = 0; if (typeof updateAutoUI === 'function') updateAutoUI(); pressed.forEach(p => p.t0 = Infinity); }
+function stopMotion() { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0; S.autoX = 0; if (typeof app.updateAutoUI === 'function') app.updateAutoUI(); pressed.forEach(p => p.t0 = Infinity); }
 
 function loadRatio(T, feedNow, horiz) {
   if (T.type === 'edge' || T.type === 'tap' || isTaster(T) || S.rpm <= 0) return 0;
@@ -2807,7 +2821,7 @@ function tryStep(nx, ny, nn, dtStep) {
   const horiz = Math.hypot(mdx, mdy), down = nn < S.nose;
   const fh = fixtureHit(nx, ny, T.type === 'dial' ? tip - 2 : tip, T);
   if (fh) { crash(fh); return false; }
-  if (T.type === 'dial') return DT.step(nx, ny, nn, T);
+  if (T.type === 'dial') return app.DT.step(nx, ny, nn, T);
   const it = interfere(nx, ny, tip, T);
   if (S.loose && it.any) { warnOnce('loose', 'Parça bağlı değil, tabladan kopmuş. Yeni ham parça bağlayın.', 'bad'); return false; }
   if (T.type === 'tap') return tapStep(nx, ny, nn, T, it, horiz);
@@ -2826,7 +2840,7 @@ function tryStep(nx, ny, nn, dtStep) {
   if (isProbe(T)) {
     if (S.spindle) { crash('3B taster dönerken parçaya değdi: stylus kırıldı. Taster yalnızca mil DURURKEN kullanılır.'); return false; }
     if (S.feedNow > 1500) { crash('Taster hızlı harekette parçaya çarptı: stylus kırıldı. Parçaya yavaş yaklaşın ya da döngüleri kullanın.'); return false; }
-    PR.touch(nx, ny, nn); return false;
+    app.PR.touch(nx, ny, nn); return false;
   }
   if (T.type === 'edge') {
     if (!S.spindle) warnOnce('edgeoff', 'Kenar bulucu mil dönmeden çalışmaz (≈1000 dev/dk önerilir).');
@@ -2835,7 +2849,7 @@ function tryStep(nx, ny, nn, dtStep) {
       const ax = Math.abs(nx - S.px) >= Math.abs(ny - S.py) ? 'X' : 'Y';
       const v = ax === 'X' ? S.px - S.zx : S.py - S.zy;
       const before = lastWarn.edge;
-      warnOnce('edge', `Kenar bulundu: ${ax} = ${fmt(v)}. Takım merkezi kenardan 5.000 mm uzakta; "Ata" ile ${ax}=${nx > S.px || ny > S.py ? '-5' : '+5'} girin.`, 'ok', 1500);
+      warnOnce('edge', `Kenar bulundu: ${ax} = ${app.fmt(v)}. Takım merkezi kenardan 5.000 mm uzakta; "Ata" ile ${ax}=${nx > S.px || ny > S.py ? '-5' : '+5'} girin.`, 'ok', 1500);
       if (lastWarn.edge !== before) beep(1900);
     }
     return false;
@@ -2869,7 +2883,7 @@ function tryStep(nx, ny, nn, dtStep) {
     }
   }
   // kesme hızı oranı, devir başına ilerleme ve yüzey: Ra ≈ fz²/(8·0.8) (aşınma, yığıntı ağız, tırlama, erime bozar)
-  const md = toolMods(T);
+  const md = app.toolMods(T);
   const rpmE = Math.max(1, S.rpmEff || S.rpm), vcNow = Math.PI * T.d * rpmE / 1000, vr = vcNow / Math.max(1, T.vc * mat.vcf);
   const fRev = S.feedNow / rpmE, fz = fRev / Math.max(1, T.z), wr = S.wear[S.tool];
   const melt = mat.melt && !S.coolant && vr > 1.2;
@@ -2907,7 +2921,7 @@ function tryStep(nx, ny, nn, dtStep) {
   const hk = holderOf(T);
   if (hk && HOLDERS[hk].slip && L.stress > 1.6 && !T.slipped && Math.random() < (L.stress - 1.6) * 0.25 * HOLDERS[hk].slip) {
     const a = +(0.3 + Math.random() * 0.5).toFixed(2);
-    T.slipped = a; T.len += a; T.stick += a; buildToolVisual(); updateToolUI();
+    T.slipped = a; T.len += a; T.stick += a; buildToolVisual(); app.updateToolUI();
     beep(500, 0.1); thud(90, 0.2, 0.2);
     log(`Takım ${HOLDERS[hk].n} tutucusundan ${a} mm dışarı kaydı! Uç artık DRO'nun gösterdiğinden derinde, parça fazla kesiliyor. Mili durdurup Tutucu satırındaki düğmeye basarak takımı yeniden bağlayın.`, 'bad');
   }
@@ -2919,7 +2933,7 @@ function tryStep(nx, ny, nn, dtStep) {
   // mil gücü: kc · talaş debisi; 1000 dev/dk altında sabit tork, aşırı yükte devir düşer, çok aşırıda mil boğulur
   const Pc = mat.kc * (W.vol / Math.max(1e-3, winT)) * 1e-6, Pav = P_MAX * Math.min(1, S.rpm / 1000);
   S.power = Pc / Pav;
-  if (FIX === 'vac' && VAC.check(Pc, vcNow)) return false;
+  if (FIX === 'vac' && app.VAC.check(Pc, vcNow)) return false;
   if (S.power > 1.5) { crash(`Mil boğuldu: kesme ${Pc.toFixed(1)} kW istiyor, motor bu devirde ${Pav.toFixed(1)} kW verebiliyor. Talaş derinliğini ya da ilerlemeyi azaltın.`); return false; }
   if (S.power > 1) warnOnce('power', `Mil zorlanıyor: güç %${Math.round(S.power * 100)}, devir düşüyor.`, 'warn', 5000);
   // tırlama: uzun ve ince takımda (çıkıntı/çap) ve ağır kesmede başlar; devre göre loblar halinde kararlı bölgeler var
@@ -3078,7 +3092,7 @@ function motion(dt) {
         unslip(old);
         S.tool = c.to; S.broken = false; S.changing = null; S.peck.active = false; S.spotHint = false;
         S.damage = 0; S.lastStress = 0; S.lastChip = 0; S.win = { vol:0, h:0, v:0, ap:0, idle:0 };
-        buildToolVisual(); updateToolUI(); updateRec();
+        buildToolVisual(); app.updateToolUI(); app.updateRec();
         const dl = tool().len - old.len;
         log(`${tool().no} takıldı: ${tool().name} Ø${tool().d}. Takım boyu ${dl >= 0 ? '+' : ''}${dl} mm farklı; Z'yi yeniden sıfırlayın.`, 'ok');
       }
@@ -3116,7 +3130,7 @@ function motion(dt) {
     const nx = clamp(tx, LIM.x0, LIM.x1), ny = clamp(ty, LIM.y0, LIM.y1), nn = clamp(tn, LIM.n0, LIM.n1);
     if (nx !== tx || ny !== ty || nn !== tn) {
       warnOnce('lim', 'Eksen hareket sınırına ulaşıldı.');
-      if (nx !== tx) { m.x = wm.x = 0; S.pend.x = S.wheel.x = 0; if (S.autoX) { S.autoX = 0; updateAutoUI(); } }
+      if (nx !== tx) { m.x = wm.x = 0; S.pend.x = S.wheel.x = 0; if (S.autoX) { S.autoX = 0; app.updateAutoUI(); } }
       if (ny !== ty) { m.y = wm.y = 0; S.pend.y = S.wheel.y = 0; }
       if (nn !== tn) { m.z = wm.z = 0; S.pend.z = S.wheel.z = 0; }
     }
@@ -3125,7 +3139,7 @@ function motion(dt) {
     S.px = nx; S.py = ny; S.nose = nn; done++;
   }
   if (done) { S.lastMove = performance.now(); S.curFeed += (S.feedNow - S.curFeed) * 0.3; }
-  if (blocked) { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0; if (S.autoX) { S.autoX = 0; updateAutoUI(); } return; }
+  if (blocked) { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0; if (S.autoX) { S.autoX = 0; app.updateAutoUI(); } return; }
   for (const ax of ['x', 'y', 'z']) {
     if (!heldDir(ax) && S.pend[ax]) {
       S.pend[ax] -= (m[ax] - wm[ax]) * done / n;
@@ -3139,6 +3153,7 @@ function motion(dt) {
 }
 
 /* ---------------- Arayüz ---------------- */
+Object.assign(app, { FIXTURES });   // önceki modüllerin geç başvuruları
 // ── Kumanda: DRO, devir/ilerleme, takım dolabı, takım değişimi, mil, jog, el çarkları, malzeme ve parça sıfırlama
 const fmt = v => (v < -0.0005 ? '−' : '+') + Math.abs(v).toFixed(3);
 const droVals = () => ({ x: S.px - S.zx, y: S.py - S.zy, z: S.nose - S.zn });
@@ -3170,22 +3185,23 @@ function setRpm(v) { S.rpm = v; $('rpm').value = v; $('rpmOut').textContent = v 
 function setFeed(v) { S.feed = v; $('feed').value = v; $('feedOut').textContent = v + ' mm/dk'; }
 
 // Takım dolabı
-let rackTag = null;                        // kariyer: (i) => { own, price }
+let spinAng = 0; const addSpin = d => { spinAng += d; };   // mil görsel dönüş açısı
+let rackTag = null; const setRackTag = f => { rackTag = f; };                        // kariyer: (i) => { own, price }
 function renderRack() {
   const rk = $('rack'); rk.innerHTML = '';
   TOOLS.forEach((T, i) => {
     if (T.gone) return;
     const b = document.createElement('button'); b.dataset.i = i;
-    if (T.custom) { b.classList.add('custom'); b.title = 'Sağ tık: editörde aç'; b.addEventListener('contextmenu', e => { e.preventDefault(); TE.show(i); }); }
+    if (T.custom) { b.classList.add('custom'); b.title = 'Sağ tık: editörde aç'; b.addEventListener('contextmenu', e => { e.preventDefault(); app.TE.show(i); }); }
     const tg = rackTag && rackTag(i);
     if (tg && !tg.own) b.classList.add('locked');
-    b.innerHTML = `<span class="ico">${toolIcon(T)}</span><span class="nm"><b>${T.no}</b>${T.name}</span><span class="d">Ø${T.d} · ${tg && !tg.own ? 'satın al ' + tg.price : T.mat.split(',')[0]}</span>`;
+    b.innerHTML = `<span class="ico">${app.toolIcon(T)}</span><span class="nm"><b>${T.no}</b>${T.name}</span><span class="d">Ø${T.d} · ${tg && !tg.own ? 'satın al ' + tg.price : T.mat.split(',')[0]}</span>`;
     b.addEventListener('click', () => requestToolChange(i));
     rk.append(b);
   });
   const nb = document.createElement('button'); nb.className = 'add';
   nb.innerHTML = '<span class="ico">+</span><span class="nm"><b>Yeni</b>Takım tasarla</span><span class="d">editör</span>';
-  nb.addEventListener('click', () => TE.show(null)); rk.append(nb);
+  nb.addEventListener('click', () => app.TE.show(null)); rk.append(nb);
 }
 // tutucu değişimi: takılı takım yeni tutucuya bağlanır (mil durmalı); kayan takım da böylece yeniden bağlanır
 $('holderSeg').addEventListener('click', e => {
@@ -3194,7 +3210,7 @@ $('holderSeg').addEventListener('click', e => {
   const T = tool(), k = b.dataset.h;
   if (!holds(T)) return;
   if (S.spindle || S.changing) { log('Tutucu değiştirmek için önce mili durdurun.', 'warn'); return; }
-  if (!CR.hasEq('h_' + k) && k !== 'er') { log(`${HOLDERS[k].n} tutucu atölyede yok: dükkândan alabilirsiniz.`, 'warn'); CR.openShop(); return; }
+  if (!app.CR.hasEq('h_' + k) && k !== 'er') { log(`${HOLDERS[k].n} tutucu atölyede yok: dükkândan alabilirsiniz.`, 'warn'); app.CR.openShop(); return; }
   if (holderOf(T) === k && !T.slipped) return;
   const was = T.slipped;
   unslip(T); HSEL[T.no] = k;
@@ -3207,7 +3223,7 @@ function requestToolChange(i) {
   if (S.alarm) { log('Önce alarmı sıfırlayın.', 'warn'); return; }
   if (S.spindle) { log('Takım değiştirmek için önce mili durdurun.', 'warn'); return; }
   if (S.changing) return;
-  if (!CR.allowTool(i)) return;
+  if (!app.CR.allowTool(i)) return;
   if (i === S.tool && !S.broken) { log(`${TOOLS[i].no} zaten takılı.`); return; }
   stopMotion();
   S.changing = { to:i, t:0 };
@@ -3230,14 +3246,14 @@ $('rpm').addEventListener('input', e => setRpm(+e.target.value));
 $('feed').addEventListener('input', e => setFeed(+e.target.value));
 $('matSel').addEventListener('change', e => {
   if (S.job && !S.job.done) { e.target.value = S.mat; log('İş sürerken malzeme değiştirilemez; iş emri malzemeyi belirler.', 'warn'); return; }
-  if (CR.on) { e.target.value = S.mat; log('Kariyerde ham parça siparişle gelir; malzemeyi sipariş belirler.', 'warn'); return; }
+  if (app.CR.on) { e.target.value = S.mat; log('Kariyerde ham parça siparişle gelir; malzemeyi sipariş belirler.', 'warn'); return; }
   resetPart(e.target.value);
   log(`Malzeme: ${mat.name}. Yeni ham parça bağlandı; önerilen hız ve ilerleme buna göre değişti.`, 'ok');
 });
 $('renewTool').addEventListener('click', () => {
   if (S.spindle) { log('Takımı yenilemek için önce mili durdurun.', 'warn'); return; }
   if (!S.wear[S.tool]) { log(`${tool().no} zaten keskin.`); return; }
-  if (!CR.charge(Math.round(CR.priceOf(tool()) * 0.3 / 10) * 10, `${tool().no} bileme`)) return;
+  if (!app.CR.charge(Math.round(app.CR.priceOf(tool()) * 0.3 / 10) * 10, `${tool().no} bileme`)) return;
   S.wear[S.tool] = 0; log(`${tool().no} yenilendi: keskin takım takıldı.`, 'ok');
 });
 function updateAutoUI() {
@@ -3394,7 +3410,7 @@ $('alarmReset').addEventListener('click',() => { S.alarm = false; $('alarm').hid
 $('clearChips').addEventListener('click', () => { clearChips(); log('Talaşlar süpürüldü.'); });
 let newPartArm = 0;
 $('newPart').addEventListener('click', () => {
-  if (CR.on) { log('Kariyerde ham parça siparişle gelir: panodan bir iş başlatın.', 'warn'); return; }
+  if (app.CR.on) { log('Kariyerde ham parça siparişle gelir: panodan bir iş başlatın.', 'warn'); return; }
   const now = performance.now();
   if (now - newPartArm > 3000) { newPartArm = now; $('newPart').textContent = 'Onayla: parçayı değiştir'; setTimeout(() => $('newPart').textContent = 'Yeni ham parça', 3000); return; }
   newPartArm = 0; $('newPart').textContent = 'Yeni ham parça';
@@ -3402,7 +3418,7 @@ $('newPart').addEventListener('click', () => {
   log(`Mengeneye yeni ham parça bağlandı: ${mat.name}, ${PW}×${PD}×${PH} mm.`, 'ok');
 });
 function setMaterial(k) {
-  mat = MATS[k] || MATS.al; S.mat = MATS[k] ? k : 'al';
+  setMat(MATS[k] || MATS.al); S.mat = MATS[k] ? k : 'al';
   $('matSel').value = S.mat;
   $('brandMat').textContent = $('tbMat').textContent = `${mat.short} · ${PW}×${PD}×${PH}`;
   topMat.metalness = mat.nonMetal ? 0 : 0.62; topMat.roughness = mat.nonMetal ? 0.5 : 0.34;
@@ -3414,17 +3430,18 @@ function resetPart(k) {
   if (S.spindle) spindle(false);
   if (k) setMaterial(k);
   H.fill(PH); CUT.fill(0); INSP.fill(0); MK1.fill(0); MK2.fill(0); TINTC.fill(0); TAPC.fill(0); S.tap = null; markDirty(0, NX - 1, 0, NY - 1);
-  throughDirty = true;                       // delik yüzey listesi de yenilensin (yoksa eski delikler açık görünür)
+  markThrough();                             // delik yüzey listesi de yenilensin (yoksa eski delikler açık görünür)
   EDGE.fill(9); SURF.fill(0); S.blank = null;
   S.temp = 0; S.power = 0; S.chatNow = 0; S.lastRa = null;
   S.removed = 0; S.cutTime = 0; S.peck.active = false; clearChips();
-  S.loose = null; for (const m of partMeshes()) { m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); }
+  S.loose = null; for (const m of app.partMeshes()) { m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); }
   if (FIX === 'div') VX.build(PW, PD);
   stopMotion();
   if (tipZ() < PH + 5) S.nose = PH + 20 + tool().len;
 }
 
 /* ---------------- İş emirleri, muayene ve puanlama ---------------- */
+Object.assign(app, { fmt, updateAutoUI, updateRec, updateSpindleUI, updateToolUI });   // önceki modüllerin geç başvuruları
 // ── İş emirleri: görevler, teknik resim, markalama, muayene ve puan, teslim raporu
 const JOBS = [
   { title:'Yüzey alma', target:180,
@@ -3481,7 +3498,7 @@ function blankTop(J, x, y) {
   const P = J._P, o = P.H(x, y);
   if (J.levels) { const g = P.geo, r = Math.hypot(x - g.c, y - g.c); for (const L of J.levels) if (r >= (L.rmin || 0) && r <= L.rmax) return Math.min(o, L.z); }
   if (J.flush && o > J.flush.top) return J.flush.top;
-  if (J.deck && P.Sf(x, y) === (J.deck.sf ?? SF.old) && o >= J.deck.base) return Math.min(o, J.deck.floor + J.deck.maxCut * 0.5);
+  if (J.deck && P.Sf(x, y) === (J.deck.sf ?? app.SF.old) && o >= J.deck.base) return Math.min(o, J.deck.floor + J.deck.maxCut * 0.5);
   if (J.pads) for (const q of J.pads) if (inRect(x, y, q)) return Math.min(o, q.z);
   if (J.face) return Math.min(o, jobTop(J));
   return o;
@@ -3503,7 +3520,7 @@ function allowedAt(J, x, y) {
   if (J._P) {                                                      // hazır parça: istenmeyen yerde parçanın kendi yüzeyi sınırdır
     const P = J._P, o = P.H(x, y);
     let e = o;
-    if (J.deck && P.Sf(x, y) === (J.deck.sf ?? SF.old) && o >= J.deck.base) e = Math.min(o, J.deck.floor);
+    if (J.deck && P.Sf(x, y) === (J.deck.sf ?? app.SF.old) && o >= J.deck.base) e = Math.min(o, J.deck.floor);
     if (J.pads) for (const q of J.pads) if (inRect(x, y, q, 1)) e = Math.min(e, q.z - q.tol);
     if (J.levels) { const g = P.geo, r = Math.hypot(x - g.c, y - g.c), [Lh, Lf] = J.levels; e = Math.min(e, r <= g.Rh ? Lh.z - Lh.tol : Lf.z - Lf.tol); }   // göbek dibi ve kenar pahı da alın seviyesine inebilir
     if (J.flush) e = Math.min(e, J.flush.top - 0.2);
@@ -3735,7 +3752,7 @@ function inspect(J) {
     let n = 0, cut = 0, sum = 0, mn = 1e9, mx = -1e9;
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
       const x = i * C, y = j * C;
-      if (J._P.Sf(x, y) !== (J.deck.sf ?? SF.old) || J._P.H(x, y) < J.deck.base) continue;
+      if (J._P.Sf(x, y) !== (J.deck.sf ?? app.SF.old) || J._P.H(x, y) < J.deck.base) continue;
       const k = j * NX + i, h = H[k]; n++; if (CUT[k]) cut++; sum += h; if (h < mn) mn = h; if (h > mx) mx = h;
     }
     const cov = n ? cut / n : 0, mean = n ? sum / n : 0, flat = mx - mn, take = J.deck.top0 - mean;
@@ -3767,7 +3784,7 @@ function inspect(J) {
   if (J.flush) {                                                   // kaynaklı plaka: dikiş yüzeyle sıfır
     let n = 0, hi = 0, mx = -1e9;
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
-      const x = i * C, y = j * C; if (J._P.Sf(x, y) !== SF.weld) continue;
+      const x = i * C, y = j * C; if (J._P.Sf(x, y) !== app.SF.weld) continue;
       const h = H[j * NX + i]; n++; if (h > J.flush.top + J.flush.tol) hi++; if (h > mx) mx = h;
     }
     const ok = n ? 1 - hi / n : 0;
@@ -3804,6 +3821,7 @@ function scoreJob(J, run, items) {
 /* -- Arayüz -- */
 const mmss = t => { t = Math.max(0, Math.floor(t)); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
 let selJob = -1;
+const setSelJob = i => { selJob = i; };
 function renderJobs() {
   const L = $('jobList'); L.innerHTML = '';
   JOBS.forEach((J, i) => {
@@ -3820,7 +3838,7 @@ function renderJobs() {
   f.addEventListener('click', () => selectJob(-1));
   L.append(f);
   const tot = JOBS.reduce((s, J, i) => s + bestStars(i), 0);
-  if (!CR.on) $('starTotal').textContent = `${tot} / ${JOBS.length * 3} yıldız`;
+  if (!app.CR.on) $('starTotal').textContent = `${tot} / ${JOBS.length * 3} yıldız`;
 }
 function selectJob(i) {
   selJob = i;
@@ -3829,8 +3847,8 @@ function selectJob(i) {
   renderJobs();
   $('jcBtns').hidden = !J; $('vDraw').hidden = !J;
   if (!J) {
-    $('jcNo').textContent = CR.on ? 'KARİYER' : 'SERBEST'; $('jcTitle').textContent = CR.on ? 'Sipariş seçin' : 'Serbest çalışma';
-    $('jcBrief').textContent = CR.on ? 'Panodan bir sipariş seçin: teknik resim açılır, "İşe başla" ile ham parça kasadan alınır ve mengeneye bağlanır. Teslimde parça ölçülür, müşteri ödemeyi yapar.'
+    $('jcNo').textContent = app.CR.on ? 'KARİYER' : 'SERBEST'; $('jcTitle').textContent = app.CR.on ? 'Sipariş seçin' : 'Serbest çalışma';
+    $('jcBrief').textContent = app.CR.on ? 'Panodan bir sipariş seçin: teknik resim açılır, "İşe başla" ile ham parça kasadan alınır ve mengeneye bağlanır. Teslimde parça ölçülür, müşteri ödemeyi yapar.'
       : 'İş emri seçmeden tezgâhı serbestçe kullanın. Bir iş seçerseniz teknik resim açılır, teslimde parça ölçülür ve puanlanır.';
     $('jcMeta').innerHTML = ''; $('drawing').hidden = true; buildScribe(null); S.job = null;
     return;
@@ -3847,11 +3865,11 @@ function selectJob(i) {
 }
 function startJob() {
   initAudio();
-  if (CR.on) { CR.start(); return; }
+  if (app.CR.on) { app.CR.start(); return; }
   if (selJob < 0) return;
-  if (JOBS[selJob].rot && FIX !== 'rot') setFix('rot', true);
-  else if (FIX === 'div') setFix('vise', true);
-  if (PW !== 150 || PD !== 100 || PH !== 40) setStock(150, 100, 40, true);   // iş emirleri standart ham parçayla
+  if (JOBS[selJob].rot && FIX !== 'rot') app.setFix('rot', true);
+  else if (FIX === 'div') app.setFix('vise', true);
+  if (PW !== 150 || PD !== 100 || PH !== 40) app.setStock(150, 100, 40, true);   // iş emirleri standart ham parçayla
   resetPart(JOBS[selJob].mat || 'al');
   S.job = { idx:selJob, J:JOBS[selJob], time:0, done:false, stats:{ breaks:0, load:0, spot:0, peck:0, rub:0 } };
   setTimeout(() => warnParallels(JOBS[selJob] || S.job.J), 300);
@@ -3868,12 +3886,12 @@ function submitJob() {
   const r = scoreJob(J, run, items);
   run.done = true;
   if (run.order) {
-    const res = CR.settle(run, r);
+    const res = app.CR.settle(run, r);
     showReport(run, items, r, false);
     showPayout(res);
     $('rpVerdict').textContent = res.txt; $('rpVerdict').style.color = r.allOk ? 'var(--ok)' : r.stars ? 'var(--warn)' : 'var(--bad)';
-    $('rpRetry').hidden = !CR.sel;   // hurda ya da seri iş: sipariş panoda
-    $('rpRetry').textContent = CR.sel && CR.sel.qty && CR.sel.doneQty && res.pay > 0 ? 'Sıradaki adet' : 'Tekrar dene';
+    $('rpRetry').hidden = !app.CR.sel;   // hurda ya da seri iş: sipariş panoda
+    $('rpRetry').textContent = app.CR.sel && app.CR.sel.qty && app.CR.sel.doneQty && res.pay > 0 ? 'Sıradaki adet' : 'Tekrar dene';
   } else {
     const key = 'j' + run.idx, prev = progress[key];
     const record = !prev || r.total > prev.score;
@@ -3888,7 +3906,7 @@ function submitJob() {
   const cx = 75 - S.px, cz = -50 + S.py, cy = jobTop(J) + 2;
   if (r.stars) for (let s = 0; s < r.stars; s++) setTimeout(() => { burst('gold', 110, cx, cy, cz, 260, 900, 1.8); beep(1200 + s * 300); }, 250 + s * 250);
   else burst('smoke', 30, cx, cy, cz, 60, 80, 2.2);
-  if (r.allOk) setTimeout(() => FW.show(r.stars), 700);           // kabul edilen parça: havai fişek
+  if (r.allOk) setTimeout(() => app.FW.show(r.stars), 700);           // kabul edilen parça: havai fişek
 }
 const STAR = '<svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6 6.5.8-4.8 4.5 1.2 6.5L12 17.3l-5.8 3.1 1.2-6.5L2.6 9.4l6.5-.8z" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 function showReport(run, items, r, newBest) {
@@ -3926,7 +3944,7 @@ function showPayout(res) {
   $('rpTags').innerHTML = res.tags.map(([t, c]) => `<span class="rp-tag ${c}">${t}</span>`).join('');
 }
 $('rpMore').addEventListener('click', () => { const open = $('rpDetail').hidden; $('rpDetail').hidden = !open; $('rpMore').setAttribute('aria-expanded', String(open)); $('rpMore').firstChild.textContent = open ? 'Detayları gizle ' : 'Detayları gör '; });
-$('rpClose').addEventListener('click', () => { $('report').hidden = true; FW.stop(); });
+$('rpClose').addEventListener('click', () => { $('report').hidden = true; app.FW.stop(); });
 
 /* ---------------- Havai fişek: başarılı teslimde ekranın üstünde patlar ----------------
    Yıldız sayısı gösteriyi büyütür; 2B tuval, olayı bitince kendini kapatır. Patlama sesi süzülmüş gürültü + kısa çıtırtı. */
@@ -3990,6 +4008,7 @@ $('rpNext').addEventListener('click', () => { $('report').hidden = true; selectJ
 $('vDraw').addEventListener('click', () => { $('drawing').hidden = !$('drawing').hidden; });
 $('dwClose').addEventListener('click', () => { $('drawing').hidden = true; });
 
+Object.assign(app, { FW });   // önceki modüllerin geç başvuruları
 // ── Ana döngü ve arayüz: klavye, kamera, frame(), HUD, üst çubuk simgeleri, paneller (PM), devir göstergesi, acil stop
 // Klavye
 const KEYMAP = { ArrowLeft:['x',-1], ArrowRight:['x',1], ArrowUp:['y',1], ArrowDown:['y',-1], PageUp:['z',1], PageDown:['z',-1], KeyW:['z',1], KeyS:['z',-1] };
@@ -4002,8 +4021,8 @@ window.addEventListener('keydown', e => {
   if (e.repeat) return;
   if (e.code === 'Space') { e.preventDefault(); spindle(!S.spindle); }
   else if (e.code === 'KeyC') toggleCoolant();
-  else if (e.code === 'KeyG') FD.setOn(!FD.on);
-  else if (e.code === 'KeyB') AG.setOn(!AG.on);
+  else if (e.code === 'KeyG') app.FD.setOn(!app.FD.on);
+  else if (e.code === 'KeyB') app.AG.setOn(!app.AG.on);
   else if (e.code === 'KeyR') $('spDir').click();
   else if (e.code === 'Escape') estop();
   else if (/^Digit[1-4]$/.test(e.code)) setStep([0.01, 0.1, 1, 10][+e.code.slice(5) - 1]);
@@ -4040,7 +4059,7 @@ function resize() {
 new ResizeObserver(resize).observe(stage); resize();
 
 /* ---------------- Ana döngü ---------------- */
-let last = performance.now(), uiT = 0, spinAng = 0;
+let last = performance.now(), uiT = 0;
 const vA = new THREE.Vector3(), vB = new THREE.Vector3();
 function frame(now) {
   S.realDt = Math.max(0.001, (now - last) / 1000);
@@ -4053,7 +4072,7 @@ function frame(now) {
   if ((S.hcT = (S.hcT || 0) + dt) > 0.5) { S.hcT = 0; let v = 0; for (let k = 0; k < nV; k++) v += H[k]; S.heatCap = v * C * C * mat.rho * 1e-3 * mat.c; }
   S.cutting += ((S.cutAcc > 0 ? Math.min(0.3, 0.05 + S.cutAcc / (dt * 4000)) : 0) - S.cutting) * Math.min(1, dt * 12);
   flushMesh();
-  updateChips(dt); AG.update(dt); PR.update(dt); VAC.update(dt); DT.update();
+  updateChips(dt); app.AG.update(dt); app.PR.update(dt); app.VAC.update(dt); app.DT.update();
 
   const T = tool(), tip = tipZ();
   saddle.position.z = S.py;
@@ -4073,14 +4092,14 @@ function frame(now) {
   startBtnMat.emissiveIntensity = S.spindle ? 0.9 : 0;
   mush.position.z = S.alarm ? 29 : 34;
   motorSwitch.rotation.x += ((S.spindle ? (S.dir < 0 ? 0.7 : -0.7) : 0) - motorSwitch.rotation.x) * Math.min(1, dt * 12);
-  if (S.spindle) spinAng -= S.dir * Math.min(S.rpm / 60, 14) * Math.PI * 2 * dt * 0.35;
+  if (S.spindle) addSpin(-S.dir * Math.min(S.rpm / 60, 14) * Math.PI * 2 * dt * 0.35);
   toolRot.rotation.y = spinAng;
   yWheel.rotation.z = -S.py / 5 * Math.PI * 2;
   updateCoolant(dt, tip);
   ambientParticles(dt, tip);
   updatePS(psAdd, dt); updatePS(psAlpha, dt);
   if (S.job && !S.job.done && (S.spindle || now - S.lastMove < 120)) S.job.time += dt * S.sim;
-  drawWheels(); drawGauge(); IA.update(dt);
+  drawWheels(); drawGauge(); app.IA.update(dt);
   zFine.rotation.z = -S.nose / 2;
   pfLever.parent.rotation.z += (-S.autoX * 0.5 - pfLever.parent.rotation.z) * Math.min(1, dt * 12);
   if (camAnim) {
@@ -4099,7 +4118,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 function updateHud(T, tip) {
-  updateLamps(); CP.update(T);
+  updateLamps(); app.CP.update(T);
   { const vc = Math.PI * T.d * (S.spindle ? S.rpmEff : S.rpm) / 1000, rec = T.vc * mat.vcf;
     $('hMat').textContent = mat.short;
     $('hVc').textContent = T.type === 'edge' ? '—' : `${Math.round(vc)} m/dk (öneri ${Math.round(rec)})`;
@@ -4348,12 +4367,12 @@ const PM = (() => {
       const a = b.dataset.act; if (!a) return;
       initAudio(); closeMenus();
       if (a === 'drawing') $('drawing').hidden = !$('drawing').hidden;
-      else if (a === 'air') AG.setOn(!AG.on);
-      else if (a === 'fd') FD.setOn(!FD.on);
+      else if (a === 'air') app.AG.setOn(!app.AG.on);
+      else if (a === 'fd') app.FD.setOn(!app.FD.on);
       else if (a === 'bench') $('benchOpen').click();
-      else if (a === 'editor') TE.show(S.tool);
-      else if (a === 'shop') CR.openShop();
-      else if (a === 'blanks') BG.toggle();
+      else if (a === 'editor') app.TE.show(S.tool);
+      else if (a === 'shop') app.CR.openShop();
+      else if (a === 'blanks') app.BG.toggle();
       else if (a === 'keys') setVis('keys', true);
       else if (a === 'sound') { $('mute').click(); b.innerHTML = `<svg viewBox="0 0 24 24">${TBICON[S.muted ? 'mute' : 'sound']}</svg>`; b.classList.toggle('on', S.muted); }
     });
@@ -4425,9 +4444,6 @@ function estop() {
   stopMotion();
   if (was) { log('ACİL STOP: mil ve tüm hareketler durduruldu.', 'bad'); thud(70, 0.3, 0.25); }
 }
-{ const _crash = crash;
-  crash = function (msg) { _crash(msg); PM.flash('tools'); };
-}
 $('alarmFix').addEventListener('click', () => {
   S.alarm = false; $('alarm').hidden = true;
   if (S.broken) requestToolChange(S.tool);
@@ -4440,12 +4456,13 @@ function updateLamps() {
   PM.lamp('hud', S.alarm ? 'bad' : S.lastStress > 1.2 || S.damage > 0.5 ? 'warn' : S.spindle ? 'on' : '');
   PM.lamp('jobs', S.job && !S.job.done ? 'on' : '');
   PM.lamp('console', S.alarm ? 'bad' : S.spindle ? 'on' : '');
-  PM.lamp('jog', S.autoX ? 'warn' : FD.on ? 'on' : '');
+  PM.lamp('jog', S.autoX ? 'warn' : app.FD.on ? 'on' : '');
   PM.lamp('spindle', S.spindle ? (S.dir < 0 ? 'warn' : 'on') : '');
 }
 
 /* ---------------- Makine üstünde kumanda: çarkları çevir, düğmelere bas ----------------
    Fare bir kumandanın üstündeyken kamera dönmez; çark sürüklenerek ya da tekerlekle çevrilir, düğmelere tıklanır. */
+Object.assign(app, { PM, toolIcon });   // önceki modüllerin geç başvuruları
 // ── Aletler: makine üstü etkileşim (IA), fareyle sürme (FD), hava tabancası (AG), mekanik taster (DT), 3B taster (PR), vakum (VAC), bağlama ve paralel seçimi
 const IA = (() => {
   const T = [
@@ -4622,7 +4639,7 @@ const AG = (() => {
     if (v) noiseHit(ac.currentTime, 'highpass', 2500, 0.7, 0.12, 0.08);           // tetiğin ilk "pışşt"ı
   }
   function setOn(v) {
-    if (v && !CR.hasEq('air')) { log('Hava tabancası atölyede yok: dükkândan alabilirsiniz.', 'warn'); CR.openShop(); return; }
+    if (v && !app.CR.hasEq('air')) { log('Hava tabancası atölyede yok: dükkândan alabilirsiniz.', 'warn'); app.CR.openShop(); return; }
     on = v; if (!on) { if (blowing) sound(false); blowing = false; aim = null; place(); controls.enabled = true; }
     if (on && FD.on) FD.setOn(false);
     canvas.style.cursor = '';
@@ -4890,10 +4907,10 @@ const FIXNOTE = {
 };
 function setFix(k, quiet) {
   if (!FIXLIM[k]) return false;
-  if (k !== 'vise' && !CR.hasEq(k)) { log(`${FIXNAME[k]} atölyede yok: dükkândan alabilirsiniz.`, 'warn'); CR.openShop(); return false; }
+  if (k !== 'vise' && !app.CR.hasEq(k)) { log(`${FIXNAME[k]} atölyede yok: dükkândan alabilirsiniz.`, 'warn'); app.CR.openShop(); return false; }
   if (!quiet && S.job && !S.job.done) { log('İş sürerken bağlama değiştirilmez.', 'warn'); return false; }
   if (S.spindle) spindle(false);
-  FIX = k;
+  setFIX(k);
   [...$('fixSeg').children].forEach(b => b.classList.toggle('on', b.dataset.fx === k));
   $('clampLay').hidden = k !== 'clamp'; $('vacG').hidden = k !== 'vac'; $('rotBox').hidden = k !== 'rot' && k !== 'div';
   $('rotLab').textContent = k === 'div' ? 'A ekseni' : 'C ekseni';
@@ -4902,7 +4919,7 @@ function setFix(k, quiet) {
   const L = FIXLIM[k];
   for (const [id, r] of [['stW', L.x], ['stD', L.y], ['stH', L.z]]) { $(id).min = r[0]; $(id).max = r[1]; }
   $('fixNote').textContent = FIXNOTE[k];
-  setStock(PW, PD, PH, true);
+  app.setStock(PW, PD, PH, true);
   if (k === 'vac') { VAC.measure(); VAC.ui(); }
   if (!quiet) log(`Bağlama: ${FIXNAME[k]}. ${PW}×${PD}×${PH} mm ham parça bağlandı.`, 'ok');
   return true;
@@ -4931,7 +4948,7 @@ function setPar(ch) {
   if (S.spindle) { log('Paralelleri değiştirmek için önce mili durdurun.', 'warn'); syncParUI(); return; }
   Object.assign(PAR, ch); syncParUI(); buildVise();
   if (S.job && !S.job.done) { const c = parConflicts(S.job.J); if (!c.length && S.job.J.holes.length) log('Paraleller deliklerin altından çekildi.', 'ok'); else warnParallels(S.job.J); }
-  const J = S.job && !S.job.done ? S.job.J : selJob >= 0 ? JOBS[selJob] : selJob === -2 && CR.sel ? CR.sel.J : null;
+  const J = S.job && !S.job.done ? S.job.J : selJob >= 0 ? JOBS[selJob] : selJob === -2 && app.CR.sel ? app.CR.sel.J : null;
   if (J) $('dwSvg').innerHTML = drawingSVG(J);
 }
 $('parOff').addEventListener('input', e => { PAR.off = +e.target.value; $('parOffV').textContent = `kenardan ${PAR.off} mm`; });
@@ -4943,7 +4960,7 @@ $('parW').addEventListener('click', e => {
 $('clampLay').addEventListener('click', e => {
   const b = e.target.closest('[data-cl]'); if (!b || b.dataset.cl === clampLay) return;
   if (S.spindle) { log('Pabuçları sökmek için önce mili durdurun.', 'warn'); return; }
-  clampLay = b.dataset.cl; [...$('clampLay').children].forEach(q => q.classList.toggle('on', q === b));
+  setClampLay(b.dataset.cl); [...$('clampLay').children].forEach(q => q.classList.toggle('on', q === b));
   buildVise(); thud(150, 0.15, 0.12);
   log(`Pabuçlar ${clampLay === 'fb' ? 'ön ve arka' : 'sol ve sağ'} kenarlara bağlandı.`, 'ok');
 });
@@ -4956,6 +4973,7 @@ function chipsOnPart() {
 
 /* ---------------- Kumanda paneli: DRO ekranı, tuş takımı, topuzlar, el çarkı (MPG) ----------------
    Paneldeki tüm kumandalar mevcut işlevleri çağırır; böylece eski paneller ve makine üstü kumandalarla hep tutarlı kalır. */
+Object.assign(app, { AG, DT, FD, IA, PR, VAC, partMeshes, setFix, syncParUI });   // önceki modüllerin geç başvuruları
 // ── Parça masası (CP): ayrı sahnede inceleme, kumpas, yükseklik, delik/cep, kesit; ham parça ölçüsü (BN)
 const CP = (() => {
   const st = { sel:null, buf:'', tgt:{}, page:1, axis:'x', mpgAcc:0, mpgAng:0, mpgLast:null };
@@ -5100,7 +5118,7 @@ const CP = (() => {
   return { update };
 })();
 
-stockReady = true; syncFixtures();
+markStockReady(); syncFixtures();
 /* ---------------- Ham parça ölçüsü ---------------- */
 function setStock(w, d, h, quiet) {
   const L = FIXLIM[FIX];
@@ -5114,7 +5132,7 @@ function setStock(w, d, h, quiet) {
   $('brandMat').textContent = $('tbMat').textContent = `${mat.short} · ${w}×${d}×${h}`;
   if (!quiet) log(`Yeni ham parça: ${w} × ${d} × ${h} mm. Sıfır noktası sol-ön-üst köşede; Z0 yeni üst yüzeyde.`, 'ok');
 }
-$('stApply').addEventListener('click', () => CR.on ? log('Kariyerde ham parça ölçüsünü sipariş belirler.', 'warn') : setStock(+$('stW').value, +$('stD').value, +$('stH').value));
+$('stApply').addEventListener('click', () => app.CR.on ? log('Kariyerde ham parça ölçüsünü sipariş belirler.', 'warn') : setStock(+$('stW').value, +$('stD').value, +$('stH').value));
 
 /* ---------------- Parça masası: incele, ölç, kesit al ----------------
    Parça ayrı bir sahnede granit pleyt üstünde durur; aynı geometri paylaşılır, kesilen her şey burada da görünür.
@@ -5260,6 +5278,7 @@ const BN = (() => {
 /* ---------------- Takım editörü: kendi takımını tasarla ----------------
    Tip, çap, ağız sayısı, boylar, helis, köşe radyüsü, uç açısı, malzeme ve kaplama seçilir; takım T13'ten itibaren dolaba eklenir.
    Parametreler fiziğe bağlıdır (toolMods): önerilen hız ve ilerleme, aşınma, kırılma direnci, tırlama, yüzey, talaş sıkışması. */
+Object.assign(app, { CP, setStock });   // önceki modüllerin geç başvuruları
 // ── Takım editörü (TE): tip, ölçüler, kaplama, fiyat, kesmeye etkiler, kayıt
 const TKEY = 'freze-tools-v1';
 const KIND = {
@@ -5450,7 +5469,7 @@ const TE = (() => {
     let i = editIdx;
     if (i >= 0 && i === S.tool && (S.spindle || S.changing)) { log('Takılı takımı değiştirmek için önce mili durdurun.', 'warn'); return; }
     sp.name = $('teName').value.trim(); fixSpec(sp);
-    if (i >= 0) { sp.no = TOOLS[i].no; TOOLS[i] = toolDef(Object.assign({}, sp)); S.wear[i] = 0; CR.forget(sp.no); }   // değişen takım yeniden alınır
+    if (i >= 0) { sp.no = TOOLS[i].no; TOOLS[i] = toolDef(Object.assign({}, sp)); S.wear[i] = 0; app.CR.forget(sp.no); }   // değişen takım yeniden alınır
     else { sp.no = nextToolNo(); TOOLS.push(toolDef(Object.assign({}, sp))); S.wear.push(0); i = TOOLS.length - 1; }
     const T = TOOLS[i];
     saveTools(); renderRack(); updateToolUI();
@@ -5462,7 +5481,7 @@ const TE = (() => {
   function remove() {
     if (editIdx < 0) return;
     if (editIdx === S.tool) { log('Takılı takım silinemez; önce başka bir takım takın.', 'warn'); return; }
-    const T = TOOLS[editIdx]; T.gone = true; CR.forget(T.no);                       // dizin yerinde kalır (parçadaki iz kayıtları takım sırasına bağlı)
+    const T = TOOLS[editIdx]; T.gone = true; app.CR.forget(T.no);                       // dizin yerinde kalır (parçadaki iz kayıtları takım sırasına bağlı)
     saveTools(); renderRack(); updateToolUI();
     log(`${T.no} ${T.name} dolaptan çıkarıldı.`);
     fillBase(); load(-1);
@@ -5497,12 +5516,15 @@ const TE = (() => {
    Her şablon rastgele bir çeşit üretir: ölçüler, yükseklik işlevi H(x, y) ve yüzey türü Sf(x, y).
    Yüzey türü (SURF) yalnızca görünüm içindir; işlenen hücre işlenmiş rengine geçer. Parça yükseklik haritası olduğundan
    yukarıdan görülebilen her şekil olur (kademe, göbek, çukur, delik, kabarık dikiş, eğik yüzey); dış hat dışı boştur (H = 0). */
+Object.assign(app, { TE, toolMods });   // önceki modüllerin geç başvuruları
 // ── Hazır parçalar: yüzey türleri, tohumlu rastgele, BLANKS şablonları, loadBlank; GEÇİCİ galeri (BG)
 const SF = { raw:0, cast:1, ground:2, old:3, weld:4, scale:5 };
 const SFNAME = ['ham', 'döküm', 'taşlanmış', 'eski işleme', 'kaynak dikişi', 'hadde tufalı'];
 // pürüzsüz rastgele dalgalanma (döküm yüzeyi): birkaç sinüsün toplamı, sivri üçgen yapmaz
 // tohumlu rastgele: sipariş panoda beklerken, iş başlarken ve muayenede aynı parça yeniden kurulur
 let RNG = Math.random;
+// fn içindeki rastgele sayılar tohumdan gelir (aynı sipariş aynı parçayı verir)
+function withSeed(seed, fn) { RNG = mulberry(seed); try { return fn(); } finally { RNG = Math.random; } }
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function castNoise() {
   const w = Array.from({ length:5 }, (_, k) => ({ a:RNG() * 6.28, b:RNG() * 6.28, f:0.08 + k * 0.07 + RNG() * 0.05, g:0.06 + RNG() * 0.2 }));
@@ -5661,11 +5683,11 @@ function loadBlank(id, seed = Math.random() * 1e9 | 0, force = false) {
     const k = j * NX + i, x = i * C, y = j * C;
     H[k] = clamp(P.H(x, y), 0, PH); SURF[k] = P.Sf(x, y);
   }
-  throughDirty = true; markDirty(0, NX - 1, 0, NY - 1);
+  markThrough(); markDirty(0, NX - 1, 0, NY - 1);
   // çeneler parçanın ön ve arka kenarına basar: kenar yüksekliğinin 3 mm altında biter
   let fr = 0, bk = 0;
   for (let i = 0; i < NX; i++) { fr = Math.max(fr, H[2 * NX + i]); bk = Math.max(bk, H[(NY - 3) * NX + i]); }
-  jawOverride = clamp(Math.min(fr, bk) - 3, 4, 22); buildVise();
+  setJawOverride(clamp(Math.min(fr, bk) - 3, 4, 22)); buildVise();
   S.blank = { id, name:B.name, ...P };
   log(`Hazır parça bağlandı: ${B.name} (${P.info}). ${MATS[P.mat].short}.`, 'ok');
   return P;
@@ -5697,6 +5719,7 @@ const BG = (() => {
    Serbest atölyede her şey açık ve ücretsiz. Kariyerde müşteriler sipariş verir: ham parça kasadan alınır,
    teslimde parça ölçülür (iş emirleriyle aynı muayene) ve ödeme yapılır. Takımlar satın alınır; kırılan takım gider,
    köreleni bilemek ücretlidir. İtibar arttıkça daha büyük, daha zor ve daha iyi ödeyen işler gelir. */
+Object.assign(app, { BG, SF });   // önceki modüllerin geç başvuruları
 // ── Kariyer (CR): kasa, itibar, sipariş üretimi, koşullar, dükkân, ekipman, teslimde ödeme
 const CR = (() => {
   const KEY = 'freze-career-v1', MKEY = 'freze-mode';
@@ -5811,7 +5834,7 @@ const CR = (() => {
   function genBlankOrder(lv) {
     const ids = Object.keys(BLANK_JOBS).filter(k => BLANK_JOBS[k].lv <= lv), id = pick(ids), B = BLANK_JOBS[id], seed = Math.random() * 1e9 | 0;
     const P = genBlank(id, seed);
-    RNG = mulberry(seed ^ 0x5bd1e995); const F = B.make(P); RNG = Math.random;
+    const F = withSeed(seed ^ 0x5bd1e995, () => B.make(P));
     const mf = MATF[P.mat] || 1;
     const J = Object.assign({ pockets:[], holes:[], arcs:[], face:null, w:P.w, d:P.d, h:P.stockH, mat:P.mat, title:B.title, exist:P.exist || [], round:P.round || null, blank:{ id, seed } }, F);
     J.target = Math.round(F.target * (mf > 1.2 ? 1.3 : 1) / 10) * 10;
@@ -5929,7 +5952,7 @@ const CR = (() => {
     });
   }
   function select(o) {
-    sel = o; selJob = -2;
+    sel = o; setSelJob(-2);
     if (o.J.blank && !o.J._P) Object.defineProperty(o.J, '_P', { value:genBlank(o.J.blank.id, o.J.blank.seed), enumerable:false, writable:true, configurable:true });                                         // iş emri listesindeki seçim kalkar
     $('jcNo').textContent = 'SİPARİŞ #' + o.id; $('jcTitle').textContent = `${o.J.title} · ${o.cust}`; $('jcBrief').textContent = o.J.brief;
     $('jcMeta').innerHTML = `<span>Ödeme <b>${tl(o.pay)}</b></span><span>Hedef süre <b>${mmss(o.J.target)}</b></span><span>Ham parça <b>${o.free ? 'müşteriden' : tl(o.cost)}</b></span>${o.J.big ? '<span>Bağlama <b>pabuç / vakum</b></span>' : o.J.arcs && o.J.arcs.length ? '<span>Bağlama <b>döner tabla</b></span>' : ''}${o.cond ? `<span>Koşul <b>${COND[o.cond].tag}${o.qty ? ` · ${o.doneQty || 0}/${o.qty} teslim` : ''}</b></span>` : ''}`;
@@ -6060,7 +6083,7 @@ const CR = (() => {
   $('shClose').addEventListener('click', () => { $('shop').hidden = true; });
   window.addEventListener('keydown', e => { if (!$('shop').hidden && e.code === 'Escape') { e.stopImmediatePropagation(); $('shop').hidden = true; } }, true);
   load();
-  rackTag = i => on ? { own:owns(i), price:tl(priceOf(TOOLS[i])) } : null;
+  setRackTag(i => on ? { own:owns(i), price:tl(priceOf(TOOLS[i])) } : null);
   $('modeSw').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode === 'career'); });
   $('crRefresh').addEventListener('click', () => {
     if (S.job && S.job.order && !S.job.done) { log('İş sürerken pano yenilenmez.', 'warn'); return; }
@@ -6076,6 +6099,7 @@ const CR = (() => {
 })();
 
 
+Object.assign(app, { CR });   // önceki modüllerin geç başvuruları
 // ── Başlangıç: ilk kurulum ve döngünün başlatılması
 // Başlangıç
 buildToolVisual(); updateToolUI(); updateRec(); updateSpindleUI();

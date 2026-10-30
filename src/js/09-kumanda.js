@@ -29,22 +29,23 @@ function setRpm(v) { S.rpm = v; $('rpm').value = v; $('rpmOut').textContent = v 
 function setFeed(v) { S.feed = v; $('feed').value = v; $('feedOut').textContent = v + ' mm/dk'; }
 
 // Takım dolabı
-let rackTag = null;                        // kariyer: (i) => { own, price }
+let spinAng = 0; const addSpin = d => { spinAng += d; };   // mil görsel dönüş açısı
+let rackTag = null; const setRackTag = f => { rackTag = f; };                        // kariyer: (i) => { own, price }
 function renderRack() {
   const rk = $('rack'); rk.innerHTML = '';
   TOOLS.forEach((T, i) => {
     if (T.gone) return;
     const b = document.createElement('button'); b.dataset.i = i;
-    if (T.custom) { b.classList.add('custom'); b.title = 'Sağ tık: editörde aç'; b.addEventListener('contextmenu', e => { e.preventDefault(); TE.show(i); }); }
+    if (T.custom) { b.classList.add('custom'); b.title = 'Sağ tık: editörde aç'; b.addEventListener('contextmenu', e => { e.preventDefault(); app.TE.show(i); }); }
     const tg = rackTag && rackTag(i);
     if (tg && !tg.own) b.classList.add('locked');
-    b.innerHTML = `<span class="ico">${toolIcon(T)}</span><span class="nm"><b>${T.no}</b>${T.name}</span><span class="d">Ø${T.d} · ${tg && !tg.own ? 'satın al ' + tg.price : T.mat.split(',')[0]}</span>`;
+    b.innerHTML = `<span class="ico">${app.toolIcon(T)}</span><span class="nm"><b>${T.no}</b>${T.name}</span><span class="d">Ø${T.d} · ${tg && !tg.own ? 'satın al ' + tg.price : T.mat.split(',')[0]}</span>`;
     b.addEventListener('click', () => requestToolChange(i));
     rk.append(b);
   });
   const nb = document.createElement('button'); nb.className = 'add';
   nb.innerHTML = '<span class="ico">+</span><span class="nm"><b>Yeni</b>Takım tasarla</span><span class="d">editör</span>';
-  nb.addEventListener('click', () => TE.show(null)); rk.append(nb);
+  nb.addEventListener('click', () => app.TE.show(null)); rk.append(nb);
 }
 // tutucu değişimi: takılı takım yeni tutucuya bağlanır (mil durmalı); kayan takım da böylece yeniden bağlanır
 $('holderSeg').addEventListener('click', e => {
@@ -53,7 +54,7 @@ $('holderSeg').addEventListener('click', e => {
   const T = tool(), k = b.dataset.h;
   if (!holds(T)) return;
   if (S.spindle || S.changing) { log('Tutucu değiştirmek için önce mili durdurun.', 'warn'); return; }
-  if (!CR.hasEq('h_' + k) && k !== 'er') { log(`${HOLDERS[k].n} tutucu atölyede yok: dükkândan alabilirsiniz.`, 'warn'); CR.openShop(); return; }
+  if (!app.CR.hasEq('h_' + k) && k !== 'er') { log(`${HOLDERS[k].n} tutucu atölyede yok: dükkândan alabilirsiniz.`, 'warn'); app.CR.openShop(); return; }
   if (holderOf(T) === k && !T.slipped) return;
   const was = T.slipped;
   unslip(T); HSEL[T.no] = k;
@@ -66,7 +67,7 @@ function requestToolChange(i) {
   if (S.alarm) { log('Önce alarmı sıfırlayın.', 'warn'); return; }
   if (S.spindle) { log('Takım değiştirmek için önce mili durdurun.', 'warn'); return; }
   if (S.changing) return;
-  if (!CR.allowTool(i)) return;
+  if (!app.CR.allowTool(i)) return;
   if (i === S.tool && !S.broken) { log(`${TOOLS[i].no} zaten takılı.`); return; }
   stopMotion();
   S.changing = { to:i, t:0 };
@@ -89,14 +90,14 @@ $('rpm').addEventListener('input', e => setRpm(+e.target.value));
 $('feed').addEventListener('input', e => setFeed(+e.target.value));
 $('matSel').addEventListener('change', e => {
   if (S.job && !S.job.done) { e.target.value = S.mat; log('İş sürerken malzeme değiştirilemez; iş emri malzemeyi belirler.', 'warn'); return; }
-  if (CR.on) { e.target.value = S.mat; log('Kariyerde ham parça siparişle gelir; malzemeyi sipariş belirler.', 'warn'); return; }
+  if (app.CR.on) { e.target.value = S.mat; log('Kariyerde ham parça siparişle gelir; malzemeyi sipariş belirler.', 'warn'); return; }
   resetPart(e.target.value);
   log(`Malzeme: ${mat.name}. Yeni ham parça bağlandı; önerilen hız ve ilerleme buna göre değişti.`, 'ok');
 });
 $('renewTool').addEventListener('click', () => {
   if (S.spindle) { log('Takımı yenilemek için önce mili durdurun.', 'warn'); return; }
   if (!S.wear[S.tool]) { log(`${tool().no} zaten keskin.`); return; }
-  if (!CR.charge(Math.round(CR.priceOf(tool()) * 0.3 / 10) * 10, `${tool().no} bileme`)) return;
+  if (!app.CR.charge(Math.round(app.CR.priceOf(tool()) * 0.3 / 10) * 10, `${tool().no} bileme`)) return;
   S.wear[S.tool] = 0; log(`${tool().no} yenilendi: keskin takım takıldı.`, 'ok');
 });
 function updateAutoUI() {
@@ -253,7 +254,7 @@ $('alarmReset').addEventListener('click',() => { S.alarm = false; $('alarm').hid
 $('clearChips').addEventListener('click', () => { clearChips(); log('Talaşlar süpürüldü.'); });
 let newPartArm = 0;
 $('newPart').addEventListener('click', () => {
-  if (CR.on) { log('Kariyerde ham parça siparişle gelir: panodan bir iş başlatın.', 'warn'); return; }
+  if (app.CR.on) { log('Kariyerde ham parça siparişle gelir: panodan bir iş başlatın.', 'warn'); return; }
   const now = performance.now();
   if (now - newPartArm > 3000) { newPartArm = now; $('newPart').textContent = 'Onayla: parçayı değiştir'; setTimeout(() => $('newPart').textContent = 'Yeni ham parça', 3000); return; }
   newPartArm = 0; $('newPart').textContent = 'Yeni ham parça';
@@ -261,7 +262,7 @@ $('newPart').addEventListener('click', () => {
   log(`Mengeneye yeni ham parça bağlandı: ${mat.name}, ${PW}×${PD}×${PH} mm.`, 'ok');
 });
 function setMaterial(k) {
-  mat = MATS[k] || MATS.al; S.mat = MATS[k] ? k : 'al';
+  setMat(MATS[k] || MATS.al); S.mat = MATS[k] ? k : 'al';
   $('matSel').value = S.mat;
   $('brandMat').textContent = $('tbMat').textContent = `${mat.short} · ${PW}×${PD}×${PH}`;
   topMat.metalness = mat.nonMetal ? 0 : 0.62; topMat.roughness = mat.nonMetal ? 0.5 : 0.34;
@@ -273,14 +274,15 @@ function resetPart(k) {
   if (S.spindle) spindle(false);
   if (k) setMaterial(k);
   H.fill(PH); CUT.fill(0); INSP.fill(0); MK1.fill(0); MK2.fill(0); TINTC.fill(0); TAPC.fill(0); S.tap = null; markDirty(0, NX - 1, 0, NY - 1);
-  throughDirty = true;                       // delik yüzey listesi de yenilensin (yoksa eski delikler açık görünür)
+  markThrough();                             // delik yüzey listesi de yenilensin (yoksa eski delikler açık görünür)
   EDGE.fill(9); SURF.fill(0); S.blank = null;
   S.temp = 0; S.power = 0; S.chatNow = 0; S.lastRa = null;
   S.removed = 0; S.cutTime = 0; S.peck.active = false; clearChips();
-  S.loose = null; for (const m of partMeshes()) { m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); }
+  S.loose = null; for (const m of app.partMeshes()) { m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); }
   if (FIX === 'div') VX.build(PW, PD);
   stopMotion();
   if (tipZ() < PH + 5) S.nose = PH + 20 + tool().len;
 }
 
 /* ---------------- İş emirleri, muayene ve puanlama ---------------- */
+Object.assign(app, { fmt, updateAutoUI, updateRec, updateSpindleUI, updateToolUI });   // önceki modüllerin geç başvuruları

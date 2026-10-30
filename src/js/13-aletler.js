@@ -174,7 +174,7 @@ const AG = (() => {
     if (v) noiseHit(ac.currentTime, 'highpass', 2500, 0.7, 0.12, 0.08);           // tetiğin ilk "pışşt"ı
   }
   function setOn(v) {
-    if (v && !CR.hasEq('air')) { log('Hava tabancası atölyede yok: dükkândan alabilirsiniz.', 'warn'); CR.openShop(); return; }
+    if (v && !app.CR.hasEq('air')) { log('Hava tabancası atölyede yok: dükkândan alabilirsiniz.', 'warn'); app.CR.openShop(); return; }
     on = v; if (!on) { if (blowing) sound(false); blowing = false; aim = null; place(); controls.enabled = true; }
     if (on && FD.on) FD.setOn(false);
     canvas.style.cursor = '';
@@ -442,10 +442,10 @@ const FIXNOTE = {
 };
 function setFix(k, quiet) {
   if (!FIXLIM[k]) return false;
-  if (k !== 'vise' && !CR.hasEq(k)) { log(`${FIXNAME[k]} atölyede yok: dükkândan alabilirsiniz.`, 'warn'); CR.openShop(); return false; }
+  if (k !== 'vise' && !app.CR.hasEq(k)) { log(`${FIXNAME[k]} atölyede yok: dükkândan alabilirsiniz.`, 'warn'); app.CR.openShop(); return false; }
   if (!quiet && S.job && !S.job.done) { log('İş sürerken bağlama değiştirilmez.', 'warn'); return false; }
   if (S.spindle) spindle(false);
-  FIX = k;
+  setFIX(k);
   [...$('fixSeg').children].forEach(b => b.classList.toggle('on', b.dataset.fx === k));
   $('clampLay').hidden = k !== 'clamp'; $('vacG').hidden = k !== 'vac'; $('rotBox').hidden = k !== 'rot' && k !== 'div';
   $('rotLab').textContent = k === 'div' ? 'A ekseni' : 'C ekseni';
@@ -454,7 +454,7 @@ function setFix(k, quiet) {
   const L = FIXLIM[k];
   for (const [id, r] of [['stW', L.x], ['stD', L.y], ['stH', L.z]]) { $(id).min = r[0]; $(id).max = r[1]; }
   $('fixNote').textContent = FIXNOTE[k];
-  setStock(PW, PD, PH, true);
+  app.setStock(PW, PD, PH, true);
   if (k === 'vac') { VAC.measure(); VAC.ui(); }
   if (!quiet) log(`Bağlama: ${FIXNAME[k]}. ${PW}×${PD}×${PH} mm ham parça bağlandı.`, 'ok');
   return true;
@@ -483,7 +483,7 @@ function setPar(ch) {
   if (S.spindle) { log('Paralelleri değiştirmek için önce mili durdurun.', 'warn'); syncParUI(); return; }
   Object.assign(PAR, ch); syncParUI(); buildVise();
   if (S.job && !S.job.done) { const c = parConflicts(S.job.J); if (!c.length && S.job.J.holes.length) log('Paraleller deliklerin altından çekildi.', 'ok'); else warnParallels(S.job.J); }
-  const J = S.job && !S.job.done ? S.job.J : selJob >= 0 ? JOBS[selJob] : selJob === -2 && CR.sel ? CR.sel.J : null;
+  const J = S.job && !S.job.done ? S.job.J : selJob >= 0 ? JOBS[selJob] : selJob === -2 && app.CR.sel ? app.CR.sel.J : null;
   if (J) $('dwSvg').innerHTML = drawingSVG(J);
 }
 $('parOff').addEventListener('input', e => { PAR.off = +e.target.value; $('parOffV').textContent = `kenardan ${PAR.off} mm`; });
@@ -495,7 +495,7 @@ $('parW').addEventListener('click', e => {
 $('clampLay').addEventListener('click', e => {
   const b = e.target.closest('[data-cl]'); if (!b || b.dataset.cl === clampLay) return;
   if (S.spindle) { log('Pabuçları sökmek için önce mili durdurun.', 'warn'); return; }
-  clampLay = b.dataset.cl; [...$('clampLay').children].forEach(q => q.classList.toggle('on', q === b));
+  setClampLay(b.dataset.cl); [...$('clampLay').children].forEach(q => q.classList.toggle('on', q === b));
   buildVise(); thud(150, 0.15, 0.12);
   log(`Pabuçlar ${clampLay === 'fb' ? 'ön ve arka' : 'sol ve sağ'} kenarlara bağlandı.`, 'ok');
 });
@@ -508,3 +508,4 @@ function chipsOnPart() {
 
 /* ---------------- Kumanda paneli: DRO ekranı, tuş takımı, topuzlar, el çarkı (MPG) ----------------
    Paneldeki tüm kumandalar mevcut işlevleri çağırır; böylece eski paneller ve makine üstü kumandalarla hep tutarlı kalır. */
+Object.assign(app, { AG, DT, FD, IA, PR, VAC, partMeshes, setFix, syncParUI });   // önceki modüllerin geç başvuruları

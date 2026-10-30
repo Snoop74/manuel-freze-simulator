@@ -228,3 +228,4 @@ function profile(T, d, tip) {
     default: return tip;
   }
 }
+Object.assign(app, { TMAT, profile });   // önceki modüllerin geç başvuruları

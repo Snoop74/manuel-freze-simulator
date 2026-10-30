@@ -65,7 +65,7 @@ function applyCut(x, y, tip, T, mx = 1, my = 0, mk = null) {
       }
       const p = Math.max(0, profile(T, Math.sqrt(d2), tip));
       if (H[k] > p) {
-        if (p <= 0.02) throughDirty = true;
+        if (p <= 0.02) markThrough();
         vol += H[k] - p; H[k] = p; CUT[k] = S.tool + 1;
         if (mk) { const o = k * 4; MK1[o] = x; MK1[o+1] = y; MK1[o+2] = mx / ml; MK1[o+3] = my / ml; MK2[o] = mk.f; MK2[o+1] = r; MK2[o+2] = mk.ra; MK2[o+3] = mk.chat; TINTC[k] = mk.tint; }
       }
@@ -82,16 +82,17 @@ function crash(msg) {
   burst('smoke', 10, 0, ct + 4, 0, 40, 60, 1.8);
   if (S.job && !S.job.done) S.job.stats.breaks++;
   S.alarm = true; S.spindle = false; S.broken = true;
-  CR.lost(S.tool);
+  app.CR.lost(S.tool);
   stopMotion();
   buildToolVisual();
   $('alarmMsg').textContent = msg;
   $('alarm').hidden = false;
   crashSound();
   log(msg, 'bad');
-  updateSpindleUI(); updateToolUI();
+  app.updateSpindleUI(); app.updateToolUI();
+  app.PM.flash('tools');
 }
-function stopMotion() { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0; S.autoX = 0; if (typeof updateAutoUI === 'function') updateAutoUI(); pressed.forEach(p => p.t0 = Infinity); }
+function stopMotion() { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0; S.autoX = 0; if (typeof app.updateAutoUI === 'function') app.updateAutoUI(); pressed.forEach(p => p.t0 = Infinity); }
 
 function loadRatio(T, feedNow, horiz) {
   if (T.type === 'edge' || T.type === 'tap' || isTaster(T) || S.rpm <= 0) return 0;
@@ -109,7 +110,7 @@ function tryStep(nx, ny, nn, dtStep) {
   const horiz = Math.hypot(mdx, mdy), down = nn < S.nose;
   const fh = fixtureHit(nx, ny, T.type === 'dial' ? tip - 2 : tip, T);
   if (fh) { crash(fh); return false; }
-  if (T.type === 'dial') return DT.step(nx, ny, nn, T);
+  if (T.type === 'dial') return app.DT.step(nx, ny, nn, T);
   const it = interfere(nx, ny, tip, T);
   if (S.loose && it.any) { warnOnce('loose', 'Parça bağlı değil, tabladan kopmuş. Yeni ham parça bağlayın.', 'bad'); return false; }
   if (T.type === 'tap') return tapStep(nx, ny, nn, T, it, horiz);
@@ -128,7 +129,7 @@ function tryStep(nx, ny, nn, dtStep) {
   if (isProbe(T)) {
     if (S.spindle) { crash('3B taster dönerken parçaya değdi: stylus kırıldı. Taster yalnızca mil DURURKEN kullanılır.'); return false; }
     if (S.feedNow > 1500) { crash('Taster hızlı harekette parçaya çarptı: stylus kırıldı. Parçaya yavaş yaklaşın ya da döngüleri kullanın.'); return false; }
-    PR.touch(nx, ny, nn); return false;
+    app.PR.touch(nx, ny, nn); return false;
   }
   if (T.type === 'edge') {
     if (!S.spindle) warnOnce('edgeoff', 'Kenar bulucu mil dönmeden çalışmaz (≈1000 dev/dk önerilir).');
@@ -137,7 +138,7 @@ function tryStep(nx, ny, nn, dtStep) {
       const ax = Math.abs(nx - S.px) >= Math.abs(ny - S.py) ? 'X' : 'Y';
       const v = ax === 'X' ? S.px - S.zx : S.py - S.zy;
       const before = lastWarn.edge;
-      warnOnce('edge', `Kenar bulundu: ${ax} = ${fmt(v)}. Takım merkezi kenardan 5.000 mm uzakta; "Ata" ile ${ax}=${nx > S.px || ny > S.py ? '-5' : '+5'} girin.`, 'ok', 1500);
+      warnOnce('edge', `Kenar bulundu: ${ax} = ${app.fmt(v)}. Takım merkezi kenardan 5.000 mm uzakta; "Ata" ile ${ax}=${nx > S.px || ny > S.py ? '-5' : '+5'} girin.`, 'ok', 1500);
       if (lastWarn.edge !== before) beep(1900);
     }
     return false;
@@ -171,7 +172,7 @@ function tryStep(nx, ny, nn, dtStep) {
     }
   }
   // kesme hızı oranı, devir başına ilerleme ve yüzey: Ra ≈ fz²/(8·0.8) (aşınma, yığıntı ağız, tırlama, erime bozar)
-  const md = toolMods(T);
+  const md = app.toolMods(T);
   const rpmE = Math.max(1, S.rpmEff || S.rpm), vcNow = Math.PI * T.d * rpmE / 1000, vr = vcNow / Math.max(1, T.vc * mat.vcf);
   const fRev = S.feedNow / rpmE, fz = fRev / Math.max(1, T.z), wr = S.wear[S.tool];
   const melt = mat.melt && !S.coolant && vr > 1.2;
@@ -209,7 +210,7 @@ function tryStep(nx, ny, nn, dtStep) {
   const hk = holderOf(T);
   if (hk && HOLDERS[hk].slip && L.stress > 1.6 && !T.slipped && Math.random() < (L.stress - 1.6) * 0.25 * HOLDERS[hk].slip) {
     const a = +(0.3 + Math.random() * 0.5).toFixed(2);
-    T.slipped = a; T.len += a; T.stick += a; buildToolVisual(); updateToolUI();
+    T.slipped = a; T.len += a; T.stick += a; buildToolVisual(); app.updateToolUI();
     beep(500, 0.1); thud(90, 0.2, 0.2);
     log(`Takım ${HOLDERS[hk].n} tutucusundan ${a} mm dışarı kaydı! Uç artık DRO'nun gösterdiğinden derinde, parça fazla kesiliyor. Mili durdurup Tutucu satırındaki düğmeye basarak takımı yeniden bağlayın.`, 'bad');
   }
@@ -221,7 +222,7 @@ function tryStep(nx, ny, nn, dtStep) {
   // mil gücü: kc · talaş debisi; 1000 dev/dk altında sabit tork, aşırı yükte devir düşer, çok aşırıda mil boğulur
   const Pc = mat.kc * (W.vol / Math.max(1e-3, winT)) * 1e-6, Pav = P_MAX * Math.min(1, S.rpm / 1000);
   S.power = Pc / Pav;
-  if (FIX === 'vac' && VAC.check(Pc, vcNow)) return false;
+  if (FIX === 'vac' && app.VAC.check(Pc, vcNow)) return false;
   if (S.power > 1.5) { crash(`Mil boğuldu: kesme ${Pc.toFixed(1)} kW istiyor, motor bu devirde ${Pav.toFixed(1)} kW verebiliyor. Talaş derinliğini ya da ilerlemeyi azaltın.`); return false; }
   if (S.power > 1) warnOnce('power', `Mil zorlanıyor: güç %${Math.round(S.power * 100)}, devir düşüyor.`, 'warn', 5000);
   // tırlama: uzun ve ince takımda (çıkıntı/çap) ve ağır kesmede başlar; devre göre loblar halinde kararlı bölgeler var
@@ -380,7 +381,7 @@ function motion(dt) {
         unslip(old);
         S.tool = c.to; S.broken = false; S.changing = null; S.peck.active = false; S.spotHint = false;
         S.damage = 0; S.lastStress = 0; S.lastChip = 0; S.win = { vol:0, h:0, v:0, ap:0, idle:0 };
-        buildToolVisual(); updateToolUI(); updateRec();
+        buildToolVisual(); app.updateToolUI(); app.updateRec();
         const dl = tool().len - old.len;
         log(`${tool().no} takıldı: ${tool().name} Ø${tool().d}. Takım boyu ${dl >= 0 ? '+' : ''}${dl} mm farklı; Z'yi yeniden sıfırlayın.`, 'ok');
       }
@@ -418,7 +419,7 @@ function motion(dt) {
     const nx = clamp(tx, LIM.x0, LIM.x1), ny = clamp(ty, LIM.y0, LIM.y1), nn = clamp(tn, LIM.n0, LIM.n1);
     if (nx !== tx || ny !== ty || nn !== tn) {
       warnOnce('lim', 'Eksen hareket sınırına ulaşıldı.');
-      if (nx !== tx) { m.x = wm.x = 0; S.pend.x = S.wheel.x = 0; if (S.autoX) { S.autoX = 0; updateAutoUI(); } }
+      if (nx !== tx) { m.x = wm.x = 0; S.pend.x = S.wheel.x = 0; if (S.autoX) { S.autoX = 0; app.updateAutoUI(); } }
       if (ny !== ty) { m.y = wm.y = 0; S.pend.y = S.wheel.y = 0; }
       if (nn !== tn) { m.z = wm.z = 0; S.pend.z = S.wheel.z = 0; }
     }
@@ -427,7 +428,7 @@ function motion(dt) {
     S.px = nx; S.py = ny; S.nose = nn; done++;
   }
   if (done) { S.lastMove = performance.now(); S.curFeed += (S.feedNow - S.curFeed) * 0.3; }
-  if (blocked) { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0; if (S.autoX) { S.autoX = 0; updateAutoUI(); } return; }
+  if (blocked) { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0; if (S.autoX) { S.autoX = 0; app.updateAutoUI(); } return; }
   for (const ax of ['x', 'y', 'z']) {
     if (!heldDir(ax) && S.pend[ax]) {
       S.pend[ax] -= (m[ax] - wm[ax]) * done / n;
@@ -441,3 +442,4 @@ function motion(dt) {
 }
 
 /* ---------------- Arayüz ---------------- */
+Object.assign(app, { FIXTURES });   // önceki modüllerin geç başvuruları

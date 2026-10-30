@@ -58,3 +58,4 @@ $('rpNext').addEventListener('click', () => { $('report').hidden = true; selectJ
 $('vDraw').addEventListener('click', () => { $('drawing').hidden = !$('drawing').hidden; });
 $('dwClose').addEventListener('click', () => { $('drawing').hidden = true; });
 
+Object.assign(app, { FW });   // önceki modüllerin geç başvuruları

@@ -112,7 +112,7 @@ const CR = (() => {
   function genBlankOrder(lv) {
     const ids = Object.keys(BLANK_JOBS).filter(k => BLANK_JOBS[k].lv <= lv), id = pick(ids), B = BLANK_JOBS[id], seed = Math.random() * 1e9 | 0;
     const P = genBlank(id, seed);
-    RNG = mulberry(seed ^ 0x5bd1e995); const F = B.make(P); RNG = Math.random;
+    const F = withSeed(seed ^ 0x5bd1e995, () => B.make(P));
     const mf = MATF[P.mat] || 1;
     const J = Object.assign({ pockets:[], holes:[], arcs:[], face:null, w:P.w, d:P.d, h:P.stockH, mat:P.mat, title:B.title, exist:P.exist || [], round:P.round || null, blank:{ id, seed } }, F);
     J.target = Math.round(F.target * (mf > 1.2 ? 1.3 : 1) / 10) * 10;
@@ -230,7 +230,7 @@ const CR = (() => {
     });
   }
   function select(o) {
-    sel = o; selJob = -2;
+    sel = o; setSelJob(-2);
     if (o.J.blank && !o.J._P) Object.defineProperty(o.J, '_P', { value:genBlank(o.J.blank.id, o.J.blank.seed), enumerable:false, writable:true, configurable:true });                                         // iş emri listesindeki seçim kalkar
     $('jcNo').textContent = 'SİPARİŞ #' + o.id; $('jcTitle').textContent = `${o.J.title} · ${o.cust}`; $('jcBrief').textContent = o.J.brief;
     $('jcMeta').innerHTML = `<span>Ödeme <b>${tl(o.pay)}</b></span><span>Hedef süre <b>${mmss(o.J.target)}</b></span><span>Ham parça <b>${o.free ? 'müşteriden' : tl(o.cost)}</b></span>${o.J.big ? '<span>Bağlama <b>pabuç / vakum</b></span>' : o.J.arcs && o.J.arcs.length ? '<span>Bağlama <b>döner tabla</b></span>' : ''}${o.cond ? `<span>Koşul <b>${COND[o.cond].tag}${o.qty ? ` · ${o.doneQty || 0}/${o.qty} teslim` : ''}</b></span>` : ''}`;
@@ -361,7 +361,7 @@ const CR = (() => {
   $('shClose').addEventListener('click', () => { $('shop').hidden = true; });
   window.addEventListener('keydown', e => { if (!$('shop').hidden && e.code === 'Escape') { e.stopImmediatePropagation(); $('shop').hidden = true; } }, true);
   load();
-  rackTag = i => on ? { own:owns(i), price:tl(priceOf(TOOLS[i])) } : null;
+  setRackTag(i => on ? { own:owns(i), price:tl(priceOf(TOOLS[i])) } : null);
   $('modeSw').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode === 'career'); });
   $('crRefresh').addEventListener('click', () => {
     if (S.job && S.job.order && !S.job.done) { log('İş sürerken pano yenilenmez.', 'warn'); return; }
@@ -377,3 +377,4 @@ const CR = (() => {
 })();
 
 
+Object.assign(app, { CR });   // önceki modüllerin geç başvuruları
