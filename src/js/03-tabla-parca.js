@@ -43,13 +43,21 @@ addSurface(VISE_PAINT, 'green_metal_rust', { mSc:0.08, mAmt:0.05, sc:1 / 350, al
 rbox(-40, 190, -60, -38, -200, 95, 4, VISE_PAINT, viseBase);                     // gövde
 for (const x0 of [-32, 158]) rbox(x0, x0 + 24, -38.5, -35, -200, 95, 1, M.ground, viseBase);   // kızak yolları
 rbox(-8, 158, -39, -37.5, -200, 75, 1, M.black, viseBase);                          // ortadaki vida kanalı
-for (const s of [-1, 1]) {                                                          // bağlama kulakları ve T cıvataları
+// bağlama kulakları: tablanın orta T kanalının (z = -50) üstünde, U yuvalı; T cıvatası: dişli saplama, rondela, pahlı altıgen somun
+function tBolt(x, z, y0, rot) {
+  const g = new THREE.Group(); g.position.set(x, y0, z); g.rotation.y = rot; viseBase.add(g);
+  const stud = cyl(6, 6, 18, M.steel, 16); stud.position.y = 9; g.add(stud);
+  for (let k = 0; k < 4; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(6.1, 0.55, 4, 16), M.steel); t.rotation.x = Math.PI / 2; t.position.y = 13 + k * 1.6; g.add(t); }
+  const tip = cyl(4.8, 6, 1.4, M.steel, 16); tip.position.y = 18.7; g.add(tip);
+  const w = cyl(13, 13, 2.4, M.ground, 32); w.position.y = 1.2; g.add(w);
+  const nut = cyl(10.4, 10.4, 7.5, MX.chrome, 6); nut.position.y = 2.4 + 3.75; g.add(nut);
+  const ch = cyl(8.8, 10.4, 1.5, MX.chrome, 6); ch.position.y = 2.4 + 7.5 + 0.75; g.add(ch);
+}
+for (const s of [-1, 1]) {
   const xa = s < 0 ? -72 : 190, xb = s < 0 ? -40 : 222, xm = (xa + xb) / 2;
-  rbox(xa, xb, -60, -48, -10, 70, 3, VISE_PAINT, viseBase);
-  boxR(xm - 5, xm + 5, -48.3, -47.7, 0, 60, M.black, viseBase).castShadow = false;   // kanal
-  const w = cyl(12, 12, 2, M.ground, 20); w.position.set(xm, -47, -30); viseBase.add(w);
-  const nt = cyl(9, 9, 8, M.steel, 6); nt.position.set(xm, -42, -30); viseBase.add(nt);
-  const bt = cyl(5, 5, 12, M.steel, 10); bt.position.set(xm, -36, -30); viseBase.add(bt);
+  rbox(xa, xb, -60, -48, -80, -20, 3, VISE_PAINT, viseBase);                        // kulak
+  boxR(Math.min(xm - 7 * s, s < 0 ? xa : xb), Math.max(xm - 7 * s, s < 0 ? xa : xb), -48.3, -47.7, -57, -43, M.black, viseBase).castShadow = false;   // U yuva (dışa açık)
+  tBolt(xm, -50, -48, s * 0.4);
 }
 rbox(25, 125, -60, -18, 75, 95, 4, VISE_PAINT, viseBase);                           // vida yatağı (y -95..-75)
 { const s = cyl(9, 9, 52, M.ground, 16); s.rotation.x = Math.PI / 2; s.position.set(75, -32, 49); viseBase.add(s);   // trapez vida
@@ -66,7 +74,7 @@ rbox(25, 125, -60, -18, 75, 95, 4, VISE_PAINT, viseBase);                       
   const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding;
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { draw(); tex.needsUpdate = true; });
   const pl = new THREE.Mesh(new THREE.PlaneGeometry(80, 18), new THREE.MeshStandardMaterial({ map:tex, roughness:0.4, metalness:0.6 }));
-  pl.rotation.y = -Math.PI / 2; pl.position.set(-40.3, -49, -100); viseBase.add(pl);
+  pl.rotation.y = -Math.PI / 2; pl.position.set(-40.3, -49, -150); viseBase.add(pl);   // kulağın arkasında
 }
 
 /* ---- Bağlama: mengene, pabuç ya da vakum tabla ----
