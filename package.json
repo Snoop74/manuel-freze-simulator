@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Tarayıcıda çalışan manuel freze tezgâhı simülasyonu",
   "scripts": {
-    "build": "node build.mjs",
+    "build": "node tools/analiz.mjs && node build.mjs",
+    "check": "node tools/analiz.mjs",
     "watch": "node build.mjs --watch",
     "serve": "python -m http.server 8790"
   },

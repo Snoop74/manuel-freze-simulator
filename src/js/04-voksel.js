@@ -1,4 +1,7 @@
 // ── Voksel modeli (VX): divizör parçası, yumuşak doluluk, blok blok surface nets
+import { app } from './00-temel.js';
+import { ROT } from './03-tabla-parca.js';
+
 const DIVY = 0, DIVZ = 40;
 const VX = (() => {
   const R = 0.5, CH = 16, ISO = 128;
@@ -151,3 +154,5 @@ const VX = (() => {
   }
   return { grp, build, flush, work, local, setMat, get radius() { return RS; }, get length() { return L; }, get ready() { return !!F; }, stats:() => ({ voxels:nx * ny * nz, chunks:chunks.size, dirty:dirty.size }) };
 })();
+
+export { DIVY, DIVZ, VX };

@@ -1,4 +1,14 @@
 // ── Kumanda: DRO, devir/ilerleme, takım dolabı, takım değişimi, mil, jog, el çarkları, malzeme ve parça sıfırlama
+import { $, CUT, EDGE, H, INSP, MATS, NX, NY, PD, PH, PW, S, SURF, TOOLS, app, isDrill, isProbe, isTaster, log,
+  mat, rapid, recFeed, recRpm, setMat, tipZ, tool, unslip } from './00-temel.js';
+import { ac, initAudio, master, noiseHit, thud } from './01-ses.js';
+import { M } from './02-sahne-tezgah.js';
+import { VX } from './04-voksel.js';
+import { FIX, MK1, MK2, TAPC, TINTC, markDirty, markThrough, topMat } from './05-baglama.js';
+import { chipMat, clearChips } from './06-talas.js';
+import { HKEY, HOLDERS, HSEL, buildToolVisual, holderOf, holds } from './07-takim-gorsel.js';
+import { press, release, stopMotion } from './08-kesme.js';
+
 const fmt = v => (v < -0.0005 ? '−' : '+') + Math.abs(v).toFixed(3);
 const droVals = () => ({ x: S.px - S.zx, y: S.py - S.zy, z: S.nose - S.zn });
 
@@ -286,3 +296,7 @@ function resetPart(k) {
 
 /* ---------------- İş emirleri, muayene ve puanlama ---------------- */
 Object.assign(app, { fmt, updateAutoUI, updateRec, updateSpindleUI, updateToolUI });   // önceki modüllerin geç başvuruları
+
+export { COL, TICK, addSpin, drawWheels, droVals, fmt, renderRack, requestToolChange, resetPart, setAuto,
+  setAxis, setFeed, setMaterial, setRackTag, setRpm, setStep, spinAng, spindle, toggleCoolant, tok, updateRec,
+  updateSpindleUI, updateToolUI, wheelTicks };

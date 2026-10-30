@@ -1,4 +1,6 @@
 // ── Ses motoru: motor, dişli, kesme, tırlama ve tek seferlik sesler (kayıt dosyası yok, gürültüden üretilir)
+import { S, clamp, tool } from './00-temel.js';
+
 let ac = null, master, bus, SN = null, lastSnd = 0;
 // Malzemeye göre kesme sesi: bant merkezi, keskinlik, gövde gürültüsü, çıtırtı
 const SND = {
@@ -144,3 +146,5 @@ function updateAudio() {
 }
 
 /* ---------------- Three.js sahnesi ---------------- */
+
+export { SN, ac, beep, bus, crashSound, initAudio, master, metalRing, noiseBuffer, noiseHit, thud, updateAudio };

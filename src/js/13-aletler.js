@@ -1,4 +1,17 @@
 // ── Aletler: makine üstü etkileşim (IA), fareyle sürme (FD), hava tabancası (AG), mekanik taster (DT), 3B taster (PR), vakum (VAC), bağlama ve paralel seçimi
+import { $, C, H, PD, PH, PW, S, TAU, app, log, tipZ, tool, warnOnce } from './00-temel.js';
+import { SN, ac, beep, bus, initAudio, metalRing, noiseBuffer, noiseHit, thud } from './01-ses.js';
+import { bStart, box, camera, canvas, controls, coolHandle, coolValve, cyl, motorSwitch, mush, scene, smat,
+  stage, zFine, zLever } from './02-sahne-tezgah.js';
+import { FIXLIM, FIXNAME, ROT, pfLever, wheels, yWheel } from './03-tabla-parca.js';
+import { FIX, PAR, buildVise, clampLay, nV, parAxis, parConflicts, setClampLay, setFIX, stockBase, topMesh,
+  walls, warnParallels } from './05-baglama.js';
+import { burst, emit, groundAt, liveChips } from './06-talas.js';
+import { TMAT, dialNeedle, dialTurns } from './07-takim-gorsel.js';
+import { crash, interfere, stopMotion } from './08-kesme.js';
+import { TICK, fmt, setAuto, spindle, wheelTicks } from './09-kumanda.js';
+import { JOBS, drawingSVG, selJob } from './10-is-emri-muayene.js';
+
 const IA = (() => {
   const T = [
     { o:wheels[0].children[0], wheel:'x', tip:'Tabla çarkı (X) · sürükle ya da tekerlekle çevir' },
@@ -509,3 +522,5 @@ function chipsOnPart() {
 /* ---------------- Kumanda paneli: DRO ekranı, tuş takımı, topuzlar, el çarkı (MPG) ----------------
    Paneldeki tüm kumandalar mevcut işlevleri çağırır; böylece eski paneller ve makine üstü kumandalarla hep tutarlı kalır. */
 Object.assign(app, { AG, DT, FD, IA, PR, VAC, partMeshes, setFix, syncParUI });   // önceki modüllerin geç başvuruları
+
+export { chipsOnPart, setFix };

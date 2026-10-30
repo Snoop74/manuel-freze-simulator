@@ -1,4 +1,13 @@
 // ── Kesme: çarpışma, talaş kaldırma, alt adım denetimi, kılavuz, kesme yükü, döner tabla dönüşü, eksen hareketi
+import { $, C, CUT, EDGE, H, LIM, NX, NY, PH, P_MAX, RAPID, S, app, clamp, isDrill, isProbe, isTaster,
+  lastWarn, log, mat, rapid, recRpm, tipZ, tool, unslip, warnOnce } from './00-temel.js';
+import { beep, crashSound, initAudio, thud } from './01-ses.js';
+import { LX, LY, ROT, toLv } from './03-tabla-parca.js';
+import { DIVY, DIVZ, VX } from './04-voksel.js';
+import { FIX, MK1, MK2, TAPC, TINTC, markDirty, markThrough } from './05-baglama.js';
+import { burst, chipForm, chipsFor, kickChips } from './06-talas.js';
+import { HOLDERS, buildToolVisual, holderOf, holderR, profile } from './07-takim-gorsel.js';
+
 // Tool silindirinin dairesi ile (x0..x1, y0..y1) dikdörtgeni arası mesafe
 function rectDist(x, y, x0, x1, y0, y1) {
   const dx = Math.max(x0 - x, 0, x - x1), dy = Math.max(y0 - y, 0, y - y1);
@@ -443,3 +452,5 @@ function motion(dt) {
 
 /* ---------------- Arayüz ---------------- */
 Object.assign(app, { FIXTURES });   // önceki modüllerin geç başvuruları
+
+export { crash, interfere, loadRatio, motion, press, pressed, release, stopMotion };

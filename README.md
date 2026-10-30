@@ -8,14 +8,15 @@ Tarayıcıda çalışan, 3B bir manuel freze tezgâhı simülasyonu ve oyunu. Oy
 
 ## Geliştirme
 
-Kaynak kod `src/` altında modüllere bölünmüştür (`src/js/00-temel.js` … `18-baslangic.js`, `src/stil.css`, `src/sayfa.html`). `freze.html` bunlardan üretilir:
+Kaynak kod `src/` altında ES modüllerine bölünmüştür (`src/js/00-temel.js` … `18-baslangic.js`, `src/stil.css`, `src/sayfa.html`). `freze.html` bunlardan üretilir:
 
 ```bash
-node build.mjs           # bir kez derle
-node build.mjs --watch   # src/ değiştikçe derle
+npm install       # bir kez
+npm run build     # denetle ve derle: freze.html (tek dosya) + dev.html
+npm run watch     # src/ değiştikçe derle
 ```
 
-Node dışında bağımlılık yok. Ayrıntılar `CLAUDE.md` içinde.
+`dev.html` modülleri paketlemeden yükler (bir http sunucusu gerekir, örn. `npm run serve`). Ayrıntılar ve modül kuralları `CLAUDE.md` içinde.
 
 ## Özellikler
 

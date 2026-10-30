@@ -1,0 +1,956 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- Geliştirme sayfası: modüller src/js altından doğrudan yüklenir (node build.mjs üretir). -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Manuel Freze Tezgâhı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=Share+Tech+Mono&display=swap">
+<style>
+/* Layout: full-bleed 3D atölye görünümü solda, makine kumanda panosu (pendant) sağda; dar ekranda alt alta.
+   Tek tema: makine kumanda paneli bilinçli olarak koyu. */
+:root{
+  color-scheme: dark;
+  --bg:#121618;          /* atölye zemini */
+  --panel:#1b2124;       /* pano gövdesi */
+  --panel-2:#232b2f;     /* gömme kutular */
+  --line:#33403f;
+  --fg:#dfe6e4;
+  --muted:#8c9b98;
+  --paint:#56766f;       /* makine boyası */
+  --safety:#f0b429;      /* emniyet sarısı */
+  --steel:#a3adb2;       /* el çarkı kolları */
+  --paper:#e6e9e3;       /* teknik resim kâğıdı */
+  --ink:#1c2a2e;
+  --ink-2:#5b6c70;
+  --vfd:#5fe3c0;         /* DRO VFD ekran */
+  --vfd-dim:#1f4a40;
+  --ok:#46c27f; --warn:#f0b429; --bad:#e5484d;
+  --f-display:"Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-dro:"Share Tech Mono", "Consolas", ui-monospace, monospace;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;margin:0;overflow:hidden}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--safety);outline-offset:2px}
+
+.app{display:grid;grid-template-columns:minmax(0,1fr) 392px;height:100%}
+.stage{position:relative;min-width:0;min-height:0;background:radial-gradient(120% 90% at 40% 30%,#20292b 0%,var(--bg) 70%)}
+#c{display:block;width:100%;height:100%;touch-action:none}
+
+.hud{position:absolute;left:14px;top:14px;display:grid;gap:6px;padding:10px 12px;background:color-mix(in srgb,var(--panel) 86%,transparent);border:1px solid var(--line);border-radius:6px;font-size:12.5px;min-width:230px;max-width:calc(100% - 28px);pointer-events:none;backdrop-filter:blur(4px)}
+.hud .row{display:flex;justify-content:space-between;gap:12px}
+.hud .k{color:var(--muted)}
+.hud .v{font-family:var(--f-dro);font-variant-numeric:tabular-nums;font-size:13.5px}
+.meter{height:6px;border-radius:3px;background:var(--panel-2);overflow:hidden;position:relative}
+.meter i{position:absolute;inset:0 auto 0 0;width:0;background:var(--ok);transition:width .15s,background .15s}
+.meter::after{content:"";position:absolute;left:25%;top:0;bottom:0;width:1px;background:var(--muted);opacity:.6}
+.meter.dmg::after{display:none}
+.paper{color:var(--vfd);font-weight:600}
+
+/* El çarkları */
+.wheels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.wheels figure{margin:0;display:grid;gap:4px;justify-items:center}
+.wheels canvas{width:100%;max-width:118px;aspect-ratio:1;touch-action:none;cursor:grab;border-radius:50%}
+.wheels canvas:active{cursor:grabbing}
+.wheels figcaption{font-family:var(--f-dro);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.wheels figcaption b{font-family:var(--f-display);color:var(--safety);margin-right:4px}
+
+.views{position:absolute;right:14px;top:14px;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.views button{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 9px;font-size:12px;font-family:var(--f-display);letter-spacing:.04em}
+.views button:hover{border-color:var(--muted)}
+
+.toast{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);max-width:min(560px,calc(100% - 28px));padding:9px 14px;border-radius:5px;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--muted);font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.toast.warn{border-left-color:var(--warn)}
+.toast.bad{border-left-color:var(--bad)}
+.toast.ok{border-left-color:var(--vfd)}
+
+.alarm{position:absolute;inset:0;display:grid;place-items:center;background:rgba(40,6,6,.45)}
+.alarm .box{background:var(--panel);border:2px solid var(--bad);border-radius:8px;padding:20px 22px;max-width:min(420px,calc(100% - 32px));display:grid;gap:12px}
+.alarm h2{margin:0;font-family:var(--f-display);color:var(--bad);letter-spacing:.12em;font-size:22px}
+.alarm p{margin:0;line-height:1.5}
+.alarm small{color:var(--muted);line-height:1.45}
+
+.pendant{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:14px 16px 24px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.brand{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.brand h1{margin:0;font-family:var(--f-display);font-size:19px;letter-spacing:.06em;text-transform:uppercase;text-wrap:balance}
+.brand span{font-family:var(--f-dro);color:var(--muted);font-size:12px}
+.sec{display:grid;gap:9px;padding-top:12px;border-top:1px solid var(--line)}
+.sec>h2{margin:0;font-family:var(--f-display);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;display:flex;justify-content:space-between}
+
+/* DRO */
+.dro{background:#0b100f;border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:grid;gap:4px}
+.axis{display:grid;grid-template-columns:22px 1fr 66px 36px 34px;align-items:center;gap:6px}
+.axis .ax{font-family:var(--f-display);font-weight:700;color:var(--safety);font-size:17px}
+.axis output{font-family:var(--f-dro);font-size:30px;color:var(--vfd);text-align:right;text-shadow:0 0 10px color-mix(in srgb,var(--vfd) 45%,transparent);font-variant-numeric:tabular-nums;line-height:1.1;white-space:nowrap}
+.axis input{width:100%;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:4px 5px;font-family:var(--f-dro);font-size:13px}
+.btn{background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font-size:12.5px;font-family:var(--f-display);font-weight:600;letter-spacing:.03em}
+.btn:hover{border-color:var(--muted)}
+.btn:active{transform:translateY(1px)}
+.btn.sm{padding:4px 0;font-size:12px}
+.btn.on{background:var(--vfd-dim);border-color:var(--vfd);color:var(--vfd)}
+.dro-note{font-size:11.5px;color:var(--muted)}
+
+/* Spindle */
+.spin-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.big{padding:10px 8px;font-size:14px;border-radius:6px;letter-spacing:.08em}
+.start{background:#1d3a2a;border-color:var(--ok);color:#b9f0cf}
+.stop{background:#3a1d1d;border-color:var(--bad);color:#ffc9c9}
+.field{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px}
+.field label{font-size:12.5px;color:var(--muted);min-width:66px}
+.field output{font-family:var(--f-dro);font-size:15px;min-width:82px;text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--safety)}
+.rec{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.rec b{color:var(--fg);font-weight:500;font-family:var(--f-dro)}
+
+.seg{display:flex;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.seg button{flex:1;background:var(--panel-2);border:0;border-right:1px solid var(--line);padding:6px 0;font-family:var(--f-dro);font-size:13px}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--safety);color:#1a1405}
+.seg-label{font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+
+/* Jog pad */
+.jog{display:grid;grid-template-columns:repeat(3,1fr) 14px 1fr;grid-template-rows:repeat(3,42px);gap:6px}
+.jog button{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;font-family:var(--f-display);font-weight:700;font-size:14px;user-select:none;-webkit-user-select:none;touch-action:none}
+.jog button:active,.jog button.hold{background:var(--paint);border-color:#8fb3aa}
+.jog .hold-btn{background:#3a2a10;border-color:var(--safety);color:var(--safety);font-size:11px;letter-spacing:.06em}
+.goto{display:grid;grid-template-columns:auto 1fr auto 1fr auto;gap:6px;align-items:center;font-size:12.5px;color:var(--muted)}
+.goto input{width:100%;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:5px 6px;font-family:var(--f-dro);color:var(--fg)}
+
+/* Tools */
+.cur-tool{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:9px 11px}
+.cur-tool .tno{grid-row:span 2;font-family:var(--f-display);font-weight:700;font-size:24px;color:var(--safety)}
+.cur-tool .tname{font-weight:600}
+.cur-tool .tmeta{font-size:12px;color:var(--muted)}
+.cur-tool.broken{border-color:var(--bad)}
+.cur-tool.broken .tno{color:var(--bad)}
+.rack{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.rack button{display:grid;grid-template-columns:34px 1fr;align-items:center;text-align:left;gap:2px 6px;background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:6px 8px}
+.rack button:hover{border-color:var(--muted)}
+.rack button.active{border-color:var(--safety);box-shadow:inset 0 0 0 1px var(--safety)}
+.rack .n{grid-row:span 2;font-family:var(--f-display);font-weight:700;color:var(--muted)}
+.rack .active .n{color:var(--safety)}
+.rack .nm{font-size:12.5px;line-height:1.2}
+.rack .d{font-family:var(--f-dro);font-size:12px;color:var(--muted)}
+
+.log{list-style:none;margin:0;padding:0;display:grid;gap:5px;font-size:12.5px;line-height:1.4}
+.log li{padding-left:10px;border-left:3px solid var(--line);color:var(--muted)}
+.log li.ok{border-left-color:var(--vfd);color:var(--fg)}
+.log li.warn{border-left-color:var(--warn);color:var(--fg)}
+.log li.bad{border-left-color:var(--bad);color:var(--fg)}
+.log time{font-family:var(--f-dro);font-size:11px;margin-right:6px;color:var(--muted)}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stat{background:var(--panel-2);border-radius:5px;padding:6px 9px}
+.stat span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.stat b{font-family:var(--f-dro);font-weight:400;font-size:17px;font-variant-numeric:tabular-nums}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+.job{margin:0;padding-left:20px;display:grid;gap:4px;font-size:12.5px;line-height:1.45;color:var(--fg)}
+.job li::marker{color:var(--safety);font-family:var(--f-dro)}
+details{font-size:12.5px;color:var(--muted)}
+details summary{cursor:pointer;font-family:var(--f-display);letter-spacing:.1em;text-transform:uppercase;font-size:12px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin-top:8px}
+kbd{font-family:var(--f-dro);background:var(--panel-2);border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 5px;color:var(--fg);font-size:12px;white-space:nowrap}
+
+/* İş emirleri */
+.jobs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.jobs button{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;gap:1px 8px;text-align:left;background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:6px 8px;align-items:center}
+.jobs button:hover:not(:disabled){border-color:var(--muted)}
+.jobs button.active{border-color:var(--safety);box-shadow:inset 0 0 0 1px var(--safety)}
+.jobs button:disabled{opacity:.45;cursor:not-allowed}
+.jobs .jn{grid-row:span 2;font-family:var(--f-display);font-weight:700;color:var(--muted);font-size:15px}
+.jobs .active .jn{color:var(--safety)}
+.jobs .jt{font-size:12.5px;line-height:1.2}
+.jobs .js{font-size:12px;letter-spacing:.12em;color:var(--safety)}
+.jobs .js i{font-style:normal;color:var(--line)}
+.jobs .free{grid-column:1/-1}
+.job-card{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:10px 11px;display:grid;gap:8px}
+.jc-head{display:flex;gap:8px;align-items:baseline}
+.jc-no{font-family:var(--f-display);font-weight:700;color:var(--safety);font-size:12px;letter-spacing:.1em}
+.job-card p{margin:0;font-size:12.5px;line-height:1.5;color:var(--muted)}
+.jc-meta{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px}
+.jc-meta b{color:var(--fg);font-weight:500;font-family:var(--f-dro)}
+
+/* Teknik resim: kâğıt üstüne mürekkep, bilinçli olarak açık renkli bir nesne */
+.drawing{position:absolute;left:14px;bottom:14px;width:min(310px,calc(100% - 28px));max-height:calc(100% - 230px);min-height:120px;overflow:auto;background:var(--paper);color:var(--ink);border-radius:4px;box-shadow:0 8px 30px rgba(0,0,0,.45);padding:10px 12px;display:grid;gap:6px;font-size:11.5px}
+.dw-head{display:flex;justify-content:space-between;align-items:center;font-family:var(--f-display);font-weight:700;letter-spacing:.12em;font-size:11.5px;border-bottom:1.5px solid var(--ink);padding-bottom:4px}
+.dw-head button{background:none;border:1px solid var(--ink-2);color:var(--ink);border-radius:3px;font-size:11px;padding:1px 7px;font-family:var(--f-body);letter-spacing:0}
+.drawing svg{width:100%;height:auto;display:block}
+.drawing svg text{font-family:var(--f-dro);fill:var(--ink)}
+.dw-part{fill:none;stroke:var(--ink);stroke-width:1}
+.dw-feat{fill:none;stroke:var(--ink);stroke-width:.9}
+.dw-cl{stroke:var(--ink-2);stroke-width:.4;stroke-dasharray:4 1.5 1 1.5}
+.dw-dim{stroke:var(--ink-2);stroke-width:.4}
+.dw-face{fill:url(#hatch);stroke:none;opacity:.5}
+.dw-tab{overflow-x:auto}
+.dw-tab table,.rp-tab table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+table{color:inherit;font-size:inherit}
+.dw-tab th,.dw-tab td{color:var(--ink);font-size:11px;border:1px solid var(--ink-2);padding:2px 5px;text-align:left;font-family:var(--f-dro);font-weight:400;white-space:nowrap}
+.dw-tab th{font-family:var(--f-display);font-weight:600;font-size:10.5px;letter-spacing:.06em}
+.dw-note{color:var(--ink-2);font-size:10.5px;line-height:1.4}
+
+/* Muayene raporu */
+.report{position:absolute;inset:0;display:grid;place-items:center;background:rgba(6,10,12,.55);padding:16px}
+.report .box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px 20px;width:min(560px,100%);max-height:100%;overflow:auto;display:grid;gap:12px}
+.rp-head{display:grid;gap:2px}
+.rp-head span{font-family:var(--f-display);font-size:11.5px;letter-spacing:.14em;color:var(--muted)}
+.rp-head h2{margin:0;font-family:var(--f-display);font-size:20px;letter-spacing:.04em;text-wrap:balance}
+.stars{display:flex;gap:10px;justify-content:center}
+.stars svg{width:52px;height:52px}
+.stars .on path{fill:var(--safety);stroke:var(--safety)}
+.stars .off path{fill:none;stroke:var(--line)}
+.stars svg{animation:pop .5s cubic-bezier(.3,1.6,.5,1) both}
+.stars svg:nth-child(2){animation-delay:.25s}.stars svg:nth-child(3){animation-delay:.5s}
+@keyframes pop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+.rp-score{display:flex;align-items:baseline;justify-content:center;gap:6px;flex-wrap:wrap}
+.rp-score b{font-family:var(--f-dro);font-weight:400;font-size:40px;color:var(--vfd)}
+.rp-score span{color:var(--muted)}
+.rp-score em{font-style:normal;font-family:var(--f-display);letter-spacing:.1em;margin-left:10px;font-size:13px}
+.rp-bars{display:grid;gap:6px}
+.rp-bar{display:grid;grid-template-columns:120px 1fr 54px;gap:8px;align-items:center;font-size:12.5px}
+.rp-bar span:last-child{font-family:var(--f-dro);text-align:right;font-variant-numeric:tabular-nums}
+.rp-bar .meter{height:8px}
+.rp-bar .meter::after{display:none}
+.rp-tab{overflow-x:auto;border:1px solid var(--line);border-radius:5px}
+.rp-tab th,.rp-tab td{color:var(--fg);padding:5px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:12px;white-space:nowrap}
+.rp-tab th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.rp-tab td.num{font-family:var(--f-dro)}
+.rp-tab tr:last-child td{border-bottom:0}
+.rp-tab .ok-t{color:var(--ok);font-weight:600}.rp-tab .bad-t{color:var(--bad);font-weight:600}
+.rp-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.rp-hero{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px}
+.rp-hero.two{grid-template-columns:2fr 1fr}
+@media (max-width:560px){.rp-hero,.rp-hero.two{grid-template-columns:1fr 1fr}.rp-card.big{grid-column:1/-1}}
+.rp-card{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;gap:2px;text-align:center}
+.rp-card span{font-family:var(--f-display);font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.rp-card b{font-family:var(--f-dro);font-weight:400;font-size:34px;line-height:1.1;color:var(--fg)}
+.rp-card small{color:var(--muted);font-size:12px}
+.rp-card.good b{color:var(--ok)}.rp-card.bad b{color:var(--bad)}.rp-card.gold b{color:var(--safety)}
+.rp-card.big b{font-size:44px}
+.rp-tags{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.rp-tags:empty{display:none}
+.rp-tag{font-size:12px;padding:3px 10px;border-radius:12px;border:1px solid var(--line);color:var(--muted);font-family:var(--f-display)}
+.rp-tag.ok{border-color:var(--ok);color:var(--ok)}.rp-tag.warn{border-color:var(--warn);color:var(--warn)}.rp-tag.gold{border-color:var(--safety);color:#1a1d1f;background:var(--safety)}
+.rp-sum{margin:0;text-align:center;font-size:14px;line-height:1.45}
+.rp-more{justify-self:center;background:none;border:0;color:var(--vfd);font-family:var(--f-display);font-size:13px;padding:4px 8px;letter-spacing:.04em}
+.rp-more span{display:inline-block;transition:transform .2s}
+.rp-more[aria-expanded="true"] span{transform:rotate(180deg)}
+.rp-detail{display:grid;gap:10px}
+.rp-detail[hidden]{display:none}
+.blank-gal{position:fixed;right:12px;top:58px;z-index:70;width:min(360px,calc(100% - 24px));max-height:calc(100% - 70px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;display:grid;gap:8px;box-shadow:0 12px 36px rgba(0,0,0,.5)}
+.blank-gal[hidden]{display:none}
+.bg-head{display:flex;align-items:center;gap:8px;font-family:var(--f-display)}
+.bg-head b{letter-spacing:.12em;font-size:13px}.bg-head small{color:var(--warn);flex:1}
+.bg-list{display:grid;gap:6px}
+.bg-card{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:grid;gap:5px}
+.bg-t{display:flex;justify-content:space-between;align-items:baseline}
+.bg-t b{font-size:14px}.bg-t span{font-size:11px;color:var(--muted);font-family:var(--f-display);letter-spacing:.08em;text-transform:uppercase}
+.bg-card p{margin:0;font-size:12px;color:var(--muted);line-height:1.4}
+.bg-b{display:flex;gap:5px;flex-wrap:wrap}.bg-b .btn{padding:5px 9px;font-size:12px}
+.fw{position:fixed;inset:0;z-index:81;pointer-events:none}
+.rp-btns .btn{padding:8px 12px}
+
+@media (max-width:900px){
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;grid-template-rows:56vh auto;height:auto}
+  .stage{height:56vh}
+  .pendant{border-left:0;border-top:1px solid var(--line);overflow:visible}
+  .hud{font-size:11.5px;min-width:0;padding:7px 9px}
+}
+@media (prefers-reduced-motion:reduce){.toast,.meter i{transition:none}}
+/* ---- Panel düzeni: tam ekran sahne, üst çubuk, taşınabilir ve ölçeklenebilir kumanda pencereleri ---- */
+.app{display:block}
+.pendant{display:none}
+.stage{position:fixed;inset:46px 0 0 0}
+.topbar{position:fixed;top:0;left:0;right:0;height:46px;z-index:60;display:flex;align-items:center;gap:8px;padding:0 10px;background:linear-gradient(#262f33,#1b2124);border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+.tb-brand{font-family:var(--f-display);font-weight:700;letter-spacing:.08em;white-space:nowrap;text-transform:uppercase;font-size:15px}
+.tb-brand small{display:block;color:var(--muted);font-family:var(--f-dro);font-weight:400;letter-spacing:0;font-size:11px;text-transform:none}
+.tb-group{display:flex;gap:4px;align-items:center;flex:none}
+.tb-label{font-family:var(--f-display);font-size:10.5px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-right:2px}
+.chip{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:4px 10px;font-size:12px;font-family:var(--f-display);white-space:nowrap;color:var(--muted)}
+.chip:hover{color:var(--fg)}
+.chip.on{color:var(--fg);border-color:var(--safety);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--safety) 35%,transparent)}
+.tb-sep{width:1px;height:26px;background:var(--line);flex:none}
+.topbar .views{position:static;display:flex;flex-wrap:nowrap;gap:4px}
+.topbar .views button{padding:4px 9px}
+.estop{margin-left:auto;flex:none;height:38px;padding:0 16px;border-radius:19px;border:3px solid var(--safety);background:radial-gradient(circle at 50% 30%,#ff6a5e,#b3221c 72%);color:#fff;font-family:var(--f-display);font-weight:700;letter-spacing:.08em;font-size:12.5px;box-shadow:0 0 0 2px #3a2a10,0 3px 10px rgba(0,0,0,.5);white-space:nowrap}
+.estop{position:sticky;right:0}
+.estop:active{transform:translateY(1px);box-shadow:0 0 0 2px #3a2a10}
+.panel-layer{position:fixed;inset:46px 0 0 0;pointer-events:none;z-index:20}
+.panel{position:absolute;pointer-events:auto;display:flex;flex-direction:column;min-width:210px;min-height:40px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,.45);overflow:hidden}
+.panel.flash{animation:pflash .45s ease-in-out 6}
+@keyframes pflash{50%{border-color:var(--bad);box-shadow:0 0 0 3px var(--bad),0 12px 32px rgba(0,0,0,.45)}}
+.ph{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 10px;background:linear-gradient(#2d373b,#222a2e);border-bottom:1px solid var(--line);cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none;flex:none}
+.ph:active{cursor:grabbing}
+.lamp{width:10px;height:10px;border-radius:50%;background:#3a4446;box-shadow:inset 0 1px 2px rgba(0,0,0,.7);flex:none;transition:background .2s,box-shadow .2s}
+.lamp.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.lamp.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+.lamp.bad{background:var(--bad);box-shadow:0 0 9px var(--bad)}
+.ph b{font-family:var(--f-display);font-size:12px;letter-spacing:.12em;text-transform:uppercase;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ph .pstat{font-family:var(--f-dro);font-size:11.5px;color:var(--muted);white-space:nowrap}
+.ph button{background:none;border:1px solid transparent;color:var(--muted);border-radius:4px;width:24px;height:22px;line-height:1;font-size:14px;padding:0;flex:none}
+.ph button:hover{border-color:var(--line);color:var(--fg)}
+.pb{flex:1;overflow:auto;padding:10px 12px 14px;container-type:inline-size;min-height:0}
+.panel.collapsed .pb,.panel.collapsed .grip{display:none}
+.grip{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 55%,var(--muted) 55%,var(--muted) 62%,transparent 62%,transparent 72%,var(--muted) 72%,var(--muted) 79%,transparent 79%);opacity:.6}
+.grip:hover{opacity:1}
+.pb .sec{padding-top:0;border-top:0}
+.pb .sec > h2{display:none}
+/* Pencereyle ölçeklenen içerik */
+.pb .dro{padding:clamp(8px,3cqw,18px)}
+.pb .axis{grid-template-columns:clamp(18px,7cqw,44px) minmax(0,1fr) clamp(52px,17cqw,96px) 38px 36px}
+.pb .axis output{font-size:clamp(22px,10.5cqw,72px)}
+.pb .axis .ax{font-size:clamp(15px,6cqw,34px)}
+.pb .wheels canvas{max-width:none}
+.pb .wheels figcaption{font-size:clamp(11px,3cqw,16px)}
+.pb .jog-l{grid-template-rows:repeat(3,clamp(40px,13cqw,96px))}
+.pb .jog-l button{font-size:clamp(13px,4.2cqw,24px);border-radius:8px}
+.pb .big{font-size:clamp(13px,4.6cqw,22px);padding:clamp(9px,3.2cqw,18px) 8px}
+.pb .hud{position:static;pointer-events:auto;min-width:0;max-width:none;border:0;background:none;padding:0;backdrop-filter:none;font-size:clamp(12px,3.6cqw,15px)}
+.pb .hud .v{font-size:clamp(13px,3.9cqw,17px)}
+.pb .drawing{position:static;width:auto;max-height:none;min-height:0;box-shadow:none;border-radius:6px}
+.gauge{width:100%;aspect-ratio:2;display:block;max-width:100%}
+/* Takım kartları: simgeli */
+.rack button{grid-template-columns:40px minmax(0,1fr)}
+.rack .ico{grid-row:span 2;width:36px;height:36px;color:var(--steel);display:grid;place-items:center}
+.rack .ico svg{width:100%;height:100%}
+.rack .active .ico{color:var(--safety)}
+.rack .nm b{color:var(--safety);font-family:var(--f-display);margin-right:5px}
+.alarm{z-index:80}
+.report{z-index:80}
+.toast{z-index:90}
+@media (max-width:900px){
+  body{overflow:auto}
+  .stage{position:relative;inset:auto;height:56vh;margin-top:46px}
+  .panel-layer{position:static;display:flex;flex-direction:column;gap:10px;padding:10px}
+  .panel{position:relative;left:auto !important;top:auto !important;width:auto !important;height:auto !important;max-height:none !important}
+  .grip{display:none}
+  .ph{cursor:default}
+}
+@media (prefers-reduced-motion:reduce){.panel.flash{animation:none;border-color:var(--bad)}}
+.pb .rack{grid-template-columns:repeat(auto-fill,minmax(132px,1fr))}
+.pb details{border:0}
+.alarm,.report{position:fixed;inset:46px 0 0 0}
+.toast{position:fixed;top:58px;bottom:auto}
+.bench{z-index:85}
+.ia-tip{position:absolute;z-index:15;pointer-events:none;background:rgba(14,18,20,.88);border:1px solid var(--line);border-left:3px solid var(--safety);border-radius:4px;padding:5px 9px;font-size:12.5px;white-space:nowrap;color:var(--fg)}
+.polish-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px;align-items:center}
+.pb .jog{grid-template-rows:repeat(3,clamp(40px,13cqw,96px))}
+.pb .jog button{font-size:clamp(13px,4.2cqw,24px);border-radius:8px}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#drawMode{width:100%;margin-top:4px}
+/* ---- Kumanda paneli: endüstriyel konsol; ölçüler panel genişliğine göre (cqw) ---- */
+.cp{position:relative;background:linear-gradient(#41474b,#2c3134 55%,#25292c);border-radius:1.4cqw;padding:2.4cqw;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -2px 6px rgba(0,0,0,.5);display:grid;gap:2cqw;color:#e3e6e2;font-family:var(--f-display)}
+.cp::before,.cp::after{content:"";position:absolute;width:1.6cqw;height:1.6cqw;border-radius:50%;background:radial-gradient(circle at 35% 35%,#9aa2a6,#3b4245);top:.8cqw;left:.8cqw;box-shadow:calc(100cqw - 6.4cqw) 0 0 #6c7478}
+.cp-top{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:2.2cqw}
+.cp-left{display:grid;gap:1.2cqw;min-width:0}
+.cp-label{background:linear-gradient(#f4c43a,#d9a417);color:#2a1d02;border-radius:.6cqw;padding:.5cqw 1.4cqw;font-size:1.9cqw;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:inset 0 -1px 0 rgba(0,0,0,.25)}
+.cp-label b{color:#9b1c10;margin-right:.6cqw}
+.cp-screen{position:relative;border-radius:1cqw;border:1.1cqw solid #15191b;box-shadow:inset 0 0 2.5cqw rgba(0,0,0,.85),0 1px 0 rgba(255,255,255,.1);background:radial-gradient(130% 120% at 50% 35%,#12301f,#06120c);color:#83ffbe;font-family:var(--f-dro);padding:1.2cqw 1.6cqw;display:grid;gap:.6cqw;overflow:hidden;text-shadow:0 0 .8cqw rgba(110,255,180,.55)}
+.cp-screen::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);pointer-events:none}
+.lcd-head,.lcd-input,.lcd-soft{display:flex;justify-content:space-between;font-size:1.9cqw;color:#58d991}
+.lcd-head{border-bottom:1px solid rgba(131,255,190,.25);padding-bottom:.4cqw}
+.lcd-ax{display:flex;align-items:baseline;gap:2cqw;padding:.1cqw .8cqw;border-radius:.5cqw}
+.lcd-ax b{font-size:3.6cqw;color:#c8ffd9;width:3cqw}
+.lcd-ax span{font-size:5.4cqw;letter-spacing:.06em;flex:1;text-align:right;font-variant-numeric:tabular-nums}
+.lcd-ax.sel{background:rgba(131,255,190,.14);box-shadow:inset 0 0 0 1px rgba(131,255,190,.45)}
+.lcd-info{display:flex;justify-content:space-between;font-size:2.1cqw;color:#a6ffcf;border-top:1px solid rgba(131,255,190,.2);padding-top:.5cqw}
+.lcd-row{display:grid;grid-template-columns:9cqw 1fr 9cqw;align-items:center;gap:1cqw;font-size:2.1cqw}
+.lcd-row .lcd-wide{grid-column:2 / span 2;text-align:right}
+.lcd-bar{height:1.4cqw;border:1px solid rgba(131,255,190,.5);border-radius:.3cqw;position:relative;overflow:hidden}
+.lcd-bar i{position:absolute;inset:0 auto 0 0;width:0;background:#83ffbe;box-shadow:0 0 .8cqw #83ffbe}
+.lcd-bar i.hi{background:#ffd36a;box-shadow:0 0 .8cqw #ffd36a}.lcd-bar i.bad{background:#ff6a5a;box-shadow:0 0 .8cqw #ff6a5a}
+.lcd-input{background:rgba(131,255,190,.08);padding:.3cqw .8cqw;border-radius:.4cqw;color:#c8ffd9}
+.lcd-soft{border-top:1px solid rgba(131,255,190,.25);padding-top:.4cqw}
+.lcd-soft span{flex:1;text-align:center;border-left:1px solid rgba(131,255,190,.2)}
+.lcd-soft span:first-child{border-left:0}
+.cp-softkeys{display:grid;grid-template-columns:repeat(5,1fr);gap:1.4cqw;padding:0 1.6cqw}
+.cp-softkeys button,.key,.cp-jog button{border:0;cursor:pointer;font-family:var(--f-display);font-weight:700;color:#2b2b2b;background:linear-gradient(#efece3,#c9c4b6);border-radius:.8cqw;box-shadow:0 .5cqw 0 #8c877a,0 .7cqw 1.2cqw rgba(0,0,0,.45),inset 0 1px 0 #fff;transition:transform .05s,box-shadow .05s}
+.cp-softkeys button{height:3cqw}
+.cp-softkeys button:active,.key:active,.cp-jog button:active,.cp-jog button.hold{transform:translateY(.4cqw);box-shadow:0 .1cqw 0 #8c877a,0 .2cqw .4cqw rgba(0,0,0,.45),inset 0 1px 0 #fff}
+.cp-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:1.3cqw;align-content:start;background:#1e2224;border-radius:1cqw;padding:1.6cqw;box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
+.key{font-size:2.8cqw;aspect-ratio:1.5;display:grid;place-items:center}
+.key.ax{background:linear-gradient(#5b6368,#3c4246);color:#f2f2ec;box-shadow:0 .5cqw 0 #1f2427,0 .7cqw 1.2cqw rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.25)}
+.key.ax.on{background:linear-gradient(#e7b434,#b88512);color:#2a1d02;box-shadow:0 .5cqw 0 #6e4f08,0 0 1.6cqw rgba(255,190,60,.5)}
+.key.amber{background:linear-gradient(#e8b36a,#c98a3a)}
+.key.ent{background:linear-gradient(#d9e8dc,#a9c6ae)}
+.key.go{background:linear-gradient(#8fe0a2,#3fa65c);color:#062a12}
+.cp-bottom{display:grid;grid-template-columns:auto auto minmax(24cqw,1fr) auto;grid-template-areas:'mil knobs mpg stop' 'jog jog mpg stop';gap:1.6cqw 2cqw;align-items:center;background:linear-gradient(#2a2f32,#202427);border-radius:1cqw;padding:1.8cqw;box-shadow:inset 0 2px 8px rgba(0,0,0,.55);flex-wrap:wrap}
+.cp-group{display:flex;flex-direction:column;align-items:center;gap:.8cqw;padding:0 1.2cqw;border-right:1px solid rgba(255,255,255,.08)}
+.cp-group.knobs,.cp-group.mpg-g{flex-direction:row;align-items:flex-end;gap:1.6cqw}
+.cp-group.last{border-right:0;grid-area:stop;align-self:stretch;justify-content:space-between}
+.cp-bottom > .cp-group:nth-child(1){grid-area:mil}.cp-bottom > .cp-group:nth-child(2){grid-area:knobs}.cp-bottom > .cp-group:nth-child(3){grid-area:mpg;display:grid;grid-template-columns:auto auto;justify-items:center;align-content:center;gap:1cqw 2.4cqw}.cp-bottom > .cp-group:nth-child(4){grid-area:jog;flex-direction:row;gap:2cqw;border-right:0;border-top:1px solid rgba(255,255,255,.08);padding-top:1.2cqw}
+.cp-group.mpg-g .cp-k:last-child{grid-column:1 / span 2}
+.cp-cap{font-size:1.6cqw;letter-spacing:.14em;color:#aab3b0}
+.cp-btns{display:grid;grid-template-columns:repeat(2,auto);gap:1cqw 1.6cqw}
+.cp-b,.cp-k{display:grid;justify-items:center;gap:.5cqw;font-size:1.5cqw;letter-spacing:.06em;color:#cfd5d1}
+.cp-k b{color:#ffd36a;font-family:var(--f-dro);font-weight:400}
+.rb{width:5.4cqw;height:5.4cqw;border-radius:50%;border:.5cqw solid #c7ccce;cursor:pointer;box-shadow:0 .5cqw 1cqw rgba(0,0,0,.6),inset 0 -.6cqw 1cqw rgba(0,0,0,.35);transition:transform .05s,box-shadow .2s}
+.rb:active{transform:scale(.94)}
+.rb.green{background:radial-gradient(circle at 40% 35%,#7be38f,#1f8a3b 70%)} .rb.green.lit{box-shadow:0 0 2.4cqw #3dff7a,0 .5cqw 1cqw rgba(0,0,0,.6);background:radial-gradient(circle at 40% 35%,#c8ffd3,#33d661 70%)}
+.rb.red{background:radial-gradient(circle at 40% 35%,#ff8a7a,#a8221a 70%)}
+.rb.blue{background:radial-gradient(circle at 40% 35%,#8ac4ff,#1f5a9c 70%)} .rb.blue.lit{box-shadow:0 0 2.4cqw #59b6ff,0 .5cqw 1cqw rgba(0,0,0,.6);background:radial-gradient(circle at 40% 35%,#d4ecff,#3a96f0 70%)}
+.toggle{width:5.4cqw;height:5.4cqw;border-radius:50%;border:.5cqw solid #c7ccce;background:radial-gradient(circle at 40% 35%,#4c5357,#1b1e20 70%);position:relative;cursor:pointer;box-shadow:0 .5cqw 1cqw rgba(0,0,0,.6)}
+.toggle i{position:absolute;left:50%;top:50%;width:1.2cqw;height:4cqw;background:linear-gradient(#e9ecec,#9aa2a6);border-radius:.6cqw;transform:translate(-50%,-50%) rotate(-35deg);transition:transform .15s}
+.toggle.rev i{transform:translate(-50%,-50%) rotate(35deg)}
+.knob{width:14cqw;aspect-ratio:1;cursor:grab;touch-action:none;outline:none}
+.knob.small{width:11cqw}
+.knob:focus-visible{filter:drop-shadow(0 0 .6cqw #f0b429)}
+.knob svg,.mpg svg{width:100%;height:100%;display:block;overflow:visible}
+.mpg{width:20cqw;aspect-ratio:1;border-radius:50%;cursor:grab;touch-action:none;position:relative;background:radial-gradient(circle,#15181a 0 70%,#3b4245 71%,#1b1e20 100%);box-shadow:0 .8cqw 1.8cqw rgba(0,0,0,.7),inset 0 0 0 .4cqw #8e979b}
+/* tırtıllı çark: dış halka tırtıllı, ortası çanak, tutamak çukuru; hepsi birlikte döner */
+.mpg i{position:absolute;inset:5%;border-radius:50%;background:radial-gradient(circle,transparent 0 76%,rgba(0,0,0,.45) 77%,transparent 80%),repeating-conic-gradient(#b4bcc0 0 3deg,#4a5256 3deg 6deg);box-shadow:inset 0 0 0 .3cqw rgba(0,0,0,.5),0 .2cqw .6cqw rgba(0,0,0,.6)}
+.mpg i::before{content:"";position:absolute;inset:15%;border-radius:50%;background:radial-gradient(circle at 40% 35%,#d6dbde,#858d91 70%,#5d6569);box-shadow:inset 0 0 0 1px rgba(0,0,0,.45),0 0 0 .35cqw #2a2f32}
+.mpg i::after{content:"";position:absolute;width:15%;height:15%;border-radius:50%;left:42.5%;top:19%;background:radial-gradient(circle at 40% 35%,#2b2f31,#0e1011);box-shadow:inset 0 1px 2px rgba(0,0,0,.8)}
+.cp-jog{display:grid;grid-template-columns:repeat(3,4.6cqw) 4.6cqw;grid-template-rows:repeat(3,4.6cqw);gap:.9cqw}
+.cp-jog button{font-size:1.7cqw;touch-action:none}
+.cp-jog button.rapid{background:linear-gradient(#5b6368,#3c4246);color:#f2f2ec;font-size:1.3cqw;box-shadow:0 .5cqw 0 #1f2427,0 .7cqw 1.2cqw rgba(0,0,0,.45)}
+.cp-jog button.rapid.on{background:linear-gradient(#f0b429,#c98a12);color:#2a1d02}
+.cp-lamps{display:flex;gap:1.4cqw}
+.cp-lampl{display:flex;gap:1.4cqw;font-size:1.2cqw;color:#aab3b0}
+.cp-lampl span{width:2.2cqw;text-align:center}
+.lamp2{width:2.2cqw;height:2.2cqw;border-radius:50%;background:#2a2f31;box-shadow:inset 0 1px 2px rgba(0,0,0,.8)}
+.lamp2.on.g{background:#4dff82;box-shadow:0 0 1.4cqw #4dff82}.lamp2.on.a{background:#ffbf3a;box-shadow:0 0 1.4cqw #ffbf3a}.lamp2.on.r{background:#ff4a3a;box-shadow:0 0 1.4cqw #ff4a3a}
+.cp-estop{margin-top:auto;width:11cqw;aspect-ratio:1;border-radius:50%;border:none;cursor:pointer;background:radial-gradient(circle,#f0b429 0 62%,#a77a10 63% 66%,#f0b429 67%);display:grid;place-items:center;position:relative;box-shadow:0 .6cqw 1.4cqw rgba(0,0,0,.6)}
+.cp-estop::before{content:"";position:absolute;inset:16%;border-radius:50%;background:radial-gradient(circle at 40% 32%,#ff8a74,#c9241a 55%,#7a120c);box-shadow:0 .6cqw 1cqw rgba(0,0,0,.55),inset 0 -.6cqw 1cqw rgba(0,0,0,.35);transition:transform .08s}
+.cp-estop:active::before,.cp-estop.down::before{transform:scale(.93) translateY(.3cqw)}
+.cp-estop span{position:relative;font-size:1.1cqw;font-weight:700;color:#fff;letter-spacing:.06em;margin-top:7.6cqw;text-shadow:0 1px 2px #000}
+/* ---- Ham parça ölçüsü ve parça masası ---- */
+.stock-row{display:grid;grid-template-columns:repeat(3,1fr) auto;gap:6px;align-items:end}
+.stock-row label{display:grid;gap:2px;font-size:11px;color:var(--muted);font-family:var(--f-display);letter-spacing:.08em}
+.stock-row input{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:6px 7px;color:var(--fg);font-family:var(--f-dro)}
+.bench{position:fixed;inset:0;z-index:85;background:rgba(6,10,12,.72);display:grid;place-items:center;padding:16px}
+.bench-box{width:min(1280px,100%);height:min(820px,100%);background:var(--panel);border:1px solid var(--line);border-radius:10px;display:grid;grid-template-rows:auto 1fr;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.bench-head{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);font-family:var(--f-display)}
+.bench-head b{letter-spacing:.12em}.bench-head span{color:var(--muted);font-family:var(--f-dro);font-size:12.5px;flex:1}
+.bench-body{display:grid;grid-template-columns:minmax(0,1fr) 300px;min-height:0}
+.bench-view{position:relative;min-height:0}
+.bench-view canvas{width:100%;height:100%;display:block}
+.bench-hint{position:absolute;left:12px;bottom:12px;background:rgba(14,18,20,.85);border:1px solid var(--line);border-radius:5px;padding:6px 10px;font-size:12.5px;pointer-events:none}
+.bn-label{position:absolute;transform:translate(-50%,-130%);background:rgba(10,20,14,.9);border:1px solid #3c8a5c;color:#9dffc4;font-family:var(--f-dro);font-size:12.5px;padding:3px 7px;border-radius:4px;pointer-events:none;white-space:nowrap}
+.bench-side{border-left:1px solid var(--line);padding:12px;display:grid;gap:10px;align-content:start;overflow:auto}
+.bench-side .tools{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.bench-side ul{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:12.5px}
+.bench-side li{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:6px 8px;line-height:1.4}
+.bench-side li b{color:var(--vfd);font-family:var(--f-dro);font-size:14px}
+.sec-row{display:grid;grid-template-columns:auto 1fr 70px;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.sec-row output{font-family:var(--f-dro);color:var(--fg);text-align:right}
+@media (max-width:900px){.bench-body{grid-template-columns:1fr;grid-template-rows:1fr auto}.bench-side{border-left:0;border-top:1px solid var(--line);max-height:40vh}}
+/* ---- Takım editörü ---- */
+#tedit .bench-body{grid-template-columns:minmax(0,1fr) 350px}
+.te-side .sec-row{grid-template-columns:84px minmax(0,1fr) 62px}
+.te-side .sec-row.off{opacity:.35;pointer-events:none}
+.te-seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px}
+.te-seg .btn{padding:6px 4px}
+.te-base{display:grid;gap:3px;font-size:11px;color:var(--muted);font-family:var(--f-display);letter-spacing:.08em}
+.te-base select,.te-base input{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:6px 7px;color:var(--fg);font-size:12.5px}
+.te-side li span{color:var(--muted)}
+.te-side li.warn b{color:var(--warn)}.te-side li.bad b{color:var(--bad)}
+.te-act{display:grid;grid-template-columns:1fr 1fr auto;gap:6px}
+.rack button.add{border-style:dashed}
+.rack button.add .ico{font-size:24px;font-weight:700;color:var(--safety)}
+.rack button.custom .nm b{color:var(--safety)}
+@media (max-width:900px){#tedit .bench-body{grid-template-columns:1fr;grid-template-rows:minmax(220px,1fr) auto}}
+/* ---- Kariyer: kasa, sipariş panosu, dükkân ---- */
+.mode-sw{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.career{display:grid;gap:8px}
+.career[hidden],.jobs[hidden]{display:none}
+.cr-head{display:grid;grid-template-columns:1.25fr 1fr .7fr;gap:6px}
+.cr-head>div{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:6px 8px;display:grid;align-content:start}
+.cr-head .k{font-size:10.5px;color:var(--muted);font-family:var(--f-display);letter-spacing:.1em;text-transform:uppercase}
+.cr-head b{font-family:var(--f-dro);font-size:17px;color:var(--vfd);white-space:nowrap}
+.cr-head small{font-size:11px;color:var(--muted);line-height:1.25}
+.jobs.orders{grid-template-columns:1fr}
+.orders .js{letter-spacing:0;font-family:var(--f-dro);font-size:13px}
+.orders .js i{color:var(--muted);font-family:var(--f-body,inherit);font-size:11.5px}
+.orders em{font-style:normal;color:var(--warn)}
+.orders .cond{font-size:10.5px;font-family:var(--f-display);letter-spacing:.08em;padding:1px 6px;border-radius:9px;margin-left:4px;border:1px solid currentColor;font-weight:600}
+.orders .cond.acil{color:var(--bad)}.orders .cond.seri{color:var(--vfd)}.orders .cond.hassas{color:var(--safety)}
+.cr-foot{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.tb-money{font-family:var(--f-dro);font-size:15px;color:var(--vfd);background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:3px 12px;white-space:nowrap}
+.tb-money[hidden]{display:none}
+.tb-money.flash-up{animation:mUp 1s}.tb-money.flash-dn{animation:mDn 1s}
+@keyframes mUp{0%{background:#1f6a3d;color:#fff;transform:scale(1.12)}100%{}}
+@keyframes mDn{0%{background:#6a2222;color:#fff}100%{}}
+.shop-box{width:min(940px,100%);height:min(760px,100%)}
+.shop-body{overflow:auto;padding:12px 14px;display:grid;gap:10px;align-content:start}
+.shop{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+.tb-money{cursor:pointer}
+.sh-item{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:8px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:5px 7px}
+.sh-item .ico{width:28px;height:28px;color:var(--steel);display:grid;place-items:center}
+.sh-item .nm{font-size:12.5px;line-height:1.25;min-width:0}
+.sh-item small{display:block;color:var(--muted);font-size:11px}
+.sh-item.own,.sh-item.soon{opacity:.6}
+.sh-item .btn{white-space:nowrap}
+.rack button.locked{opacity:.6;border-style:dashed}
+.holder-row{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center}
+.hl-lab{font-family:var(--f-display);font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.holder-row.off{opacity:.4;pointer-events:none}
+.par-box{display:grid;gap:6px}
+.btn[hidden]{display:none}
+#fixNote{font-size:11.5px}
+.par-box[hidden]{display:none}
+.par-off{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.par-off output{font-family:var(--f-dro);font-size:12px;color:var(--muted);white-space:nowrap}
+.rot-box{display:grid;gap:6px;border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--panel-2)}
+.rot-box[hidden]{display:none}
+.rot-head{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
+.rot-head b{font-family:var(--f-dro);font-size:20px;color:var(--vfd);text-align:right}
+.rot-steps{grid-template-columns:repeat(8,1fr)}
+.rot-steps button{padding:5px 0;font-size:12px}
+#rotLock.open{background:#4a2a14;border-color:var(--warn);color:#ffd9a8}
+.vac-g{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px;font-size:11.5px;color:var(--muted)}
+.vac-g[hidden]{display:none}
+.vac-g b{display:block;font-family:var(--f-dro);color:var(--fg);font-size:13px}
+.vac-g .meter{grid-column:1/-1}
+.probe-box{display:grid;gap:6px;border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--panel-2)}
+.probe-box[hidden]{display:none}
+.dt-row{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:center}
+.dt-dial{width:96px;height:96px}
+.dt-read{font-family:var(--f-dro);font-size:20px}
+.pr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.pr-grid .btn{padding:6px 2px;font-size:12px}
+.pr-zero{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.rack button.locked .d{color:var(--warn)}
+/* ---- Üst çubuk: simgeler, ipuçları, açılır menüler ---- */
+.topbar{overflow:visible;gap:6px}
+.tb-brand{display:flex;align-items:center;gap:8px}
+.tb-brand b{display:block;font-size:14px;letter-spacing:.1em}
+.tb-logo{width:30px;height:30px;display:grid;place-items:center;border-radius:6px;background:var(--safety);color:#1a1d1f;flex:none}
+.tb-logo svg{width:22px;height:22px}
+.tb-icons{display:flex;align-items:center;gap:2px;min-width:0}
+.tb-grp{display:flex;align-items:center;gap:1px}
+.tb-sep{width:1px;height:24px;background:var(--line);margin:0 6px;flex:none}
+.tb-flex{flex:1}
+.tbi{position:relative;width:34px;height:34px;display:grid;place-items:center;border-radius:6px;color:var(--muted);background:none;border:0;padding:0;flex:none}
+.tbi[hidden]{display:none}
+.tbi svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tbi:hover,.tbi.open{color:var(--fg);background:var(--panel-2)}
+.tbi.on{color:var(--fg)}
+.tbi.on::before{content:"";position:absolute;left:9px;right:9px;bottom:2px;height:2px;border-radius:2px;background:var(--safety)}
+.tbi.act.on{color:#1a1d1f;background:var(--safety)}
+.tbi.act.on::before{display:none}
+.tbi[data-tip]:hover::after{content:attr(data-tip);position:absolute;top:40px;left:50%;transform:translateX(-50%);background:#0e1214;border:1px solid var(--line);padding:4px 8px;border-radius:4px;font-size:12px;font-family:var(--f-display);letter-spacing:.02em;white-space:nowrap;color:var(--fg);z-index:96;pointer-events:none}
+.tbi.open[data-tip]::after{display:none}
+.tb-menu{position:absolute;top:44px;z-index:95;display:grid;gap:2px;min-width:200px;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:5px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.tb-menu[hidden]{display:none}
+.tb-menu button{display:flex;justify-content:space-between;gap:12px;align-items:baseline;text-align:left;background:none;border:0;border-radius:4px;padding:7px 9px;font-size:13px;font-family:var(--f-display);color:var(--fg)}
+.tb-menu button:hover{background:var(--panel-2)}
+.tb-menu small,.tb-hint{color:var(--muted);font-size:11px}
+.tb-hint{padding:4px 9px}
+.tb-menu hr{border:0;border-top:1px solid var(--line);margin:3px 0;width:100%}
+.tb-help{width:340px;padding:10px 12px;font-size:13px;line-height:1.45}
+.tb-help ol{margin:6px 0 2px;padding-left:20px}
+.tb-help li{margin:3px 0}
+@media (max-width:1200px){.tb-sep{margin:0 2px}.tbi{width:30px;height:32px}.tb-brand b{display:none}}
+</style>
+
+<div class="app">
+  <header class="topbar" id="topbar">
+    <div class="tb-brand" id="tbBrand"><span class="tb-logo" data-ic="logo"></span><div><b>SNOOP3000</b><small id="tbMat"></small></div></div>
+    <nav class="tb-icons" aria-label="Paneller ve aletler">
+      <div class="tb-grp" data-g="Makine"><button class="tbi" data-p="console" data-ic="console" data-tip="Kumanda paneli" aria-label="Kumanda paneli"></button><button class="tbi" data-p="dro" data-ic="dro" data-tip="DRO" aria-label="DRO"></button><button class="tbi" data-p="wheels" data-ic="wheels" data-tip="El çarkları" aria-label="El çarkları"></button><button class="tbi" data-p="jog" data-ic="jog" data-tip="Hareket" aria-label="Hareket"></button><button class="tbi" data-p="spindle" data-ic="spindle" data-tip="İş mili" aria-label="İş mili"></button></div>
+      <span class="tb-sep"></span>
+      <div class="tb-grp" data-g="İş"><button class="tbi" data-p="tools" data-ic="tools" data-tip="Takımlar" aria-label="Takımlar"></button><button class="tbi" data-p="part" data-ic="part" data-tip="Parça ve bağlama" aria-label="Parça ve bağlama"></button><button class="tbi" data-p="jobs" data-ic="jobs" data-tip="İş emirleri ve kariyer" aria-label="İş emirleri ve kariyer"></button><button class="tbi act" data-act="drawing" id="tbDraw" data-ic="drawing" data-tip="Teknik resim" aria-label="Teknik resim"></button></div>
+      <span class="tb-sep"></span>
+      <div class="tb-grp" data-g="Aletler"><button class="tbi act" data-act="air" id="tbAir" data-ic="air" data-tip="Hava tabancası (B)" aria-label="Hava tabancası (B)"></button><button class="tbi act" data-act="fd" id="tbFd" data-ic="fd" data-tip="Fareyle sür (G)" aria-label="Fareyle sür (G)"></button><button class="tbi act" data-act="bench" data-ic="bench" data-tip="Parça masası: ölç, kesit al" aria-label="Parça masası: ölç, kesit al"></button><button class="tbi act" data-act="editor" data-ic="editor" data-tip="Takım editörü" aria-label="Takım editörü"></button><button class="tbi act" data-act="shop" id="tbShop" hidden data-ic="shop" data-tip="Dükkân" aria-label="Dükkân"></button><button class="tbi act" data-act="blanks" data-ic="blank" data-tip="Hazır parça galerisi (geçici)" aria-label="Hazır parça galerisi"></button></div>
+      <span class="tb-sep"></span>
+      <div class="tb-grp" data-g="Bilgi"><button class="tbi" data-p="hud" data-ic="hud" data-tip="Durum" aria-label="Durum"></button><button class="tbi" data-p="log" data-ic="log" data-tip="Olay kaydı" aria-label="Olay kaydı"></button></div>
+      <span class="tb-sep"></span>
+      <div class="tb-grp"><button class="tbi" data-menu="layout" data-ic="layout" data-tip="Panel düzeni" aria-label="Panel düzeni"></button><button class="tbi" data-menu="camera" data-ic="camera" data-tip="Kamera" aria-label="Kamera"></button></div>
+    </nav>
+    <span class="tb-flex"></span>
+    <span class="tb-money" id="tbMoney" title="Kariyer kasası: dükkânı aç" hidden></span>
+    <button class="tbi act" data-act="sound" id="tbMute" data-ic="sound" data-tip="Ses" aria-label="Ses"></button><button class="tbi" data-menu="help" data-ic="help" data-tip="Yardım ve kısayollar" aria-label="Yardım ve kısayollar"></button>
+    <button class="estop" id="estopBtn" title="Mili ve tüm hareketleri durdur (Esc)">ACİL STOP</button>
+    <div class="tb-menu" id="mnLayout" hidden><button data-l="kumanda">Kumanda <small>konsol, takımlar, durum</small></button><button data-l="temel">Temel <small>klasik paneller</small></button><button data-l="tam">Tam <small>hepsi</small></button><button data-l="is">İş emri <small>iş, DRO, takımlar</small></button><button data-l="kariyer">Kariyer <small>sipariş, konsol, takımlar</small></button><hr><button data-l="reset">Panelleri sıfırla</button></div>
+    <div class="tb-menu" id="mnCamera" hidden><button data-v="vOp">Operatör</button><button data-v="vNear">Yakın</button><button data-v="vTop">Üstten</button><button data-v="vFront">Önden</button><small class="tb-hint">Sağ tuş döndür, tekerlek yakınlaştır</small></div>
+    <div class="tb-menu tb-help" id="mnHelp" hidden>
+      <b>Nasıl başlarım</b>
+      <ol><li>Takımlar panelinden takım seç (T3 Ø10 takılı).</li><li>Parçaya yaklaş: ok tuşları X/Y, W/S ya da PgUp/PgDn Z; Shift hızlı.</li><li>Üst yüzeye değince DRO'da Z0'a bas.</li><li>Mili çalıştır (Boşluk), önerilen devir ve ilerlemeyi uygula, paso al.</li><li>İş emirlerinden bir iş seç; teslimde parça ölçülür.</li></ol>
+      <hr><button data-act="keys">Tüm kısayollar</button>
+    </div>
+  </header>
+  <section class="stage" id="stage">
+    <canvas id="c" aria-label="Freze tezgâhının 3B görünümü"></canvas>
+    <div class="hud" aria-live="polite" data-panel="hud">
+      <div class="row" id="hJobRow" hidden><span class="k">İş</span><span class="v" id="hJob">—</span></div>
+      <div class="row" id="hTimeRow" hidden><span class="k">Makine süresi</span><span class="v" id="hTime">—</span></div>
+      <div class="row"><span class="k">Takım</span><span class="v" id="hTool">—</span></div>
+      <div class="row"><span class="k">Mil</span><span class="v" id="hSpin">DURUYOR</span></div>
+      <div class="row"><span class="k">İlerleme</span><span class="v" id="hFeed">—</span></div>
+      <div class="row"><span class="k">Malzeme</span><span class="v" id="hMat">—</span></div>
+      <div class="row"><span class="k">Kesme hızı Vc</span><span class="v" id="hVc">—</span></div>
+      <div class="row"><span class="k">Mil gücü</span><span class="v" id="hPow">—</span></div>
+      <div class="row"><span class="k">Parça sıcaklığı</span><span class="v" id="hTemp">—</span></div>
+      <div class="row"><span class="k">Takım aşınması</span><span class="v" id="hWear">—</span></div>
+      <div class="row"><span class="k">Son yüzey Ra</span><span class="v" id="hRa">—</span></div>
+      <div class="row"><span class="k">Talaş</span><span class="v" id="hChip">—</span></div>
+      <div class="row"><span class="k">Yüzeye mesafe</span><span class="v" id="hGap">—</span></div>
+      <div class="row"><span class="k" id="hLoadK">Talaş kalınlığı</span><span class="v" id="hLoad">—</span></div>
+      <div class="row"><span class="k">Takım yükü</span><span class="v" id="hStress">kesmiyor</span></div>
+      <div class="meter"><i id="hMeter"></i></div>
+      <div class="row"><span class="k">Takım zorlanması</span><span class="v" id="hDmg">0%</span></div>
+      <div class="meter dmg"><i id="hDmgBar"></i></div>
+      <div class="paper" id="hPaper" hidden>Kağıt sıkışıyor: takım yüzeyde, Z sıfırlanabilir</div>
+    </div>
+    <div class="views">
+      <button id="vOp">Operatör</button>
+      <button id="vNear">Yakın</button>
+      <button id="vTop">Üstten</button>
+      <button id="vFront">Önden</button>
+      <button id="vDraw" hidden>Resim</button>
+    </div>
+    <div class="drawing" id="drawing" data-panel="drawing" hidden>
+      <div class="dw-head"><span id="dwTitle">TEKNİK RESİM</span><button id="dwClose" aria-label="Resmi gizle">gizle</button></div>
+      <div id="dwSvg"></div>
+      <div class="dw-tab"><table id="dwTable"></table></div>
+      <div class="dw-note">Ölçüler mm. Sıfır noktası: parçanın sol-ön köşesi. Sarı çizgiler parçadaki markalama izleridir.</div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <div class="bench" id="shop" hidden>
+      <div class="bench-box shop-box" role="dialog" aria-label="Dükkân">
+        <div class="bench-head"><b>DÜKKÂN</b><span id="shMoney"></span><button class="btn" id="shClose">Kapat</button></div>
+        <div class="shop-body">
+          <div class="dro-note" id="shNote"></div>
+          <div class="sub">Takımlar</div>
+          <div class="shop" id="shopTools"></div>
+          <div class="sub">Ekipman</div>
+          <div class="shop" id="shopEq"></div>
+        </div>
+      </div>
+    </div>
+    <div class="bench" id="tedit" hidden>
+      <div class="bench-box" role="dialog" aria-label="Takım editörü">
+        <div class="bench-head"><b>TAKIM EDİTÖRÜ</b><span id="teMode"></span><button class="btn" id="teClose">Kapat</button></div>
+        <div class="bench-body">
+          <div class="bench-view"><canvas id="teC" aria-label="Takımın 3B önizlemesi"></canvas><div class="bench-hint" id="teHint"></div></div>
+          <div class="bench-side te-side">
+            <label class="te-base">BAŞLANGIÇ<select id="teBase"></select></label>
+            <div class="sub">Tip</div>
+            <div class="te-seg" id="teKind"><button class="btn" data-tk="end">Parmak</button><button class="btn" data-tk="ball">Küresel</button><button class="btn" data-tk="chamfer">Pah</button><button class="btn" data-tk="drill">Matkap</button></div>
+            <div class="sub">Ölçüler</div>
+            <div class="sec-row"><span>Çap</span><input type="range" id="teD"><output id="teDv"></output></div>
+            <div class="sec-row"><span>Ağız sayısı</span><input type="range" id="teZ"><output id="teZv"></output></div>
+            <div class="sec-row"><span>Ağız boyu</span><input type="range" id="teFl"><output id="teFlv"></output></div>
+            <div class="sec-row"><span>Çıkıntı</span><input type="range" id="teSt"><output id="teStv"></output></div>
+            <div class="sec-row"><span>Helis açısı</span><input type="range" id="teHx"><output id="teHxv"></output></div>
+            <div class="sec-row"><span>Köşe radyüsü</span><input type="range" id="teCr"><output id="teCrv"></output></div>
+            <div class="sec-row" id="teAngRow"><span>Uç açısı</span><div class="te-seg" id="teAng"></div><output></output></div>
+            <div class="sub">Malzeme ve kaplama</div>
+            <div class="te-seg" id="teTm"><button class="btn" data-tm="hss">HSS</button><button class="btn" data-tm="carbide">Karbür</button></div>
+            <div class="te-seg" id="teCoat"><button class="btn" data-tc="none">Yok</button><button class="btn" data-tc="tin">TiN</button><button class="btn" data-tc="altin">AlTiN</button><button class="btn" data-tc="dlc">DLC</button></div>
+            <label class="te-base">AD<input id="teName" maxlength="24"></label>
+            <div class="sub">Tezgâhta ne değişir</div>
+            <ul id="teStats"></ul>
+            <div class="te-act"><button class="btn start" id="teMount">Kaydet ve tak</button><button class="btn" id="teSave">Dolaba ekle</button><button class="btn" id="teDel">Sil</button></div>
+            <div class="dro-note">Takımlar bu tarayıcıda saklanır. Sürükle döndür, tekerlek yakınlaştır.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bench" id="bench" hidden>
+      <div class="bench-box" role="dialog" aria-label="Parça masası">
+        <div class="bench-head"><b>PARÇA MASASI</b><span id="bnInfo"></span><button class="btn" id="bnClose">Kapat</button></div>
+        <div class="bench-body">
+          <div class="bench-view" id="bnView"><canvas id="bnC" aria-label="Parçanın 3B görünümü"></canvas><div class="bench-hint" id="bnHint"></div></div>
+          <div class="bench-side">
+            <div class="sub">Ölçü aleti</div>
+            <div class="tools"><button class="btn on" data-bt="cal">Kumpas</button><button class="btn" data-bt="h">Yükseklik</button><button class="btn" data-bt="hole">Delik / cep</button></div>
+            <div class="sub">Kesit</div>
+            <div class="sec-row"><span>X</span><input type="range" id="bnSecX" min="0" max="150" step="0.5" value="150"><output id="bnSecXv">kapalı</output></div>
+            <div class="sec-row"><span>Y</span><input type="range" id="bnSecY" min="0" max="100" step="0.5" value="100"><output id="bnSecYv">kapalı</output></div>
+            <div class="sub">Ölçümler</div>
+            <ul id="bnList"></ul>
+            <button class="btn" id="bnClear">Ölçümleri temizle</button>
+            <div class="dro-note">Sol tık ölç, sağ tık sürükle döndür, tekerlek yakınlaştır. Kesit kaydırıcıları parçayı o düzlemden keser; iç cepler ve delikler görünür.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="report" id="report" hidden>
+      <div class="box" role="dialog" aria-labelledby="rpTitle">
+        <div class="rp-head"><span id="rpJob">İŞ 1</span><h2 id="rpTitle">Muayene raporu</h2></div>
+        <div class="stars" id="rpStars"></div>
+        <div class="rp-hero" id="rpHero"></div>
+        <div class="rp-tags" id="rpTags"></div>
+        <p class="rp-sum" id="rpSum"></p>
+        <button class="rp-more" id="rpMore" aria-expanded="false">Detayları gör <span>▾</span></button>
+        <div class="rp-detail" id="rpDetail" hidden>
+          <div class="rp-score"><b id="rpTotal">0</b><span>/ 100 puan</span><em id="rpVerdict"></em></div>
+          <div class="rp-bars" id="rpBars"></div>
+          <div class="rp-tab"><table id="rpTable"></table></div>
+        </div>
+        <div class="rp-btns">
+          <button class="btn" id="rpClose">Kapat</button>
+          <button class="btn" id="rpInspect">Parçayı incele</button>
+          <button class="btn" id="rpRetry">Tekrar dene</button>
+          <button class="btn start" id="rpNext">Sonraki iş</button>
+        </div>
+      </div>
+    </div>
+    <div class="alarm" id="alarm" hidden>
+      <div class="box" role="alert" aria-labelledby="alarmTitle">
+        <h2 id="alarmTitle">ALARM</h2>
+        <p id="alarmMsg"></p>
+        <small id="alarmHint">Mil durduruldu ve takım kırıldı. Alarmı sıfırlayın, takımı yukarı çekin ve takım dolabından yeni bir takım takın.</small>
+        <div class="row2"><button class="btn big stop" id="alarmReset">Alarmı sıfırla</button><button class="btn big start" id="alarmFix">Sıfırla ve yeni takım tak</button></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="pendant">
+    <div class="brand"><h1>Manuel Freze</h1><span id="brandMat">Al 6061 · 150×100×40</span></div>
+
+    <div class="sec" data-panel="console">
+      <h2><span>Kumanda paneli</span></h2>
+      <div class="cp">
+        <div class="cp-top">
+          <div class="cp-left">
+            <div class="cp-label"><b>SNOOP3000</b> · MANUEL FREZE KUMANDASI</div>
+            <div class="cp-screen" id="cpScreen" aria-live="polite">
+              <div class="lcd-head"><span id="lcdMode">DRO · MUTLAK</span><span id="lcdState">HAZIR</span></div>
+              <div class="lcd-page" id="lcdP1">
+                <div class="lcd-ax" data-ax="x"><b>X</b><span id="lcdX">+0.000</span></div>
+                <div class="lcd-ax" data-ax="y"><b>Y</b><span id="lcdY">+0.000</span></div>
+                <div class="lcd-ax" data-ax="z"><b>Z</b><span id="lcdZ">+0.000</span></div>
+                <div class="lcd-info"><span id="lcdS">S 0</span><span id="lcdF">F 0</span><span id="lcdT">T3</span></div>
+              </div>
+              <div class="lcd-page" id="lcdP2" hidden>
+                <div class="lcd-row"><span>YÜK</span><span class="lcd-bar"><i id="lcdLoad"></i></span><span id="lcdLoadV">—</span></div>
+                <div class="lcd-row"><span>GÜÇ</span><span class="lcd-bar"><i id="lcdPow"></i></span><span id="lcdPowV">—</span></div>
+                <div class="lcd-row"><span>MALZ.</span><span id="lcdMat" class="lcd-wide">—</span></div>
+                <div class="lcd-row"><span>SICAK.</span><span id="lcdTemp" class="lcd-wide">—</span></div>
+                <div class="lcd-row"><span>AŞINMA</span><span id="lcdWear" class="lcd-wide">—</span></div>
+                <div class="lcd-row"><span>Ra</span><span id="lcdRa" class="lcd-wide">—</span></div>
+                <div class="lcd-row"><span>TALAŞ</span><span id="lcdChip" class="lcd-wide">—</span></div>
+              </div>
+              <div class="lcd-input"><span id="lcdSel">EKSEN SEÇ</span><span id="lcdBuf"></span></div>
+              <div class="lcd-soft"><span>X0</span><span>Y0</span><span>Z0</span><span>1/2</span><span id="lcdPgK">DURUM</span></div>
+            </div>
+            <div class="cp-softkeys" id="cpSoft"><button data-sk="0" aria-label="X sıfırla"></button><button data-sk="1" aria-label="Y sıfırla"></button><button data-sk="2" aria-label="Z sıfırla"></button><button data-sk="3" aria-label="Seçili ekseni yarıya böl"></button><button data-sk="4" aria-label="Ekran sayfası"></button></div>
+          </div>
+          <div class="cp-keypad" id="cpKeys">
+            <button class="key ax" data-k="x">X</button><button class="key ax" data-k="y">Y</button><button class="key ax" data-k="z">Z</button>
+            <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+            <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+            <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+            <button class="key" data-k="±">±</button><button class="key" data-k="0">0</button><button class="key" data-k=".">.</button>
+            <button class="key amber" data-k="clr">CLR</button><button class="key go" data-k="git" title="Yazılan değerlere git">GİT</button><button class="key ent" data-k="ent" title="Seçili eksene değeri ata">ENT</button>
+          </div>
+        </div>
+        <div class="cp-bottom">
+          <div class="cp-group">
+            <div class="cp-cap">MİL</div>
+            <div class="cp-btns">
+              <div class="cp-b"><button class="rb green" id="cpStart" aria-label="Mil start"></button><span>START</span></div>
+              <div class="cp-b"><button class="rb red" id="cpStop" aria-label="Mil stop"></button><span>STOP</span></div>
+              <div class="cp-b"><button class="toggle" id="cpDir" aria-label="Mil yönü"><i></i></button><span id="cpDirL">İLERİ</span></div>
+              <div class="cp-b"><button class="rb blue" id="cpCool" aria-label="Soğutma sıvısı"></button><span>SOĞUTMA</span></div>
+            </div>
+          </div>
+          <div class="cp-group knobs">
+            <div class="cp-k"><div class="knob" id="kRpm" tabindex="0" aria-label="Devir topuzu"></div><span>DEVİR <b id="kRpmV"></b></span></div>
+            <div class="cp-k"><div class="knob" id="kFeed" tabindex="0" aria-label="İlerleme topuzu"></div><span>İLERLEME <b id="kFeedV"></b></span></div>
+          </div>
+          <div class="cp-group mpg-g">
+            <div class="cp-k"><div class="knob small" id="kAxis" tabindex="0" aria-label="El çarkı ekseni"></div><span>EKSEN</span></div>
+            <div class="cp-k"><div class="knob small" id="kMul" tabindex="0" aria-label="El çarkı adımı"></div><span>ADIM</span></div>
+            <div class="cp-k"><div class="mpg" id="cpMpg" aria-label="El çarkı (MPG)"><i></i></div><span>EL ÇARKI <b id="cpMpgL">X ×1</b></span></div>
+          </div>
+          <div class="cp-group">
+            <div class="cp-cap">HAREKET</div>
+            <div class="cp-jog" id="cpJog">
+              <span></span><button data-j="y1">Y+</button><span></span><button data-j="z1">Z+</button>
+              <button data-j="x-1">X−</button><button class="rapid" id="cpRapid">HIZLI</button><button data-j="x1">X+</button><span></span>
+              <span></span><button data-j="y-1">Y−</button><span></span><button data-j="z-1">Z−</button>
+            </div>
+          </div>
+          <div class="cp-group last">
+            <div class="cp-lamps"><span class="lamp2 on g" title="Güç"></span><span class="lamp2 a" id="lpSpin" title="Mil"></span><span class="lamp2 r" id="lpAlarm" title="Alarm"></span></div>
+            <div class="cp-lampl"><span>GÜÇ</span><span>MİL</span><span>ALARM</span></div>
+            <button class="cp-estop" id="cpEstop" aria-label="Acil stop"><span>ACİL STOP</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec" data-panel="jobs">
+      <h2><span>İş emirleri</span><span id="starTotal">0 / 15 yıldız</span></h2>
+      <div class="mode-sw" id="modeSw"><button class="btn on" data-mode="free">Serbest atölye</button><button class="btn" data-mode="career">Kariyer</button></div>
+      <div class="career" id="career" hidden>
+        <div class="cr-head"><div><span class="k">Kasa</span><b id="crMoney"></b></div><div><span class="k">İtibar</span><b id="crRep"></b><small id="crLevel"></small></div><div><span class="k">Teslim</span><b id="crDone"></b></div></div>
+        <div class="sub">Sipariş panosu</div>
+        <div class="jobs orders" id="orderList"></div>
+        <div class="cr-foot"><button class="btn start" id="crShop">Dükkân</button><button class="btn" id="crRefresh">Panoyu yenile</button><button class="btn" id="crReset">Kariyeri sıfırla</button></div>
+      </div>
+      <div class="jobs" id="jobList"></div>
+      <div class="job-card" id="jobCard">
+        <div class="jc-head"><span class="jc-no" id="jcNo">SERBEST</span><b id="jcTitle">Serbest çalışma</b></div>
+        <p id="jcBrief">İş emri seçmeden tezgâhı serbestçe kullanın. Bir iş seçerseniz teknik resim açılır, teslimde parça ölçülür ve puanlanır.</p>
+        <div class="jc-meta" id="jcMeta"></div>
+        <div class="row2" id="jcBtns" hidden>
+          <button class="btn" id="jobStart">İşe başla</button>
+          <button class="btn start" id="jobSubmit">Parçayı teslim et</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec" data-panel="dro">
+      <h2><span>Dijital okuma (DRO)</span><span>mm</span></h2>
+      <div class="dro">
+        <div class="axis"><span class="ax">X</span><output id="droX">+0.000</output><input id="setX" inputmode="decimal" placeholder="değer" aria-label="X değeri ata"><button class="btn sm" data-set="x">Ata</button><button class="btn sm" data-zero="x">X0</button></div>
+        <div class="axis"><span class="ax">Y</span><output id="droY">+0.000</output><input id="setY" inputmode="decimal" placeholder="değer" aria-label="Y değeri ata"><button class="btn sm" data-set="y">Ata</button><button class="btn sm" data-zero="y">Y0</button></div>
+        <div class="axis"><span class="ax">Z</span><output id="droZ">+0.000</output><input id="setZ" inputmode="decimal" placeholder="değer" aria-label="Z değeri ata"><button class="btn sm" data-set="z">Ata</button><button class="btn sm" data-zero="z">Z0</button></div>
+      </div>
+      <div class="dro-note">Sıfır noktası başlangıçta parçanın sol-ön-üst köşesinde. Takım değişince boylar farklı olduğu için Z'yi yeniden sıfırlayın. Kenar bulucuyla X/Y alırken "Ata" ile yarıçapı girin (ör. -5).</div>
+    </div>
+
+    <div class="sec" data-panel="wheels">
+      <h2><span>El çarkları</span><span>sürükle · kaydır</span></h2>
+      <div class="seg" id="muls">
+        <button data-mul="0.01" class="on">×1 · 0.01</button><button data-mul="0.1">×10 · 0.1</button><button data-mul="1">×100 · 1</button>
+      </div>
+      <div class="wheels">
+        <figure><canvas id="hwx" aria-label="X el çarkı"></canvas><figcaption><b>X</b><span id="hwxv">+0.000</span></figcaption></figure>
+        <figure><canvas id="hwy" aria-label="Y el çarkı"></canvas><figcaption><b>Y</b><span id="hwyv">+0.000</span></figcaption></figure>
+        <figure><canvas id="hwz" aria-label="Z el çarkı"></canvas><figcaption><b>Z</b><span id="hwzv">+0.000</span></figcaption></figure>
+      </div>
+      <div class="dro-note">Kolu saat yönünde çevirmek eksende artı yöne götürür; çarkta 100 çentik var, çarpan bir çentiğin kaç mm olduğunu belirler. Ne kadar hızlı çevirirsen ilerleme o kadar artar, takım yükünü göstergeden izle.</div>
+    </div>
+
+    <div class="sec" data-panel="spindle">
+      <h2><span>İş mili</span><span id="spinState">DURUYOR</span></h2>
+      <canvas id="spGauge" class="gauge" aria-label="Devir göstergesi"></canvas>
+      <div class="spin-row">
+        <button class="btn big start" id="spStart">MİL START</button>
+        <button class="btn big stop" id="spStop">MİL STOP</button>
+      </div>
+      <button class="btn" id="spDir">Mil yönü: İLERİ ⟳</button>
+      <div class="field"><label for="rpm">Devir</label><input type="range" id="rpm" min="100" max="4200" step="10" value="2000"><output id="rpmOut">2000 dev/dk</output></div>
+      <div class="field"><label for="feed">İlerleme</label><input type="range" id="feed" min="10" max="1600" step="5" value="300"><output id="feedOut">300 mm/dk</output></div>
+      <div class="rec"><span>Önerilen: <b id="recTxt">—</b></span><button class="btn" id="applyRec">Uygula</button></div>
+      <div>
+        <button class="btn" id="coolant" style="width:100%">Soğutma sıvısı: KAPALI</button>
+        <button class="btn" id="mute" hidden>Ses: AÇIK</button>
+      </div>
+    </div>
+
+    <div class="sec" data-panel="jog">
+      <h2><span>Eksen hareketi</span><span id="rapidState">ilerleme</span></h2>
+      <div class="seg-label"><span>Kol adımı (mm)</span><span>tıkla: 1 adım · basılı tut: sürekli</span></div>
+      <div class="seg" id="steps">
+        <button data-step="0.01">0.01</button><button data-step="0.1">0.1</button><button data-step="1" class="on">1</button><button data-step="10">10</button>
+      </div>
+      <div class="jog" id="jog">
+        <span></span><button data-ax="y" data-dir="1" aria-label="Y artı">Y+</button><span></span><span></span><button data-ax="z" data-dir="1" aria-label="Z yukarı">Z+</button>
+        <button data-ax="x" data-dir="-1" aria-label="X eksi">X−</button><button class="hold-btn" id="feedHold">DUR</button><button data-ax="x" data-dir="1" aria-label="X artı">X+</button><span></span><button id="rapidBtn" class="hold-btn" style="color:var(--fg);border-color:var(--line);background:var(--panel-2)">HIZLI</button>
+        <span></span><button data-ax="y" data-dir="-1" aria-label="Y eksi">Y−</button><span></span><span></span><button data-ax="z" data-dir="-1" aria-label="Z aşağı">Z−</button>
+      </div>
+      <div class="seg-label"><span>Otomatik tabla ilerlemesi (X)</span><span id="autoState">kapalı</span></div>
+      <div class="row3" id="autoBtns"><button class="btn" data-af="-1">← Sola</button><button class="btn" data-af="0">Dur</button><button class="btn" data-af="1">Sağa →</button></div>
+      <button class="btn" id="drawMode" hidden>Fareyle sür: KAPALI</button>
+      <div class="seg-label"><span>Simülasyon hızı</span></div>
+      <div class="seg" id="sims">
+        <button data-sim="1" class="on">1×</button><button data-sim="2">2×</button><button data-sim="5">5×</button><button data-sim="10">10×</button>
+      </div>
+      <div class="goto"><span>X</span><input id="gx" inputmode="decimal" value="20"><span>Y</span><input id="gy" inputmode="decimal" value="20"><button class="btn" id="goBtn">XY'ye git</button></div>
+    </div>
+
+    <div class="sec" data-panel="tools">
+      <h2><span>Takım</span><span>dolap</span></h2>
+      <div class="cur-tool" id="curTool"><span class="tno" id="ctNo">T3</span><span class="tname" id="ctName">—</span><span class="tmeta" id="ctMeta">—</span></div>
+      <div class="stopline" style="grid-template-columns:1fr auto"><span class="dro-note" id="ctWear">VB 0.00 mm</span><button class="btn" id="renewTool">Takımı yenile</button></div>
+      <div class="holder-row" id="holderRow"><span class="hl-lab">Tutucu</span><div class="seg" id="holderSeg"><button data-h="er">ER</button><button data-h="weldon">Weldon</button><button data-h="shrink">Shrink</button><button data-h="hydro">Hidrolik</button></div></div>
+      <div class="dro-note" id="holderNote"></div>
+      <button class="btn" id="teOpen" style="width:100%" hidden>Takım editörü: bu takımı kopyala ya da düzenle</button>
+      <button class="btn" id="airBtn" style="width:100%" hidden>Hava tabancası: KAPALI</button>
+      <div class="sub">Dolap</div>
+      <div class="rack" id="rack"></div>
+      <div class="probe-box dial-box" id="dialBox" hidden>
+        <div class="sub">Mekanik 3B taster</div>
+        <div class="dt-row">
+          <svg viewBox="-50 -50 100 100" class="dt-dial" aria-hidden="true"><circle r="47" fill="#f3f1ea" stroke="#1b1d1f" stroke-width="2"/>
+            <g id="dtTicks"></g><circle cy="18" r="9" fill="none" stroke="#1b1d1f" stroke-width=".8"/>
+            <g id="dtTurns"><line x1="0" y1="18" x2="0" y2="11" stroke="#c0271c" stroke-width="1.6"/></g>
+            <g id="dtNeedle"><line x1="0" y1="8" x2="0" y2="-40" stroke="#1b1d1f" stroke-width="2" stroke-linecap="round"/><circle r="3" fill="#1b1d1f"/></g></svg>
+          <div><b class="dt-read" id="dtRead">temas yok</b><div class="dro-note" id="dtHint">Parçaya el çarkıyla yavaşça yaklaşın; bilye değince ibre döner.</div></div>
+        </div>
+      </div>
+      <div class="probe-box" id="probeBox" hidden>
+        <div class="sub">3B taster döngüleri</div>
+        <div class="pr-grid"><button class="btn" data-pr="x+">X+ kenar</button><button class="btn" data-pr="x-">X− kenar</button><button class="btn" data-pr="y+">Y+ kenar</button><button class="btn" data-pr="y-">Y− kenar</button>
+          <button class="btn start" data-pr="corner">Sol-ön köşe</button><button class="btn start" data-pr="hole">Delik merkezi</button><button class="btn" data-pr="z">Z yüzey</button><button class="btn" data-pr="stop">Dur</button></div>
+        <label class="pr-zero"><input type="checkbox" id="prZero" checked> Bulunan noktayı sıfır yap</label>
+        <div class="dro-note" id="prOut">Mil DURURKEN kullanın. Kenar: tasteri parçanın yanına, üst yüzeyin 2–4 mm altına getirip yönü seçin. Köşe: sol-ön köşenin 5–15 mm dışından başlayın. Delik: tasteri deliğin içine indirin.</div>
+      </div>
+    </div>
+
+    <div class="sec" data-panel="log">
+      <h2><span>Olay kaydı</span></h2>
+      <ul class="log" id="log"></ul>
+    </div>
+
+    <div class="sec" data-panel="part">
+      <h2><span>Parça</span></h2>
+      <div class="sub">Ham parça</div>
+      <select id="matSel" aria-label="Malzeme"><option value="al">Al 6061 alüminyum</option><option value="s235">S235 (St37) yapı çeliği</option><option value="c45">C45 ıslah çeliği</option><option value="ss304">304 paslanmaz çelik</option><option value="brass">Pirinç (CuZn39Pb3)</option><option value="gg25">GG25 gri döküm</option><option value="pom">Delrin (POM) plastik</option><option value="pa6">PA6 polyamid (naylon)</option></select>
+      <div class="stock-row"><label>X GENİŞLİK<input id="stW" type="number" min="20" max="220" step="0.5" value="150"></label><label>Y DERİNLİK<input id="stD" type="number" min="20" max="135" step="0.5" value="100"></label><label>Z YÜKSEKLİK<input id="stH" type="number" min="10" max="80" step="0.5" value="40"></label><button class="btn" id="stApply" title="Bu ölçülerde yeni ham parça bağla">Uygula</button></div>
+      <div class="row2">
+        <button class="btn" id="clearChips">Talaşları süpür</button>
+        <button class="btn" id="newPart">Yeni ham parça</button>
+      </div>
+      <div class="sub">Bağlama</div>
+      <div class="fix-row"><div class="seg" id="fixSeg"><button data-fx="vise" class="on">Mengene</button><button data-fx="clamp">Pabuç</button><button data-fx="vac">Vakum</button><button data-fx="rot">Döner</button><button data-fx="div">Divizör</button></div></div>
+      <div class="seg" id="clampLay" hidden><button data-cl="fb" class="on">Pabuç ön-arka</button><button data-cl="lr">Pabuç sol-sağ</button></div>
+      <div class="par-box" id="parBox">
+        <div class="holder-row"><span class="hl-lab">Paraleller</span><div class="par-off"><input type="range" id="parOff" min="0" max="35" step="1" value="3" aria-label="Paralellerin kenardan uzaklığı"><output id="parOffV">kenardan 3 mm</output></div></div>
+        <div class="seg" id="parW"><button data-pw="10" class="on">10 mm</button><button data-pw="6">6 mm</button><button data-pw="3">3 mm</button><button data-pw="sac">Kurban plaka</button></div>
+      </div>
+      <div class="vac-g" id="vacG" hidden><span>Vakum <b id="vgP">—</b></span><span>Tutma <b id="vgH">—</b></span><span>Kesme <b id="vgF">0 N</b></span><div class="meter"><i id="vgM"></i></div></div>
+      <div class="rot-box" id="rotBox" hidden>
+        <div class="rot-head"><span class="hl-lab" id="rotLab">C ekseni</span><b id="rotA">0.000°</b><button class="btn" id="rotLock">KİLİTLİ</button></div>
+        <div class="seg rot-steps" id="rotSteps"><button data-ra="-90">−90</button><button data-ra="-15">−15</button><button data-ra="-1">−1</button><button data-ra="-0.25">−¼</button><button data-ra="0.25">+¼</button><button data-ra="1">+1</button><button data-ra="15">+15</button><button data-ra="90">+90</button></div>
+        <div class="goto"><span>C</span><input id="rotTgt" inputmode="decimal" value="0"><button class="btn" id="rotGo">Açıya git</button><button class="btn" id="rotZero">C0</button></div>
+      </div>
+      <div class="dro-note" id="fixNote">Mengene: X 20–220, Y 20–135 mm parça. Çeneler üstten 5 mm aşağıda biter.</div>
+      <div class="sub">Bu parça</div>
+      <div class="stats">
+        <div class="stat"><span>Kaldırılan talaş</span><b id="stVol">0.00 cm³</b></div>
+        <div class="stat"><span>Kesme süresi</span><b id="stTime">0:00</b></div>
+      </div>
+      <button class="btn start" id="benchOpen" style="width:100%;margin-top:6px" hidden>Parça masası: incele, ölç, kesit al</button>
+      <div style="display:none">
+      </div>
+    </div>
+
+    <details open data-panel="keys">
+      <summary>Klavye kısayolları</summary>
+      <div class="keys">
+        <kbd>← →</kbd><span>X ekseni</span>
+        <kbd>↑ ↓</kbd><span>Y ekseni</span>
+        <kbd>PgUp PgDn</kbd><span>Z ekseni (ya da W / S)</span>
+        <kbd>Shift</kbd><span>basılıyken hızlı hareket (3000 mm/dk)</span>
+        <kbd>Boşluk</kbd><span>mil start / stop</span>
+        <kbd>1 2 3 4</kbd><span>kol adımı 0.01 / 0.1 / 1 / 10</span>
+        <kbd>C</kbd><span>soğutma sıvısı</span>
+        <kbd>R</kbd><span>mil yönü İLERİ / GERİ</span>
+        <kbd>G</kbd><span>fareyle sürme</span>
+        <kbd>B</kbd><span>hava tabancası (basılı tut, üfle)</span>
+        <kbd>Q</kbd><kbd>E</kbd><span>döner tablayı çevir (basılı tut)</span>
+        <kbd>Esc</kbd><span>acil stop: mil ve tüm hareketler</span>
+      </div>
+    </details>
+  </aside>
+  <div class="panel-layer" id="panelLayer"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
+<script type="module" src="src/js/main.js"></script>

@@ -1,4 +1,8 @@
 // ── Havai fişek (FW): kabul edilen parçada 2B tuvalde gösteri
+import { $, S, app, log } from './00-temel.js';
+import { ac, noiseHit } from './01-ses.js';
+import { selectJob, startJob, submitJob } from './10-is-emri-muayene.js';
+
 const FW = (() => {
   let cv = null, g = null, parts = [], rockets = [], raf = 0, left = 0, nextT = 0, last = 0;
   const COLS = [[255, 200, 70], [255, 120, 60], [120, 220, 255], [150, 255, 160], [255, 255, 230], [255, 110, 190]];

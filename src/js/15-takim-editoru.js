@@ -1,4 +1,9 @@
 // ── Takım editörü (TE): tip, ölçüler, kaplama, fiyat, kesmeye etkiler, kayıt
+import { $, S, TOOLS, app, clamp, isDrill, log, mat, recFeed, recRpm } from './00-temel.js';
+import { initAudio } from './01-ses.js';
+import { HOLDERS, buildToolInto, buildToolVisual, geoOf, holderOf } from './07-takim-gorsel.js';
+import { renderRack, requestToolChange, updateRec, updateToolUI } from './09-kumanda.js';
+
 const TKEY = 'freze-tools-v1';
 const KIND = {
   end:     { name:'Parmak freze', d:[1, 25], z:[1, 6] },
@@ -236,3 +241,5 @@ const TE = (() => {
    Yüzey türü (SURF) yalnızca görünüm içindir; işlenen hücre işlenmiş rengine geçer. Parça yükseklik haritası olduğundan
    yukarıdan görülebilen her şekil olur (kademe, göbek, çukur, delik, kabarık dikiş, eğik yüzey); dış hat dışı boştur (H = 0). */
 Object.assign(app, { TE, toolMods });   // önceki modüllerin geç başvuruları
+
+export { TE, toolPrice };

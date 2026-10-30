@@ -1,4 +1,17 @@
 // ── Kariyer (CR): kasa, itibar, sipariş üretimi, koşullar, dükkân, ekipman, teslimde ödeme
+import { $, MATS, PD, PH, PW, S, TOOLS, app, isProbe, isTaster, log } from './00-temel.js';
+import { beep, initAudio } from './01-ses.js';
+import { FIXLIM } from './03-tabla-parca.js';
+import { FIX, PAR, warnParallels } from './05-baglama.js';
+import { HOLDERS } from './07-takim-gorsel.js';
+import { renderRack, resetPart, setRackTag, updateToolUI } from './09-kumanda.js';
+import { buildScribe, drawingSVG, drawingTable, inRect, mmss, selectJob, setSelJob } from './10-is-emri-muayene.js';
+import { PM, toolIcon } from './12-dongu-ust-cubuk.js';
+import { chipsOnPart, setFix } from './13-aletler.js';
+import { setStock } from './14-parca-masasi.js';
+import { TE, toolPrice } from './15-takim-editoru.js';
+import { BLANKS, SF, genBlank, loadBlank, r05, rp, rr, withSeed } from './16-hazir-parca.js';
+
 const CR = (() => {
   const KEY = 'freze-career-v1', MKEY = 'freze-mode';
   const PRICE_KG = { al:180, s235:60, c45:80, ss304:220, brass:350, gg25:70, pom:250 };
@@ -378,3 +391,5 @@ const CR = (() => {
 
 
 Object.assign(app, { CR });   // önceki modüllerin geç başvuruları
+
+export { CR };

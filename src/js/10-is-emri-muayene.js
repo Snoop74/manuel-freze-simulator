@@ -1,4 +1,11 @@
 // ── İş emirleri: görevler, teknik resim, markalama, muayene ve puan, teslim raporu
+import { $, C, CUT, EDGE, H, INSP, NX, NY, PD, PH, PW, S, TOOLS, app, clamp, isDrill, log } from './00-temel.js';
+import { beep, initAudio } from './01-ses.js';
+import { rotIn } from './03-tabla-parca.js';
+import { FIX, PAR, markDirty, parAxis, parBands, straps, warnParallels } from './05-baglama.js';
+import { burst } from './06-talas.js';
+import { resetPart } from './09-kumanda.js';
+
 const JOBS = [
   { title:'Yüzey alma', target:180,
     brief:'Ham parçanın üst yüzeyinden 1.00 mm alın. Yüzeyin tamamı işlenmiş ve düz olmalı. T1 alın frezesi bu iş için uygundur.',
@@ -504,3 +511,6 @@ $('rpClose').addEventListener('click', () => { $('report').hidden = true; app.FW
 
 /* ---------------- Havai fişek: başarılı teslimde ekranın üstünde patlar ----------------
    Yıldız sayısı gösteriyi büyütür; 2B tuval, olayı bitince kendini kapatır. Patlama sesi süzülmüş gürültü + kısa çıtırtı. */
+
+export { JOBS, buildScribe, drawingSVG, drawingTable, inRect, mmss, renderJobs, selJob, selectJob, setSelJob,
+  startJob, submitJob };

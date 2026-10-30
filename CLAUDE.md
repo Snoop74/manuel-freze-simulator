@@ -1,18 +1,26 @@
 # Manuel Freze Simülatörü: geliştirme notları
 
 ## Yapı
-- Kaynak `src/` altında. `freze.html` **üretilmiş dosyadır**, elle düzenlenmez; `node build.mjs` her seferinde yeniden yazar. GitHub Pages bu dosyayı yayınlar, o yüzden derlenmiş hali de commit'lenir.
-- `src/sayfa.html`: sayfa şablonu (paneller, düğmeler). `/*@CSS@*/` yerine `src/stil.css`, `//@JS@` yerine modüller girer.
-- `src/js/NN-ad.js`: modüller, sıra numarasıyla birleştirilir ve tek bir `(() => { 'use strict'; ... })()` kapsamında çalışır. Üst düzey adlar (S, H, VX, CR, ...) bütün modüllerde ortak; `import`/`export` yok. Her modülün ilk satırı ne içerdiğini söyler.
-- Sıra önemli: bir modül, kendisinden sonra gelen modülün `const`/`let` adını yalnızca fonksiyon içinden (çalışma anında) kullanabilir; üst düzeyde hemen kullanırsa TDZ hatası verir. `function` bildirimleri tüm kapsama yükselir.
-- Derleyici bağımlılıksız (yalnızca Node). Sözdizimi hatasında `freze.html` yazılmaz, hatalı modül adı söylenir. `node build.mjs --watch` değişince yeniden derler.
+- Kaynak `src/` altında. `freze.html` **üretilmiş dosyadır**, elle düzenlenmez; derleme her seferinde yeniden yazar. GitHub Pages bu dosyayı yayınlar, o yüzden derlenmiş hali de commit'lenir.
+- İlk kurulum: `npm install` (esbuild, acorn, eslint-scope; yalnızca geliştirme için).
+- `npm run build`: önce `tools/analiz.mjs` denetler, sonra `build.mjs` esbuild ile paketleyip `freze.html` (tek dosya) ve `dev.html` üretir. `npm run watch` değiştikçe derler.
+- `dev.html`: aynı sayfa, modüller paketlenmeden `src/js/main.js`'ten doğrudan yüklenir; tarayıcıda dosya dosya hata ayıklama için. Derlemeye gerek kalmadan kaynak düzenlenip sayfa yenilenebilir.
+- `src/sayfa.html`: sayfa şablonu (paneller, düğmeler). `/*@CSS@*/` yerine `src/stil.css`, `//@JS@` yerine paket girer.
+- `src/js/NN-ad.js`: gerçek ES modülleri (`import`/`export`). Her modülün ilk satırı ne içerdiğini söyler. `main.js` hepsini sırayla yükler.
+
+## Modül kuralları (tools/analiz.mjs denetler)
+- **Tek yön:** bir modül yalnızca kendinden ÖNCE gelen (numarası küçük) modülden import eder. Sonraki bir modüldeki adı `app.X` diye kullanır; X, kendi modülünün sonunda `Object.assign(app, { X })` ile kaydolur (`app` 00-temel'de). Yalnızca çalışma anında (fonksiyon içinden) kullanılabilir, modül yüklenirken değil.
+- **Değişkenin sahibi yazar:** import edilen bir `let` başka modülde atanamaz (ES kuralı). Sahibi olan modül bir ayarlayıcı verir: `setMat`, `allocGrid`, `setFIX`, `markThrough`, `withSeed`, ... Nesne özelliklerini (S.x, PAR.w) değiştirmek serbesttir.
+- **Tanımsız ad yok:** import edilmeyen ve tarayıcıda olmayan ad hata sayılır (eksik import). Yeni bir tarayıcı globali gerekirse analiz.mjs'deki GLOBALS listesine eklenir.
+- Yeni modül: numaralı dosya ekle ve `main.js`'e sırasıyla yaz.
 
 ## Test
-- `file://` çalışmaz; `python -m http.server <port>` ile aç (her oturumda farklı port).
-- Hızlı sözdizimi denetimi zaten derlemenin içinde.
+- `file://` çalışmaz; `python -m http.server <port>` ile aç (her oturumda farklı port). Hem `freze.html` hem `dev.html` denenmeli.
+- Önizleme paneli arka plandayken requestAnimationFrame durur; testte kareleri elle sür.
 
 ## Yol haritası (yapılandırma)
 1. ✅ Dosyalara bölme, birebir aynı çıktı (2026-10-30)
-2. Gerçek modüller: ortak durumu (H, NX, S, ...) tek bir durum nesnesine toplayıp `import`/`export`
-3. TypeScript (önce JSDoc + `checkJs`, sonra dosya dosya `.ts`), Vite
-4. Steam/masaüstü hazırlığı: three.js'i yerel paketle (CDN yok), kayıt katmanı (localStorage → dosya / Steam Cloud), ayarlar (çözünürlük, grafik kalitesi), Electron ya da Tauri kabuğu
+2. ✅ Gerçek ES modülleri, esbuild paketi, dev.html, modül denetleyici (2026-10-30)
+3. TypeScript (önce JSDoc + `checkJs`, sonra dosya dosya `.ts`); modül adlarını numarasız klasörlere taşımak (fizik/, arayuz/, kariyer/...)
+4. Torna ile ortak kod (`ortak/`: ses, paneller, kasa), atölye birleştirmesi
+5. Steam/masaüstü hazırlığı: three.js'i npm'den paketle (CDN yok), kayıt katmanı (localStorage → dosya / Steam Cloud), ayarlar (çözünürlük, grafik kalitesi), Electron ya da Tauri kabuğu

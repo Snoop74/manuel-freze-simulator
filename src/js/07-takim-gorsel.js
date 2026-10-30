@@ -1,4 +1,7 @@
 // ── Takım görselleri ve tutucular: helisli gövdeler, ER/Weldon/shrink/hidrolik, kadranlı taster, takım profili
+import { S, TAN59, TAU, app, isDrill, tool } from './00-temel.js';
+import { box, cyl, smat, toolRot } from './02-sahne-tezgah.js';
+
 const TMAT = {
   carbide: smat(0xa3aaaf, 0.26, 0.92, 0.9),           // kaplamasız karbür
   altin:   smat(0x46424e, 0.32, 0.85, 0.9),           // AlTiN kaplama: koyu mor-gri
@@ -229,3 +232,6 @@ function profile(T, d, tip) {
   }
 }
 Object.assign(app, { TMAT, profile });   // önceki modüllerin geç başvuruları
+
+export { HKEY, HOLDERS, HSEL, TMAT, buildToolInto, buildToolVisual, dialNeedle, dialTurns, geoOf, holderOf,
+  holderR, holds, profile };

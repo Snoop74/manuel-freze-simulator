@@ -1,4 +1,11 @@
 // ── Hazır parçalar: yüzey türleri, tohumlu rastgele, BLANKS şablonları, loadBlank; GEÇİCİ galeri (BG)
+import { $, C, H, MATS, NX, NY, PH, S, SURF, app, clamp, log } from './00-temel.js';
+import { initAudio } from './01-ses.js';
+import { FIX, buildVise, markDirty, markThrough, setJawOverride } from './05-baglama.js';
+import { resetPart, spindle } from './09-kumanda.js';
+import { setFix } from './13-aletler.js';
+import { setStock } from './14-parca-masasi.js';
+
 const SF = { raw:0, cast:1, ground:2, old:3, weld:4, scale:5 };
 const SFNAME = ['ham', 'döküm', 'taşlanmış', 'eski işleme', 'kaynak dikişi', 'hadde tufalı'];
 // pürüzsüz rastgele dalgalanma (döküm yüzeyi): birkaç sinüsün toplamı, sivri üçgen yapmaz
@@ -201,3 +208,5 @@ const BG = (() => {
    teslimde parça ölçülür (iş emirleriyle aynı muayene) ve ödeme yapılır. Takımlar satın alınır; kırılan takım gider,
    köreleni bilemek ücretlidir. İtibar arttıkça daha büyük, daha zor ve daha iyi ödeyen işler gelir. */
 Object.assign(app, { BG, SF });   // önceki modüllerin geç başvuruları
+
+export { BLANKS, SF, genBlank, loadBlank, r05, rp, rr, withSeed };

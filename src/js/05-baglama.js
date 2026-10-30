@@ -1,4 +1,9 @@
 // ── Bağlama: divizör gövdesi, mengene, pabuç, paraleller, çarpışma kutuları, parça yüzeyinin çizimi
+import { C, CUT, H, INSP, NX, NY, PD, PH, PW, SURF, allocGrid, app, clamp, log, mat } from './00-temel.js';
+import { M, MX, box, boxR, cyl, hwheel, rbox, smat } from './02-sahne-tezgah.js';
+import { ROT, rotG, rotIn, table, viseBase } from './03-tabla-parca.js';
+import { DIVY, DIVZ, VX } from './04-voksel.js';
+
 /* ---- Parça mesh'i: ham parça ölçüsü değişince (buildStock) yükseklik haritası, mesh ve mengene yeniden kurulur ---- */
 const topMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.34, metalness:0.62 });
 topMat.envMapIntensity = 0.45; M.raw.envMapIntensity = 0.45;   // düz üst yüzey ortamın parlak tavanını yansıtıp beyaza dönmesin
@@ -282,3 +287,7 @@ function flushMesh() {
 /* ---- Talaşlar: yassı kesitli, kıvrık şeritler ----
    Freze talaşı bir ağzın kestiği virgül biçimli şerittir: bir ucu ince, öbür ucu kalın; bir yüzü takıma sürtünüp parlar, öbürü mat kalır.
    Her biçimin birkaç rastgele çeşidi üretilir. Talaşlar havada döner, sekip yatar ve düştükleri yerde yığılır (iç içe geçmez). */
+
+export { FIX, MK1, MK2, PAR, TAPC, TINTC, buildStock, buildVise, clampLay, divCrank, divRot, flushMesh, jawTop,
+  markDirty, markStockReady, markThrough, nV, parAxis, parBands, parConflicts, rotCrank, setClampLay, setFIX,
+  setJawOverride, stockBase, straps, syncFixtures, topGeo, topMat, topMesh, walls, warnParallels };

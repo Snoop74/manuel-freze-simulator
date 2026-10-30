@@ -1,4 +1,10 @@
 // ── Talaşlar ve partiküller: şerit talaş, yığın, savrulma, duman, kıvılcım, talaş biçimi
+import { C, H, NX, PD, PW, S, TAU, app, isDrill, mat, tool } from './00-temel.js';
+import { scene } from './02-sahne-tezgah.js';
+import { LX, LY, ROT, table, toLv } from './03-tabla-parca.js';
+import { DIVY, DIVZ, VX } from './04-voksel.js';
+import { FIX, jawTop, straps } from './05-baglama.js';
+
 const chipMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.3, metalness:0.85, side:THREE.DoubleSide });
 // Eğri boyunca dikdörtgen kesitli şerit. f(t) eğri; genişlik kıvrım ekseni (y) yönünde, kalınlık h(t) eğrinin iç-dış yönünde
 function ribbonGeo(f, seg, w, h) {
@@ -346,3 +352,6 @@ function chipsFor(nx, ny, z, T, vol, form, heat) {
    Bu kesit eksen boyunca helis açısına göre döndürülerek süpürülür; uçta düz, küresel ya da konik kapanış olur.
    Geometri tamamen parametrelerden üretilir (çap, ağız sayısı, helis açısı, kanal boyu, göbek, köşe), böylece takım ileride düzenlenebilir. */
 Object.assign(app, { groundAt });   // önceki modüllerin geç başvuruları
+
+export { CHIP_TXT, ambientParticles, burst, chipForm, chipMat, chipsFor, clearChips, emit, groundAt, kickChips,
+  liveChips, psAdd, psAlpha, updateChips, updatePS };

@@ -1,11 +1,13 @@
 // ── Sahne ve tezgâh: renderer, ışık, malzemeler, atölye, gövde, kafa, kovan, kollar, soğutma hortumu
+import { $, S, TAU, app, clamp, tool } from './00-temel.js';
+
 const canvas = $('c'), stage = $('stage');
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 } catch (e) {
   stage.innerHTML = '<p style="padding:24px">Bu tarayıcı WebGL desteklemiyor; simülasyon çalışamıyor.</p>';
-  return;
+  throw new Error('WebGL yok');
 }
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
 renderer.shadowMap.enabled = true;
@@ -394,3 +396,7 @@ function updateCoolant(dt, tip) {
   dropsVisible = any;
 }
 
+
+export { M, MX, bStart, box, boxR, camera, canvas, controls, coolHandle, coolValve, cyl, hwheel, lever,
+  motorSwitch, mush, quill, rbox, renderer, scene, smat, spLampMat, spindleG, stage, startBtnMat, toolRot,
+  updateCoolant, zFine, zLever };

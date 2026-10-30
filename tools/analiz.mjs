@@ -1,6 +1,7 @@
-// Modül analizi: her modülün üst düzey adları, başka modüllerden kullandıkları,
-// başka modülün değişkenine yazdıkları ve ileri (sonraki modüle) başvurular.
-// Kullanım: node tools/analiz.mjs [--json]
+// Modül denetimi: her modül neyi nereden alıyor, kural dışı bağımlılık ve tanımsız ad var mı.
+// Kurallar: bir modül yalnızca kendinden ÖNCE gelen modülden import eder (sonrakine app.X ile ulaşır);
+// import edilmeyen ve tarayıcıda da olmayan bir ad kullanılmaz (eksik import, çalışınca ReferenceError olurdu).
+// Kullanım: node tools/analiz.mjs
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,56 +11,38 @@ import * as eslintScope from 'eslint-scope';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = join(ROOT, 'src', 'js');
 const files = readdirSync(DIR).filter(f => /^\d\d-.*\.js$/.test(f)).sort();
+// tarayıcı ve dil globalleri (yeni bir tane gerekirse buraya eklenir)
+const GLOBALS = new Set(`THREE window document performance navigator location localStorage console Math JSON Object Array
+  Number String Boolean Symbol Map Set WeakMap Promise Date Error TypeError RangeError RegExp Infinity NaN undefined
+  isFinite isNaN parseFloat parseInt setTimeout clearTimeout setInterval clearInterval requestAnimationFrame
+  cancelAnimationFrame Float32Array Float64Array Uint8Array Uint16Array Uint32Array Int8Array Int16Array Int32Array
+  Uint8ClampedArray ArrayBuffer DataView Blob URL Image ImageData AudioContext webkitAudioContext OfflineAudioContext
+  Element HTMLElement HTMLCanvasElement KeyboardEvent PointerEvent MouseEvent Event CustomEvent ResizeObserver
+  getComputedStyle matchMedia devicePixelRatio innerWidth innerHeight alert confirm structuredClone queueMicrotask
+  MutationObserver IntersectionObserver globalThis encodeURIComponent decodeURIComponent btoa atob Reflect Proxy BigInt`.split(/\s+/).filter(Boolean));
 
-const mods = files.map((f, idx) => {
-  const src = '(() => {\n' + readFileSync(join(DIR, f), 'utf8') + '\n})';
-  const ast = acorn.parse(src, { ecmaVersion: 2022, sourceType: 'script', locations: true, ranges: true });
-  const sm = eslintScope.analyze(ast, { ecmaVersion: 2022, sourceType: 'script' });
-  const fnScope = sm.scopes.find(s => s.type === 'function' && s.block.type === 'ArrowFunctionExpression' && s.upper && s.upper.type === 'global');
-  const decls = new Map();
-  for (const v of fnScope.variables) {
-    if (v.name === 'arguments') continue;
-    const d = v.defs[0];
-    decls.set(v.name, { kind: d.type === 'FunctionName' ? 'function' : d.type === 'ClassName' ? 'class' : d.parent?.kind || d.type,
-      reassigned: v.references.some(r => r.isWrite() && !r.init) });
+let bad = 0;
+const order = new Map(files.map((f, i) => [f, i]));
+const unknown = new Map();
+for (const [i, f] of files.entries()) {
+  const ast = acorn.parse(readFileSync(join(DIR, f), 'utf8'), { ecmaVersion: 2022, sourceType: 'module', ranges: true, locations: true });
+  const sm = eslintScope.analyze(ast, { ecmaVersion: 2022, sourceType: 'module' });
+  const mod = sm.scopes.find(s => s.type === 'module');
+  let nImp = 0; const from = new Set();
+  for (const n of ast.body) if (n.type === 'ImportDeclaration') {
+    const src = n.source.value.replace('./', '');
+    nImp += n.specifiers.length; if (n.specifiers.length) from.add(src);
+    if (n.specifiers.length && !(order.get(src) < i)) { console.log(`✗ ${f}: sonraki ya da bilinmeyen modülden import (${src})`); bad++; }
   }
-  return { f, idx, decls, through: fnScope.through, fnScope };
-});
-
-const owner = new Map();
-for (const m of mods) for (const n of m.decls.keys()) {
-  if (owner.has(n)) console.warn(`! ${n} iki modülde tanımlı: ${owner.get(n).f} ve ${m.f}`);
-  owner.set(n, m);
-}
-
-const report = [];
-for (const m of mods) {
-  const uses = new Map();   // ad -> { from, write, topLevel }
-  for (const r of m.through) {
-    const o = owner.get(r.identifier.name);
-    if (!o) continue;   // tarayıcı/THREE gibi gerçek global
-    const u = uses.get(r.identifier.name) || { from: o.f, fromIdx: o.idx, write: false, top: false };
-    if (r.isWrite()) u.write = true;
-    if (r.from === m.fnScope) u.top = true;   // üst düzeyde, modül yüklenirken çalışan başvuru
-    uses.set(r.identifier.name, u);
+  for (const r of mod.through) {
+    const n = r.identifier.name;
+    if (GLOBALS.has(n)) continue;
+    if (!unknown.has(n)) unknown.set(n, []);
+    unknown.get(n).push(`${f}:${r.identifier.loc.start.line}`);
   }
-  report.push({ m, uses });
+  const nExp = ast.body.filter(n => n.type === 'ExportNamedDeclaration').reduce((s, n) => s + (n.specifiers?.length || 0), 0);
+  console.log(`${f.padEnd(26)} içe ${String(nImp).padStart(3)} (${from.size} modülden), dışa ${String(nExp).padStart(3)}`);
 }
-
-if (process.argv.includes('--json')) {
-  console.log(JSON.stringify(report.map(({ m, uses }) => ({ file: m.f,
-    decls: Object.fromEntries(m.decls), uses: Object.fromEntries(uses) })), null, 1));
-} else {
-  const crossWrites = [], forwardTop = [];
-  let fwd = 0;
-  for (const { m, uses } of report) {
-    for (const [n, u] of uses) {
-      if (u.write) crossWrites.push(`${n} (${u.from} ← ${m.f})`);
-      if (u.fromIdx > m.idx) { fwd++; if (u.top) forwardTop.push(`${m.f} üst düzeyde ${n} (${u.from}) kullanıyor`); }
-    }
-    const deps = new Set([...uses.values()].map(u => u.from));
-    console.log(`${m.f.padEnd(26)} ${String(m.decls.size).padStart(3)} ad, ${String(uses.size).padStart(3)} içe alım, ${deps.size} modülden`);
-  }
-  console.log(`\nBaşka modülün değişkenine yazma (${crossWrites.length}):\n  ` + crossWrites.join('\n  '));
-  console.log(`\nİleri başvuru: ${fwd}; bunlardan yüklenirken çalışanlar (${forwardTop.length}):\n  ` + forwardTop.join('\n  '));
-}
+for (const [n, at] of unknown) { console.log(`✗ tanımsız ad ${n}: ${at.slice(0, 3).join(', ')}${at.length > 3 ? ' …' : ''}`); bad++; }
+console.log(bad ? `\n${bad} sorun` : '\nSorun yok: bağımlılıklar tek yönlü, tanımsız ad yok.');
+process.exitCode = bad ? 1 : 0;

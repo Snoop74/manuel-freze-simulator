@@ -1,4 +1,6 @@
 // ── Tabla ve parça: konsol, kızak, tabla, el çarkları, mengene gövdesi, parça yüzeyi (yükseklik haritası), döner tabla dönüşümü
+import { M, MX, boxR, cyl, hwheel, lever, rbox, scene } from './02-sahne-tezgah.js';
+
 // Konsol (sabit), kızak (Y) ve tabla (X). Tabla grubu = parça koordinatları (x, z, -y)
 rbox(-210, 210, -310, -160, -330, 90, 12, M.paint);                         // konsol (knee)
 for (const x of [-196, 150]) rbox(x, x + 46, -162, -157, -320, 84, 2, M.ground);   // konsol üstü kızak yolları
@@ -63,3 +65,5 @@ function toLv(x, y, a = ROT.a) {
    Parçanın yerel ekseni: x divizör ekseni boyunca (0 = ayna yüzü), y yatay, z dikey; A açısı x çevresinde döndürür.
    Izgaranın her yanında 2 voksel boşluk vardır (uç yüzler kapalı çizilsin).
    Tezgâh (parça) koordinatında eksen y = DIVY, z = DIVZ çizgisidir. */
+
+export { FIXLIM, FIXNAME, LX, LY, ROT, pfLever, rotG, rotIn, saddle, table, toLv, viseBase, wheels, yWheel };

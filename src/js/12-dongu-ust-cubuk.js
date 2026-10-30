@@ -1,4 +1,18 @@
 // ── Ana döngü ve arayüz: klavye, kamera, frame(), HUD, üst çubuk simgeleri, paneller (PM), devir göstergesi, acil stop
+import { $, C, H, NX, NY, PD, PW, RAPID, S, TAU, app, clamp, isDrill, log, mat, rapid, tipZ, tool } from './00-temel.js';
+import { initAudio, thud, updateAudio } from './01-ses.js';
+import { camera, controls, motorSwitch, mush, quill, renderer, scene, spLampMat, spindleG, stage, startBtnMat,
+  toolRot, updateCoolant, zFine, zLever } from './02-sahne-tezgah.js';
+import { ROT, pfLever, rotG, saddle, table, wheels, yWheel } from './03-tabla-parca.js';
+import { VX } from './04-voksel.js';
+import { FIX, divCrank, divRot, flushMesh, nV, rotCrank } from './05-baglama.js';
+import { CHIP_TXT, ambientParticles, psAdd, psAlpha, updateChips, updatePS } from './06-talas.js';
+import { profile } from './07-takim-gorsel.js';
+import { loadRatio, motion, press, pressed, release, stopMotion } from './08-kesme.js';
+import { COL, addSpin, drawWheels, droVals, fmt, requestToolChange, setStep, spinAng, spindle, toggleCoolant,
+  tok, updateSpindleUI } from './09-kumanda.js';
+import { mmss } from './10-is-emri-muayene.js';
+
 // Klavye
 const KEYMAP = { ArrowLeft:['x',-1], ArrowRight:['x',1], ArrowUp:['y',1], ArrowDown:['y',-1], PageUp:['z',1], PageDown:['z',-1], KeyW:['z',1], KeyS:['z',-1] };
 window.addEventListener('keydown', e => {
@@ -452,3 +466,5 @@ function updateLamps() {
 /* ---------------- Makine üstünde kumanda: çarkları çevir, düğmelere bas ----------------
    Fare bir kumandanın üstündeyken kamera dönmez; çark sürüklenerek ya da tekerlekle çevrilir, düğmelere tıklanır. */
 Object.assign(app, { PM, toolIcon });   // önceki modüllerin geç başvuruları
+
+export { PM, estop, frame, toolIcon };

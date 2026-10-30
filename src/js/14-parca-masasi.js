@@ -1,4 +1,15 @@
 // ── Parça masası (CP): ayrı sahnede inceleme, kumpas, yükseklik, delik/cep, kesit; ham parça ölçüsü (BN)
+import { $, C, H, NX, NY, PD, PH, PW, S, TAU, app, clamp, log, mat, rapid, tool, warnOnce } from './00-temel.js';
+import { initAudio, thud } from './01-ses.js';
+import { M } from './02-sahne-tezgah.js';
+import { FIXLIM } from './03-tabla-parca.js';
+import { DIVZ } from './04-voksel.js';
+import { FIX, buildStock, flushMesh, markStockReady, stockBase, syncFixtures, topGeo, topMat, walls } from './05-baglama.js';
+import { CHIP_TXT } from './06-talas.js';
+import { press, release } from './08-kesme.js';
+import { TICK, droVals, fmt, resetPart, setAxis, setFeed, setRpm, spindle, wheelTicks } from './09-kumanda.js';
+import { estop } from './12-dongu-ust-cubuk.js';
+
 const CP = (() => {
   const st = { sel:null, buf:'', tgt:{}, page:1, axis:'x', mpgAcc:0, mpgAng:0, mpgLast:null };
   const SVG = 'http://www.w3.org/2000/svg';
@@ -303,3 +314,5 @@ const BN = (() => {
    Tip, çap, ağız sayısı, boylar, helis, köşe radyüsü, uç açısı, malzeme ve kaplama seçilir; takım T13'ten itibaren dolaba eklenir.
    Parametreler fiziğe bağlıdır (toolMods): önerilen hız ve ilerleme, aşınma, kırılma direnci, tırlama, yüzey, talaş sıkışması. */
 Object.assign(app, { CP, setStock });   // önceki modüllerin geç başvuruları
+
+export { setStock };

@@ -1,0 +1,20 @@
+// ── Giriş: modüller bu sırayla yüklenir (her modül yalnızca kendinden öncekilerden alır)
+import './00-temel.js';
+import './01-ses.js';
+import './02-sahne-tezgah.js';
+import './03-tabla-parca.js';
+import './04-voksel.js';
+import './05-baglama.js';
+import './06-talas.js';
+import './07-takim-gorsel.js';
+import './08-kesme.js';
+import './09-kumanda.js';
+import './10-is-emri-muayene.js';
+import './11-havai-fisek.js';
+import './12-dongu-ust-cubuk.js';
+import './13-aletler.js';
+import './14-parca-masasi.js';
+import './15-takim-editoru.js';
+import './16-hazir-parca.js';
+import './17-kariyer.js';
+import './18-baslangic.js';

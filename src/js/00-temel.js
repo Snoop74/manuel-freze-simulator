@@ -128,3 +128,7 @@ function warnOnce(key, msg, lvl = 'warn', gap = 3000) {
    Saf ton yerine süzülmüş gürültü: motor uğultusu, dişli vınlaması, kesme hışırtısı, tırlama ötmesi.
    Tek seferlik sesler (kırılma, kavrama) metalin uyumsuz kısmi tonlarıyla çalınır;
    hepsi küçük bir atölye yankısından geçer. */
+
+export { $, C, CUT, EDGE, H, INSP, LIM, MATS, NX, NY, PD, PH, PW, P_MAX, RAPID, S, SURF, TAN59, TAU, TOOLS,
+  allocGrid, app, clamp, isDrill, isProbe, isTaster, lastWarn, log, mat, rapid, recFeed, recRpm, setMat, tipZ,
+  tool, unslip, warnOnce };
