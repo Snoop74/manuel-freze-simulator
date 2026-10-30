@@ -23,21 +23,30 @@ const add = (m, x, y, z) => { m.position.set(x, y, z); scene.add(m); return m; }
 
 /* ---- Hazır modeller (assets/model, Poly Haven CC0, glTF; metre → mm) ----
    Sayfa açıldıktan sonra arka planda yüklenir; yüklenemezse (file://) yeri boş kalır, oyun etkilenmez.
-   x, z: taban ortası; y: tabanın oturduğu yükseklik; ry: Y ekseninde dönüş; wallZ verilirse arkası o duvara dayanır. */
-const gltf = new THREE.GLTFLoader();
-function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6 }) {
-  gltf.load(`assets/model/${id}/${id}.gltf`, g => {
-    const o = g.scene; o.scale.setScalar(1000); o.rotation.y = ry;
+   x, z: taban ortası; y: tabanın oturduğu yükseklik; ry: Y ekseninde dönüş; wallZ verilirse arkası o duvara dayanır;
+   on: başka bir modelin sözü (Promise) verilirse model onun (x, z) noktasındaki gerçek yüzeyine oturur (aşağı ışın). */
+const gltf = new THREE.GLTFLoader(), ray = new THREE.Raycaster();
+function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on }) {
+  const load = new Promise(res => gltf.load(`assets/model/${id}/${id}.gltf`, g => res(g.scene), undefined, () => res(null)));
+  return Promise.all([load, on]).then(([o, base]) => {
+    if (!o) return null;
+    o.scale.setScalar(1000); o.rotation.y = ry;
     o.traverse(c => { if (c.isMesh) { c.castShadow = c.receiveShadow = true; if (c.material) c.material.envMapIntensity = env; } });
     o.updateMatrixWorld(true);
+    if (base) {   // altındaki modelin yüzeyi: yukarıdan aşağı ışın, ilk çarptığı nokta
+      ray.set(new THREE.Vector3(x, F + 5000, z), new THREE.Vector3(0, -1, 0));
+      const hit = ray.intersectObject(base, true)[0];
+      if (hit) y = hit.point.y;
+    }
     const bb = new THREE.Box3().setFromObject(o);
     o.position.set(x - (bb.min.x + bb.max.x) / 2, y - bb.min.y, wallZ != null ? wallZ - bb.min.z : z - (bb.min.z + bb.max.z) / 2);
-    scene.add(o);
-  }, undefined, () => {});
+    scene.add(o); o.updateMatrixWorld(true);
+    return o;
+  });
 }
 // sol arka: takım arabası ve üstünde takım sandığı; sağ arka: çalışma tezgâhında masa matkabı ve tezgâh mengenesi, önünde tabure
-model('tool_cart', { x:-1250, z:-1200 });
-model('metal_tool_chest', { x:-1400, z:-1230, y:F + 965 });
+const cart = model('tool_cart', { x:-1250, z:-1200 });
+model('metal_tool_chest', { x:-1400, z:-1230, on:cart });
 model('drill_press_01', { x:1600, z:-1420, y:F + 880, ry:0 });
 model('bench_vice_01', { x:2420, z:-1180, y:F + 880, ry:0 });
 model('metal_stool_01', { x:1850, z:-750 });
