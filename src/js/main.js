@@ -2,6 +2,7 @@
 import './three-kur.js';   // önce: modüller yüklenirken THREE hazır olmalı
 import './00-kayit.js';
 import './00-temel.js';
+import './00-tercihler.js';
 import './01-ses.js';
 import './02-sahne-tezgah.js';
 import './03-tabla-parca.js';
@@ -21,3 +22,4 @@ import './16-hazir-parca.js';
 import './17-kariyer.js';
 import './18-baslangic.js';
 import './19-atolye.js';
+import './20-menu.js';

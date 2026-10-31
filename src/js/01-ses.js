@@ -1,7 +1,8 @@
 // ── Ses motoru: motor, dişli, kesme, tırlama ve tek seferlik sesler (kayıt dosyası yok, gürültüden üretilir)
 import { S, clamp, tool } from './00-temel.js';
+import { AYAR, ayarDinle } from './00-tercihler.js';
 
-let ac = null, master, bus, SN = null, lastSnd = 0;
+let ac = null, master, bus, uiBus, SN = null, lastSnd = 0;
 // Malzemeye göre kesme sesi: bant merkezi, keskinlik, gövde gürültüsü, çıtırtı
 const SND = {
   al:    { f:2300, q:0.9, body:0.5, crackle:0,    gain:0.8 },
@@ -35,6 +36,8 @@ function initAudio() {
     const rev = ac.createConvolver(); rev.buffer = ir;
     const wet = ac.createGain(); wet.gain.value = 0.22;
     bus = ac.createGain(); bus.connect(master); bus.connect(wet); wet.connect(rev); rev.connect(master);
+    uiBus = ac.createGain(); uiBus.connect(master);                 // arayüz bildirimleri: ayrı seviye, yankısız
+    sesSeviye();
     const white = noiseBuffer(false), brown = noiseBuffer(true);
     const src = (buf, rate = 1) => { const s = ac.createBufferSource(); s.buffer = buf; s.loop = true; s.playbackRate.value = rate; s.loopStart = Math.random(); s.start(0, Math.random() * 2); return s; };
     const filt = (type, f, q = 0.7) => { const b = ac.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; };
@@ -109,8 +112,14 @@ function beep(f = 1600, len = 0.15, vol = 0.08) {
   const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(), fr = Math.min(f, 1400);
   o.frequency.value = fr;
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol * 0.45, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + len * 2.5);
-  o.connect(g); g.connect(bus); o.start(t); o.stop(t + len * 2.5 + 0.05);
+  o.connect(g); g.connect(uiBus); o.start(t); o.stop(t + len * 2.5 + 0.05);
 }
+// ses seviyeleri: ana (sessiz düğmesi dahil), makine ve kesme sesleri, arayüz bildirimleri (ayarlardan)
+function sesSeviye() {
+  if (!ac) return;
+  master.gain.value = S.muted ? 0 : 0.9 * AYAR.sesAna; bus.gain.value = AYAR.sesMakine; uiBus.gain.value = AYAR.sesArayuz;
+}
+ayarDinle(['sesAna', 'sesMakine', 'sesArayuz'], sesSeviye);
 function updateAudio() {
   if (!ac || !SN) return;
   const t = ac.currentTime, dt = Math.min(0.1, t - lastSnd); lastSnd = t;
@@ -147,4 +156,4 @@ function updateAudio() {
 
 /* ---------------- Three.js sahnesi ---------------- */
 
-export { SN, ac, beep, bus, crashSound, initAudio, master, metalRing, noiseBuffer, noiseHit, thud, updateAudio };
+export { SN, ac, beep, bus, crashSound, initAudio, master, metalRing, noiseBuffer, noiseHit, sesSeviye, thud, updateAudio };

@@ -55,6 +55,8 @@ npm run watch     # src/ değiştikçe derle
 - **Partiküller:** kıvrık ve sarmal talaşlar, kırılma kıvılcımları, ısınma dumanı, kutlama efektleri.
 - **İş emirleri:** teknik resim ve delik tablosu, parça üstünde markalama çizgileri, teslimde ölçüm (muayene) ve 1–3 yıldızla puanlama. Beş görevlik kampanya.
 
+- **Ana menü ve ayarlar:** açılışta ana menü (Devam et, Kariyer, Serbest atölye, Ayarlar, Nasıl oynanır); üst çubuktaki ☰ ile her an açılır, açıkken oyun duraklar. Ayarlar: grafik kalitesi (Düşük/Orta/Yüksek), gölgeler, çözünürlük, talaş miktarı; ana, makine ve arayüz ses seviyeleri; açılışta menü. Ayarlar kaydedilir.
+
 ## Kısayollar
 
 | Tuş | İşlev |

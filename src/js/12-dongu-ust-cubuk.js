@@ -1,5 +1,6 @@
 // ── Ana döngü ve arayüz: klavye, kamera, frame(), HUD, üst çubuk simgeleri, paneller (PM), devir göstergesi, acil stop
 import { kayit } from './00-kayit.js';
+import { ayarDinle } from './00-tercihler.js';
 import { $, C, H, NX, NY, PD, PW, RAPID, S, TAU, app, clamp, isDrill, log, mat, rapid, tipZ, tool } from './00-temel.js';
 import { initAudio, thud, updateAudio } from './01-ses.js';
 import { camera, controls, motorSwitch, mush, quill, renderer, scene, spLampMat, spindleG, stage, startBtnMat,
@@ -61,11 +62,15 @@ function resize() {
   psAdd.mat.uniforms.scale.value = psAlpha.mat.uniforms.scale.value = sc;
 }
 new ResizeObserver(resize).observe(stage); resize();
+ayarDinle('cozunurluk', resize);                                 // piksel oranı değişince tampon ve partikül ölçeği yenilensin
 
 /* ---------------- Ana döngü ---------------- */
 let last = performance.now(), uiT = 0;
 const vA = new THREE.Vector3(), vB = new THREE.Vector3();
 function frame(now) {
+  if (S.duraklat) {                                                // menü açık: simülasyon durur, sahne çizilmeye devam eder
+    last = now; controls.update(); renderer.render(scene, camera); requestAnimationFrame(frame); return;
+  }
   S.realDt = Math.max(0.001, (now - last) / 1000);
   const dt = Math.min(0.05, S.realDt); last = now;
   motion(dt);
@@ -223,6 +228,7 @@ const TBICON = {
   sound:'<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
   mute:'<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/>',
   blank:'<path d="M4 8.5l8-4.5 8 4.5v7.5l-8 4.5-8-4.5z"/><path d="M4 8.5l8 4.5 8-4.5M12 13v7.5"/><path d="M8 6.3l8 4.5"/>',
+  menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
   help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7v.5"/><circle cx="12" cy="17" r=".7"/>'
 };
 /* ---------------- Paneller: taşınabilir, ölçeklenebilir kumanda pencereleri ---------------- */
@@ -378,6 +384,7 @@ const PM = (() => {
       else if (a === 'shop') app.CR.openShop();
       else if (a === 'blanks') app.BG.toggle();
       else if (a === 'keys') setVis('keys', true);
+      else if (a === 'menu') app.MENU.ac('ana');
       else if (a === 'sound') { $('mute').click(); b.innerHTML = `<svg viewBox="0 0 24 24">${TBICON[S.muted ? 'mute' : 'sound']}</svg>`; b.classList.toggle('on', S.muted); }
     });
     document.addEventListener('pointerdown', e => { if (!e.target.closest('.tb-menu') && !e.target.closest('[data-menu]')) closeMenus(); });

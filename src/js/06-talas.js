@@ -1,5 +1,6 @@
 // ── Talaşlar ve partiküller: şerit talaş, yığın, savrulma, duman, kıvılcım, talaş biçimi
 import { C, H, NX, PD, PW, S, TAU, app, isDrill, mat, tool } from './00-temel.js';
+import { AYAR } from './00-tercihler.js';
 import { scene } from './02-sahne-tezgah.js';
 import { LX, LY, ROT, table, toLv } from './03-tabla-parca.js';
 import { DIVY, DIVZ, VX } from './04-voksel.js';
@@ -335,12 +336,12 @@ function chipsFor(nx, ny, z, T, vol, form, heat) {
   if (form === 'dust') {
     const n = Math.min(5, vol / 1.2);
     for (let k = 0; k < n; k++) { const a = Math.random() * TAU; emit('dust', Math.cos(a) * r, z, Math.sin(a) * r, -Math.sin(a) * 160, 40 + Math.random() * 120, Math.cos(a) * 160, 1.4); }
-    if (Math.random() < 0.3) spawnChip(nx, ny, z, r, drill, 'flake', 0.6 + Math.random() * 0.3, mat.chipCol);
+    if (Math.random() < 0.3 * AYAR.talas) spawnChip(nx, ny, z, r, drill, 'flake', 0.6 + Math.random() * 0.3, mat.chipCol);
     return;
   }
   const tcol = () => heat < 0.9 ? mat.chipCol : heat < 1.2 ? [0.80, 0.62, 0.32] : heat < 1.5 ? [0.55, 0.36, 0.55] : [0.30, 0.40, 0.80];
   const long = form === 'thin' || form === 'spring' || form === 'ribbon' || form === 'gum';
-  const n = Math.min(long ? 2 : 4, Math.floor(vol / (long ? 3 : 1.2) + Math.random()));
+  const n = Math.min(long ? 2 : 4, Math.floor(vol / (long ? 3 : 1.2) * AYAR.talas + Math.random()));   // talaş ayarı üretimi seyreltir
   const FLY = { gum:0.3, ribbon:0.35, spring:0.5, thin:0.5, thick:1.2, flake:1.25 };
   for (let k = 0; k < n; k++) {
     const kind = form === 'comma' || !chipPools[form] ? 'comma' : form;

@@ -650,6 +650,37 @@ table{color:inherit;font-size:inherit}
 .tb-help ol{margin:6px 0 2px;padding-left:20px}
 .tb-help li{margin:3px 0}
 @media (max-width:1200px){.tb-sep{margin:0 2px}.tbi{width:30px;height:32px}.tb-brand b{display:none}}
+
+/* ---- Menü katmanı (20-menu.js) ---- */
+.menu-kat{position:fixed;inset:0;z-index:300;display:grid;place-items:center;padding:16px;background:rgba(8,11,12,.72);backdrop-filter:blur(3px)}
+.menu-kat[hidden]{display:none}
+.menu-kart{width:min(480px,100%);max-height:100%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 18px 14px;display:grid;gap:8px;box-shadow:0 18px 60px rgba(0,0,0,.6)}
+.menu-baslik{display:grid;gap:2px;margin-bottom:6px;font-family:var(--f-display)}
+.menu-baslik b{font-size:22px;letter-spacing:.14em;color:var(--safety)}
+.menu-baslik small{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.menu-dugme{display:grid;gap:1px;text-align:left;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:10px 14px;color:var(--fg);font:600 15px var(--f-display);letter-spacing:.04em;cursor:pointer}
+.menu-dugme small{font:400 12px var(--f-body);color:var(--muted);letter-spacing:0}
+.menu-dugme:hover,.menu-dugme:focus-visible{border-color:var(--safety);outline:none}
+.menu-dugme.ana{background:var(--safety);color:#16191b;border-color:var(--safety)}
+.menu-dugme.ana small{color:#3a3320}
+.menu-dugme.secili{border-color:var(--paint)}
+.menu-dugme:disabled{opacity:.45;cursor:default}
+.menu-sekmeler{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.menu-sekmeler button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);font:600 13px var(--f-display);letter-spacing:.08em;text-transform:uppercase;padding:8px 10px;cursor:pointer}
+.menu-sekmeler button.on{color:var(--fg);border-bottom-color:var(--safety)}
+.menu-satir{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,1.4fr);align-items:center;gap:10px;padding:6px 0}
+.menu-satir label{display:grid;gap:1px;font-size:13.5px}
+.menu-satir label small{color:var(--muted);font-size:11.5px}
+.menu-secim{display:flex;flex-wrap:wrap;gap:4px}
+.menu-secim button,.menu-onay{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;color:var(--fg);font:600 12.5px var(--f-display);padding:6px 10px;cursor:pointer}
+.menu-secim button.on,.menu-onay.on{background:var(--paint);border-color:var(--paint)}
+.menu-kaydir{display:flex;align-items:center;gap:8px}
+.menu-kaydir input{flex:1;accent-color:var(--safety)}
+.menu-kaydir output{font:13px var(--f-dro);min-width:42px;text-align:right;color:var(--muted)}
+.menu-alt{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
+.menu-alt .menu-dugme{padding:8px 14px}
+.menu-not{color:var(--muted);font-size:12px;text-align:center;margin-top:6px}
+@media (max-width:520px){.menu-satir{grid-template-columns:1fr}}
 </style>
 
 <div class="app">
@@ -668,7 +699,7 @@ table{color:inherit;font-size:inherit}
     </nav>
     <span class="tb-flex"></span>
     <span class="tb-money" id="tbMoney" title="Kariyer kasası: dükkânı aç" hidden></span>
-    <button class="tbi act" data-act="sound" id="tbMute" data-ic="sound" data-tip="Ses" aria-label="Ses"></button><button class="tbi" data-menu="help" data-ic="help" data-tip="Yardım ve kısayollar" aria-label="Yardım ve kısayollar"></button>
+    <button class="tbi act" data-act="menu" data-ic="menu" data-tip="Menü: ayarlar, mod, yardım" aria-label="Menü"></button><button class="tbi act" data-act="sound" id="tbMute" data-ic="sound" data-tip="Ses" aria-label="Ses"></button><button class="tbi" data-menu="help" data-ic="help" data-tip="Yardım ve kısayollar" aria-label="Yardım ve kısayollar"></button>
     <button class="estop" id="estopBtn" title="Mili ve tüm hareketleri durdur (Esc)">ACİL STOP</button>
     <div class="tb-menu" id="mnLayout" hidden><button data-l="kumanda">Kumanda <small>konsol, takımlar, durum</small></button><button data-l="temel">Temel <small>klasik paneller</small></button><button data-l="tam">Tam <small>hepsi</small></button><button data-l="is">İş emri <small>iş, DRO, takımlar</small></button><button data-l="kariyer">Kariyer <small>sipariş, konsol, takımlar</small></button><hr><button data-l="reset">Panelleri sıfırla</button></div>
     <div class="tb-menu" id="mnCamera" hidden><button data-v="vOp">Operatör</button><button data-v="vNear">Yakın</button><button data-v="vTop">Üstten</button><button data-v="vFront">Önden</button><small class="tb-hint">Sağ tuş döndür, tekerlek yakınlaştır</small></div>

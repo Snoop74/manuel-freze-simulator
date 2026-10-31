@@ -1,6 +1,7 @@
 // ── Sahne ve tezgâh: renderer, ışık, malzemeler, atölye, gövde, kafa, kovan, kollar, soğutma hortumu
 import { kayit } from './00-kayit.js';
 import { $, S, TAU, app, clamp, tool } from './00-temel.js';
+import { AYAR, ayarDinle } from './00-tercihler.js';
 
 const canvas = $('c'), stage = $('stage');
 let renderer;
@@ -10,7 +11,6 @@ try {
   stage.innerHTML = '<p style="padding:24px">Bu tarayıcı WebGL desteklemiyor; simülasyon çalışamıyor.</p>';
   throw new Error('WebGL yok');
 }
-renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
@@ -29,6 +29,16 @@ sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left:-750, right:850, top:800, bottom:-900, near:100, far:2600 });
 sun.shadow.bias = -0.0008;
 scene.add(sun);
+// grafik ayarları: çözünürlük (ekran piksel oranının katı) ve gölge (0 kapalı, 1 normal, 2 yüksek)
+ayarDinle('cozunurluk', a => renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1) * a.cozunurluk));
+ayarDinle('golge', a => {
+  const on = a.golge > 0, sz = a.golge > 1 ? 2048 : 1024;
+  if (renderer.shadowMap.enabled !== on) {                   // açılıp kapanınca malzemeler gölge koduyla yeniden derlenir
+    renderer.shadowMap.enabled = on;
+    scene.traverse(o => { const ms = o.material ? [].concat(o.material) : []; for (const m of ms) m.needsUpdate = true; });
+  }
+  if (sun.shadow.mapSize.x !== sz) { sun.shadow.mapSize.set(sz, sz); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
+});
 const fill = new THREE.DirectionalLight(0x9fc4ff, 0.18); fill.position.set(-400, 200, -200); scene.add(fill);
 
 const M = {

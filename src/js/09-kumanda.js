@@ -2,7 +2,7 @@
 import { kayit } from './00-kayit.js';
 import { $, CUT, EDGE, H, INSP, MATS, NX, NY, PD, PH, PW, S, SURF, TOOLS, app, isDrill, isProbe, isTaster, log,
   mat, rapid, recFeed, recRpm, setMat, tipZ, tool, unslip } from './00-temel.js';
-import { ac, initAudio, master, noiseHit, thud } from './01-ses.js';
+import { ac, initAudio, noiseHit, sesSeviye, thud } from './01-ses.js';
 import { M } from './02-sahne-tezgah.js';
 import { VX } from './04-voksel.js';
 import { FIX, MK1, MK2, TAPC, TINTC, clearThreads, markDirty, markThrough, topMat } from './05-baglama.js';
@@ -135,7 +135,7 @@ $('spDir').addEventListener('click', () => {
 $('applyRec').addEventListener('click', () => { const T = tool(); setRpm(recRpm(T)); setFeed(recFeed(T)); log(`Önerilen kesme değerleri uygulandı: ${recRpm(T)} dev/dk, ${recFeed(T)} mm/dk.`); });
 $('coolant').addEventListener('click', toggleCoolant);
 function toggleCoolant() { S.coolant = !S.coolant; $('coolant').textContent = 'Soğutma sıvısı: ' + (S.coolant ? 'AÇIK' : 'KAPALI'); $('coolant').classList.toggle('on', S.coolant); }
-$('mute').addEventListener('click', () => { S.muted = !S.muted; $('mute').textContent = 'Ses: ' + (S.muted ? 'KAPALI' : 'AÇIK'); if (master) master.gain.value = S.muted ? 0 : 0.9; });
+$('mute').addEventListener('click', () => { S.muted = !S.muted; $('mute').textContent = 'Ses: ' + (S.muted ? 'KAPALI' : 'AÇIK'); sesSeviye(); });
 
 function setStep(v) { S.step = v; [...$('steps').children].forEach(b => b.classList.toggle('on', +b.dataset.step === v)); }
 $('steps').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setStep(+b.dataset.step); });
