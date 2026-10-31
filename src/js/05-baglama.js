@@ -73,6 +73,29 @@ function tapThread(th) {
   th.mesh = new THREE.Mesh(threadGeo(th.rd, th.p, th.y0, th.y1), th.mat);
   th.mesh.position.set(th.cx, 0, -th.cy); threadG.add(th.mesh);
 }
+// Parça değişince (pah, havşa, yüzey alma, büyük delik) diş yüzeyi kalan malzemeye göre kırpılır: delik çevresindeki
+// yüzey deliğin hemen kenarında ölçülür (36 nokta; delik içine düşen noktalar sayılmaz, ızgara basamağına takılmamak için
+// en alçak değil alçak çeyrek), dişin üst ucu onun altına iner;
+// malzeme diş boyunca gittiyse diş silinir. flushMesh değişen bölgeyle çağırır.
+function trimThreads(i0, i1, j0, j1) {
+  for (let n = threads.length - 1; n >= 0; n--) {
+    const th = threads[n], rr = th.rd + 0.6;
+    if ((th.cx + rr) / C < i0 || (th.cx - rr) / C > i1 || (th.cy + rr) / C < j0 || (th.cy - rr) / C > j1) continue;
+    const hs = [];
+    for (let k = 0; k < 36; k++) {
+      const a = k * Math.PI / 18, i = Math.round((th.cx + Math.cos(a) * rr) / C), j = Math.round((th.cy + Math.sin(a) * rr) / C);
+      if (i >= 0 && j >= 0 && i < NX && j < NY && H[j * NX + i] > th.y0 + 0.3) hs.push(H[j * NX + i]);
+    }
+    hs.sort((a, b) => a - b);
+    const top = hs.length < 9 ? -1 : hs[Math.floor(hs.length / 4)];   // çevre delik içinde kaldıysa diş gitmiştir
+    if (top >= th.y1 - 0.15) continue;
+    threadG.remove(th.mesh); th.mesh.geometry.dispose();
+    if (top - 0.05 <= th.y0 + 0.3) { th.mat.dispose(); threads.splice(n, 1); th.mesh = null; continue; }
+    th.y1 = top - 0.05;
+    th.mesh = new THREE.Mesh(threadGeo(th.rd, th.p, th.y0, th.y1), th.mat);
+    th.mesh.position.set(th.cx, 0, -th.cy); threadG.add(th.mesh);
+  }
+}
 function clearThreads() {
   for (const th of threads) { threadG.remove(th.mesh); th.mesh.geometry.dispose(); th.mat.dispose(); }
   threads.length = 0;
@@ -325,6 +348,7 @@ function flushMesh() {
     w.w.g.attributes.position.needsUpdate = true;
   }
   if (throughDirty) rebuildIndex();
+  trimThreads(i0, i1, j0, j1);
   isDirty = false;
 }
 
