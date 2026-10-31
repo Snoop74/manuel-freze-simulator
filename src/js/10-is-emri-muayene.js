@@ -409,7 +409,7 @@ function selectJob(i) {
   const J = JOBS[i];
   if (S.job && S.job.idx !== i) S.job = null;
   renderJobs();
-  $('jcBtns').hidden = !J; $('vDraw').hidden = !J;
+  $('jcBtns').hidden = !J; $('vDraw').hidden = !J; $('jcTeklif').hidden = true;
   if (!J) {
     $('jcNo').textContent = app.CR.on ? 'KARİYER' : 'SERBEST'; $('jcTitle').textContent = app.CR.on ? 'Sipariş seçin' : 'Serbest çalışma';
     $('jcBrief').textContent = app.CR.on ? 'Panodan bir sipariş seçin: teknik resim açılır, "İşe başla" ile ham parça kasadan alınır ve mengeneye bağlanır. Teslimde parça ölçülür, müşteri ödemeyi yapar.'

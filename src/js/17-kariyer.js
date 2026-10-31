@@ -1,6 +1,6 @@
 // ── Kariyer (CR): kasa, itibar, sipariş üretimi, koşullar, dükkân, ekipman, teslimde ödeme
 import { kayit } from './00-kayit.js';
-import { $, MATS, PD, PH, PW, S, TOOLS, app, isProbe, isTaster, log } from './00-temel.js';
+import { $, MATS, PD, PH, PW, S, TOOLS, app, clamp, isProbe, isTaster, log } from './00-temel.js';
 import { beep, initAudio } from './01-ses.js';
 import { FIXLIM } from './03-tabla-parca.js';
 import { FIX, PAR, warnParallels } from './05-baglama.js';
@@ -194,11 +194,62 @@ const CR = (() => {
     const [cn, ck] = pick(B.cust);
     J.brief = `${cn} (${ck}) kendi parçasını getirdi: ${BLANKS.find(q => q.id === id).name}, ${MATS[P.mat].short} ${P.w}×${P.d}. ${F.brief} Hurdaya çıkarsa parça bedeli ${tl(B.value)} sizden.`;
     delete J.val; delete J.brief0;
-    const o = { id:st.seq++, cust:cn, mat:P.mat, J, pay:Math.round(F.val * mf * (1 + lv * 0.15) / 10) * 10, cost:0, free:true, own:true, value:B.value, lv };
+    const o = { id:st.seq++, cust:cn, kind:ck, mat:P.mat, J, pay:Math.round(F.val * mf * (1 + lv * 0.15) / 10) * 10, cost:0, free:true, own:true, value:B.value, lv };
     if (B.ayni) Object.assign(o, { pay:B.ayni.pay, ayni:B.ayni.ad, ayniRep:B.ayni.rep });
     return addCond(o, lv, B.cond || (B.ayni ? 'yok' : null));    // aynen ödeyen komşu acele etmez
   }
-  const payTxt = o => tl(o.pay) + (o.ayni ? ' + ' + o.ayni : '');
+  const bekler = o => o.teklif === 'bekliyor' || o.teklif === 'karsi';
+  const payTxt = o => bekler(o) ? 'teklif bekleniyor' : tl(o.pay) + (o.ayni ? ' + ' + o.ayni : '');
+
+  /* -- Teklif: bazı müşteriler fiyatı sizden ister. Gerçek bütçe (o.pay) gizli; atölyenin piyasa tahmini (o.est) ±%15 şaşar.
+     Ucuz teklif hep tutar ama kâr az; pahalı teklifte müşteri ya karşı teklif yapar ya başka atölyeye gider.
+     Hızlı termin: hedef süre ×0.7, müşteri daha kolay kabul eder ama geç teslimde ödemeden %30 kesilir. -- */
+  const TEKLIF = [[0.85, 'Ucuz'], [1, 'Piyasa'], [1.15, 'Kârlı'], [1.3, 'Pahalı'], [1.5, 'Fahiş']];
+  const PAZARLIK = { fabrika:-0.12, kalıphane:-0.06, rektifiye:-0.04, servis:-0.04, havacılık:0.05, enerji:0.1, kurum:0.1, 'sosyal medya':0.2, reklam:0.12, 'oto tuning':0.06, komşu:0.15 };
+  let hizliSec = false;                                           // kartta seçili termin
+  const hizliOn = o => hizliSec && o.cond !== 'acil';              // acil iş zaten hızlı: termin seçilmez
+  function teklifIste(o) {
+    if (!o.ayni && Math.random() < 0.4) { o.teklif = 'bekliyor'; o.est = Math.round(o.pay * rnd(0.85, 1.15) / 10) * 10; }
+    return o;
+  }
+  // kabul olasılığı: teklif/bütçe oranına, müşterinin pazarlıkçılığına, itibar seviyesine ve termine göre
+  const kabulP = (o, fiyat, hizli) => clamp(0.92 - 2.2 * (fiyat / o.pay - 1) + (PAZARLIK[o.kind] || 0) + level() * 0.03 + (hizli ? 0.12 : 0), 0.03, 0.97);
+  function teklifKabul(o, fiyat, hizli) {
+    o.pay = fiyat; o.teklif = 'kabul';
+    if (hizli) { o.hizli = true; o.J.target = Math.round(o.J.target * 0.7 / 10) * 10; o.J.brief += ' HIZLI TERMİN: hedef süreyi kaçırırsanız ödemeden %30 kesilir.'; }
+  }
+  function teklifVer(o, fiyat) {
+    initAudio();
+    const hizliSec = hizliOn(o);
+    if (Math.random() < kabulP(o, fiyat, hizliSec)) {
+      teklifKabul(o, fiyat, hizliSec); beep(1300, 0.08);
+      log(`${o.cust} teklifi kabul etti: ${tl(fiyat)}${hizliSec ? ', hızlı termin' : ''}. İşe başlayabilirsiniz.`, 'ok');
+    } else if (fiyat / o.pay < 1.45 && Math.random() < 0.6) {
+      o.teklif = 'karsi'; o.karsi = Math.round(o.pay * rnd(0.92, 1.03) / 10) * 10; o.hizliT = hizliSec;
+      log(`${o.cust}: "${tl(fiyat)} çok, ${tl(o.karsi)} olur mu?"`, 'warn');
+    } else { vazgec(o, `${o.cust} teklifinizi pahalı buldu, başka atölyeye gitti.`); return; }
+    save(); select(o);
+  }
+  function vazgec(o, msg) {
+    st.orders = st.orders.filter(q => q.id !== o.id); sel = null; fillBoard(); save();
+    selectJob(-1); render(); log(msg, 'warn');
+  }
+  function teklifKart(o) {
+    const el = $('jcTeklif'); el.hidden = !bekler(o); el.innerHTML = ''; el.classList.toggle('karsi', o.teklif === 'karsi');
+    if (!bekler(o)) return;
+    const btn = (metin, cls, fn) => { const b = document.createElement('button'); b.className = 'btn' + (cls ? ' ' + cls : ''); b.innerHTML = metin; b.addEventListener('click', fn); el.append(b); return b; };
+    if (o.teklif === 'karsi') {
+      el.insertAdjacentHTML('beforeend', `<div class="tk-not">${o.cust} karşı teklif yaptı: <b>${tl(o.karsi)}</b>${o.hizliT ? ' (hızlı termin)' : ''}</div>`);
+      btn('Kabul et', 'start', () => { teklifKabul(o, o.karsi, o.hizliT); save(); log(`Anlaştınız: ${tl(o.karsi)}.`, 'ok'); select(o); });
+      btn('Vazgeç', '', () => vazgec(o, `${o.cust} ile anlaşamadınız; sipariş panodan kalktı.`));
+      return;
+    }
+    el.insertAdjacentHTML('beforeend', `<div class="tk-not">Müşteri fiyat istiyor. Atölyenin piyasa tahmini <b>~${tl(o.est)}</b> (tahmin şaşabilir). Pahalı teklif reddedilebilir.</div>`);
+    for (const [k, ad] of TEKLIF) { const f = Math.round(o.est * k / 10) * 10; btn(`${ad}<small>${tl(f)}</small>`, k === 1 ? 'start' : '', () => teklifVer(o, f)); }
+    if (o.cond === 'acil') return;
+    const t = btn(hizliSec ? 'Termin: HIZLI (süre ×0.7)' : 'Termin: normal', 'tk-termin' + (hizliSec ? ' on' : ''), () => { hizliSec = !hizliSec; teklifKart(o); });
+    t.title = 'Hızlı termin müşterinin kabulünü kolaylaştırır; geç kalırsanız ödemeden %30 kesilir';
+  }
   function genOrder(free) {
     const lv = level();
     if (!free && Math.random() < 0.5) return genBlankOrder(lv);
@@ -250,10 +301,10 @@ const CR = (() => {
     if (J.holes.length) f.push(`${J.holes.length > 1 ? J.holes.length + '×' : ''}Ø${hd} boydan boya delik${J.pcd ? ` (R${J.pcd.r} dairesinde, ${360 / J.pcd.n}°'de bir)` : ''}`);
     J.brief = `${cn} (${ck}) ${J.title.toLocaleLowerCase('tr')} istiyor: ${MATS[m].short} ${w}×${d}×${h}, ${f.join(', ')}. ` +
       (big ? 'Mengeneye sığmaz: pabuç ya da vakum tabla gerekir. ' : '') + (arc ? 'Yay kanal için döner tabla gerekir. ' : '') + (free ? 'Malzemeyi müşteri getirdi.' : `Ham parça ${tl(cost)}, iş başlayınca kasadan çıkar.`);
-    return addCond({ id:st.seq++, cust:cn, mat:m, J, pay:Math.round((val * (big ? 1.25 : 1) + cost * 1.25) / 10) * 10, cost, free, lv }, lv);
+    return addCond({ id:st.seq++, cust:cn, kind:ck, mat:m, J, pay:Math.round((val * (big ? 1.25 : 1) + cost * 1.25) / 10) * 10, cost, free, lv }, lv);
   }
   function fillBoard() {
-    while (st.orders.length < 3) st.orders.push(genOrder(false));
+    while (st.orders.length < 3) st.orders.push(teklifIste(genOrder(false)));
     // kasada ham parçaya bile para yoksa müşteri malzemesini getirir: oyun kilitlenmez
     if (!st.orders.some(o => o.cost <= st.money)) st.orders[0] = genOrder(true);
   }
@@ -312,18 +363,19 @@ const CR = (() => {
     if (o.J.blank && !o.J._P) Object.defineProperty(o.J, '_P', { value:genBlank(o.J.blank.id, o.J.blank.seed), enumerable:false, writable:true, configurable:true });                                         // iş emri listesindeki seçim kalkar
     $('jcNo').textContent = 'SİPARİŞ #' + o.id; $('jcTitle').textContent = `${o.J.title} · ${o.cust}`; $('jcBrief').textContent = o.J.brief;
     $('jcMeta').innerHTML = `<span>Ödeme <b>${payTxt(o)}</b></span><span>Hedef süre <b>${mmss(o.J.target)}</b></span><span>Ham parça <b>${o.free ? 'müşteriden' : tl(o.cost)}</b></span>${o.J.big ? '<span>Bağlama <b>pabuç / vakum</b></span>' : o.J.arcs && o.J.arcs.length ? '<span>Bağlama <b>döner tabla</b></span>' : ''}${o.cond ? `<span>Koşul <b>${COND[o.cond].tag}${o.qty ? ` · ${o.doneQty || 0}/${o.qty} teslim` : ''}</b></span>` : ''}`;
-    $('jcBtns').hidden = false; $('vDraw').hidden = false;
+    $('jcBtns').hidden = false; $('vDraw').hidden = false; teklifKart(o);
     $('dwTitle').textContent = `TEKNİK RESİM · SİPARİŞ #${o.id} · ${o.J.title.toLocaleUpperCase('tr')}`;
     $('dwSvg').innerHTML = drawingSVG(o.J); $('dwTable').innerHTML = drawingTable(o.J);
     $('drawing').hidden = window.innerWidth < 900;
     const act = S.job && S.job.order && S.job.order.id === o.id && !S.job.done;
     buildScribe(act ? o.J : null);
-    $('jobStart').textContent = act ? 'Yeniden başla (yeni ham parça)' : o.free ? 'İşe başla' : `İşe başla (ham parça ${tl(o.cost)})`;
+    $('jobStart').textContent = act ? 'Yeniden başla (yeni ham parça)' : bekler(o) ? 'Önce teklif verin' : o.free ? 'İşe başla' : `İşe başla (ham parça ${tl(o.cost)})`;
     render();
   }
   function start() {
     if (!sel) { log('Önce panodan bir sipariş seçin.', 'warn'); return; }
     const o = sel;
+    if (o.teklif === 'bekliyor' || o.teklif === 'karsi') { log('Bu müşteri önce fiyat teklifi bekliyor: kartın altından teklifinizi verin.', 'warn'); return; }
     if (o.cost > st.money) { log(`Kasada ham parça için yeterli para yok (${tl(o.cost)}). Malzemesi müşteriden gelen bir iş seçin ya da panoyu yenileyin.`, 'warn'); return; }
     // bağlama: büyük plaka mengeneye sığmaz; kurulu bağlama parçayı almıyorsa uygun olana geçilir
     if (o.J.arcs && o.J.arcs.length) {                              // yay kanal: döner tabla şart
@@ -364,6 +416,8 @@ const CR = (() => {
       pay = Math.round(o.pay * ({ 3:1.15, 2:1 }[r.stars] || 0.85) * (onTime ? 1.1 : 1) * (o.cond === 'acil' && !onTime ? 0.8 : 1) / 10) * 10; rep = Math.max(1, r.stars) + o.lv;
       if (o.cond === 'acil') tags.push(onTime ? ['Acil iş zamanında: ×1.6', 'ok'] : ['Acil iş gecikti: −%20', 'warn']);
       if (o.cond === 'hassas') tags.push(['Hassas iş: ×1.5', 'ok']);
+      if (o.hizli && !onTime) { pay = Math.round(pay * 0.7 / 10) * 10; tags.push(['Hızlı termin kaçtı: −%30', 'warn']); }
+      if (o.teklif === 'kabul') tags.push(['Teklifinizle çalışıldı', 'ok']);
       if (o.ayni) { rep += o.ayniRep; tags.push([`${o.ayni[0].toLocaleUpperCase('tr')}${o.ayni.slice(1)} geldi: itibar +${o.ayniRep}`, 'gold']); }
       if (o.qty && (o.doneQty || 0) + 1 >= o.qty) { pay = Math.round(pay * 1.1 / 10) * 10; tags.push(['Seri tamamlandı +%10', 'ok']); }
       const clean = chipsOnPart() === 0;
