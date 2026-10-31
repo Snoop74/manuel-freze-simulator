@@ -12,7 +12,7 @@ const TMAT = {
   holder:  smat(0x2b2e31, 0.38, 0.85, 0.7),           // siyah oksit tutucu
   bright:  smat(0x9aa2a7, 0.22, 0.95, 0.9),           // taşlanmış çelik yüzey
   insert:  smat(0x2c2c31, 0.4, 0.7, 0.8),             // karbür uç (koyu)
-  broken:  smat(0x6b2a22, 0.8, 0.2, 0.3),
+  broken:  smat(0x8c9095, 0.62, 0.6, 0.6, { flatShading:true, side:THREE.DoubleSide }),   // karbür kırık yüzeyi: mat gri, kristal
   ruby:    smat(0xa0101c, 0.12, 0.1, 0.9),            // taster bilyesi
   led:     new THREE.MeshStandardMaterial({ color:0x111a14, emissive:0x0b3a12, roughness:0.3 }),
   red:     smat(0xb8442e, 0.4, 0.5, 0.6),
@@ -104,7 +104,7 @@ function fluteGeo(r, z, len, g, opt = {}) {
     const a = k * W + j, b = a + 1, c = a + W, d = c + 1;
     idx.push(a, c, b, b, c, d);
   }
-  if (g.tip === 'flat' || g.tip === 'lead') {                     // alt yüz: ortası hafif içbükey (alın dişlerinin çukurluk açısı)
+  if ((g.tip === 'flat' || g.tip === 'lead') && !opt.noCap) {     // alt yüz: ortası hafif içbükey (alın dişlerinin çukurluk açısı)
     const c0 = pos.length / 3; pos.push(0, g.tip === 'flat' ? r * 0.04 : 0, 0); uv.push(0.5, 0);
     for (let j = 0; j < seg; j++) idx.push(c0, j, j + 1);
   }
@@ -250,7 +250,8 @@ function buildToolInto(grp, T, broken) {
   // tutucu: takım çıkıntısının üstünde
   const hl = L - T.stick;
   place(holderMesh(T, hl), T.stick);
-  const flute = broken ? Math.max(2, T.flute * 0.3) : T.flute, off = broken ? T.flute - flute : 0;
+  const kf = broken ? 0.28 + ([...String(T.no)].reduce((a, c) => a + c.charCodeAt(0), 0) % 17) / 17 * 0.3 : 1;   // kırılma yeri takıma göre
+  const flute = broken ? Math.max(2, T.flute * kf) : T.flute, off = broken ? T.flute - flute : 0;
   if (T.type === 'face') {
     // kabuk alın frezesi (90° omuz): siyah oksitli gövde, her ağzın önünde talaş cebi, eksenel eğimle oturan vidalı
     // paralelkenar karbür uç (APKT 1604), üstte malafa bağlama cıvatası ve sürücü kamaları
@@ -314,9 +315,45 @@ function buildToolInto(grp, T, broken) {
   // şaft: kanalın üstünden tutucuya kadar, üstte pah
   place(latheMesh([[r * 0.97, 0], [r, 0.6], [r, T.stick - T.flute], [r * 0.9, T.stick - T.flute + 0.8]], coat === TMAT.tin ? TMAT.tin : T.type === 'tap' || T.tm === 'hss' ? TMAT.hss : TMAT.carbide, 40), T.flute);
   markShank(T, r, g, place);
-  const fg = fluteGeo(r, T.z, flute, broken ? Object.assign({}, g, { tip:'flat', corner:0 }) : g, T.type === 'tap' ? { p:T.p } : {});
+  const fg = fluteGeo(r, T.z, flute, broken ? Object.assign({}, g, { tip:'flat', corner:0 }) : g, Object.assign(T.type === 'tap' ? { p:T.p } : {}, { noCap:broken }));
   const body = new THREE.Mesh(fg, coat); body.castShadow = true; place(body, off);
-  if (broken) place(latheMesh([[0, -0.6], [r * 0.95, -0.6], [r * 0.9, 0.4], [0, 0.4]], TMAT.broken, 24), off);
+  if (broken) { const fr = new THREE.Mesh(fractureTool(fg, r, flute, Math.max(48, T.z * 28), T.no), TMAT.broken); fr.castShadow = true; place(fr, off); }
+}
+/* Kırık takım: karbür gevrek kırılır; kırık hattı eğik ve dalgalı, yüzeyi mat gri ve kristal (küçük düzlemler).
+   Kanallı gövdenin alt satırları kırık hattına bükülür; alttaki boşluğa kırık yüzeyi örülür. Şekil takım numarasından
+   gelir (her çizimde aynı). seg: kanallı gövdenin çevre bölümü (satır başına seg + 1 köşe). */
+function fractureTool(geo, r, len, seg, no) {
+  let sd = [...String(no)].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) % 2147483647 || 1;
+  const R = () => (sd = sd * 16807 % 2147483647) / 2147483647;
+  const tilt = 0.25 + R() * 0.35, phi = R() * TAU, amp = r * 0.12;
+  const harm = [1, 2, 3, 5, 8].map(k => ({ k, a:R() * TAU, m:amp / k }));
+  const band = Math.min(len * 0.85, r * 2.4);
+  const h = th => Math.min(band * 0.7, amp + r * tilt * (1 + Math.cos(th - phi)) + harm.reduce((s, q) => s + q.m * Math.sin(q.k * th + q.a), 0));
+  const P = geo.attributes.position;
+  for (let i = 0; i < P.count; i++) {
+    const x = P.getX(i), y = P.getY(i), z = P.getZ(i);
+    if (y >= band) continue;
+    const hh = Math.max(0, h(Math.atan2(z, x)));
+    P.setY(i, hh + y * (band - hh) / band);
+  }
+  P.needsUpdate = true; geo.computeVertexNormals();
+  // kırık yüzeyi: dış halka kanallı gövdenin en alt satırı, merkeze doğru 5 halka, ufak pürüzlerle
+  const W = seg + 1, NR = 5, pos = [], idx = [];
+  let hc = 0; for (let j = 0; j < W; j++) hc += P.getY(j); hc = hc / W + (R() - 0.5) * r * 0.25;
+  for (let k = 0; k < NR; k++) {
+    const f = 1 - k / NR;
+    for (let j = 0; j < W; j++) {
+      const x = P.getX(j), y = P.getY(j), z = P.getZ(j);
+      const jit = k ? (R() - 0.5) * r * 0.09 : 0;
+      pos.push(x * f, y * f + hc * (1 - f) + jit, z * f);
+    }
+  }
+  const c = pos.length / 3; pos.push(0, hc, 0);
+  for (let k = 0; k < NR - 1; k++) for (let j = 0; j < seg; j++) { const a = k * W + j, b = a + 1, d = a + W, e = d + 1; idx.push(a, b, d, b, e, d); }
+  for (let j = 0; j < seg; j++) idx.push((NR - 1) * W + j, (NR - 1) * W + j + 1, c);
+  const fg = new THREE.BufferGeometry();
+  fg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); fg.setIndex(idx); fg.computeVertexNormals();
+  return fg;
 }
 
 // şaft üstündeki lazer yazısı: eksen boyunca, operatöre bakan yüzde; takımla birlikte döner
