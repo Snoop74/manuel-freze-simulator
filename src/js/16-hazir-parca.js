@@ -232,6 +232,37 @@ const BLANKS = [
         },
         Sf:() => SF.cast };
     } },
+  // absürt işler: parça sıradan, hikâye değil
+  { id:'reaktor', name:'Kontrol çubuğu tutucu plakası', cat:'Nükleer ☢', desc:'Taşlanmış paslanmaz plaka. Reaktörün kontrol çubuklarını tutan delikler açılacak. Müşteri ölçüleri çok ciddiye alıyor.',
+    gen() {
+      const w = rp([140, 150]), d = rp([100, 110]), h = 20;
+      return { w, d, h, mat:'ss304', exist:[], info:`${w}×${d}×${h} paslanmaz, taşlanmış`, H:() => h, Sf:() => SF.ground };
+    } },
+  { id:'lahmacun', name:'Lahmacun taşı tutucusu', cat:'Fırın', desc:'Hadde tufalı lama: taş fırının lahmacun taşını tutan ayak. Fırın birazdan açılıyor.',
+    gen() {
+      const w = rp([170, 180]), d = rp([36, 40]), h = 15, nz = castNoise();
+      return { w, d, h:h + 0.4, mat:'s235', geo:{ plate:h }, exist:[], info:`${w}×${d}×${h} lama, tufallı`, H:(x, y) => h + 0.2 + nz(x * 2, y * 2) * 0.15, Sf:() => SF.scale };
+    } },
+  { id:'teyze', name:'Dikiş makinesi pedal mesnedi', cat:'Komşu', desc:'Nermin Teyze\'nin 1974 model dikiş makinesinin pirinç pedal mesnedi. Parayla değil börekle ödüyor.',
+    gen() {
+      const w = rp([60, 66, 70]), d = rp([36, 40]), h = 12;
+      return { w, d, h, mat:'brass', exist:[], info:`${w}×${d}×${h} pirinç`, H:() => h, Sf:() => SF.ground };
+    } },
+  { id:'rende', name:'Dev peynir rendesi', cat:'Mandıra', desc:'Kars\'tan bir mandıranın tekerlek kaşar için istediği rende plakası. Delik, delik, delik.',
+    gen() {
+      const w = rp([150, 160]), d = rp([90, 100]), h = 10;
+      return { w, d, h, mat:'al', exist:[], info:`${w}×${d}×${h} alüminyum`, H:() => h, Sf:() => SF.raw };
+    } },
+  { id:'altin', name:'"Altın" telefon standı', cat:'Sosyal medya', desc:'Pirinç blok: ünlü bir fenomenin masa standı. Yüzü ayna gibi olmalı, telefon yuvası açılacak.',
+    gen() {
+      const w = rp([80, 90]), d = rp([50, 60]), h = 25;
+      return { w, d, h, mat:'brass', exist:[], info:`${w}×${d}×${h} pirinç`, H:() => h, Sf:() => SF.raw };
+    } },
+  { id:'robot', name:'Robot savaşı zırh plakası', cat:'Yarışma', desc:'Lise robot takımının zırh plakası. Turnuva yarın sabah; hafifletme cepleri ve bağlantı delikleri lazım.',
+    gen() {
+      const w = rp([140, 150]), d = rp([90, 100]), h = 12;
+      return { w, d, h, mat:'al', exist:[], info:`${w}×${d}×${h} alüminyum`, H:() => h, Sf:() => SF.raw };
+    } },
 ];
 // şablonu mengeneye bağla: ölçü, malzeme, yükseklik ve yüzey haritası
 function genBlank(id, seed) {

@@ -133,6 +133,30 @@ const CR = (() => {
     tekstil:{ lv:1, cust:[['Bursa Dokuma A.Ş.', 'fabrika'], ['Tekstil Makine Servisi', 'servis'], ['Örme Fabrikası Bakım', 'bakım']], title:'Dişli kutusu kapağı: conta yüzü ve delikler', value:1500, make(P) {
       const holes = P.bolts.map(([x, y]) => ({ x, y, d:8.5 }));
       return Object.assign(deckJob(P, 0.1, 1.0, `Yağ kaçıran dişli kutusu kapağının conta yüzünü tamamen düzleyin (düzlemsellik ≤ 0.10, en yüksek noktadan en çok 1.0 mm), sonra conta yüzüne ${holes.length}×Ø8.5 cıvata deliği açın.`, 400 + P.w * P.d / 35 + holes.length * 40, 160 + P.w * P.d / 80 + holes.length * 35), { holes }); } },
+    // absürt işler: seyrek gelir (absurd), bazılarının koşulu sabittir (cond), bazısı parayla değil aynen öder (ayni: pay sabit, itibar primi)
+    reaktor:{ lv:1, absurd:true, cond:'hassas', cust:[['Nükleer Santral Bakım Müdürlüğü', 'enerji'], ['Gizli Araştırma Tesisi', 'kurum']], title:'Reaktör: kontrol çubuğu tutucu', value:25000, make(P) {
+      const holes = [], sx = (P.w - 60) / 3, sy = (P.d - 50) / 2;
+      for (let j = 0; j < 3; j++) for (let i = 0; i < 4; i++) holes.push({ x:r05(30 + i * sx), y:r05(25 + j * sy), d:12 });
+      return { holes, brief:`Kontrol çubukları için 12×Ø12 delik (4×3 ızgara, boydan boya). Müşteri: "Bir delik kayarsa çubuk sıkışır, çubuk sıkışırsa... onu düşünmeyelim." Paslanmaz: devri düşük tutun, gagalayın.`, val:700 + holes.length * 90, target:200 + holes.length * 60 }; } },
+    lahmacun:{ lv:0, absurd:true, cond:'acil', cust:[['Fırıncı Halil', 'fırın'], ['Urfa Lahmacun Salonu', 'restoran']], title:'Lahmacun taşı tutucusu', value:250, make(P) {
+      const y = r05(P.d / 2), holes = [15, P.w * 0.38, P.w * 0.62, P.w - 15].map(x => ({ x:r05(x), y, d:8.5 }));
+      return { face:{ depth:+(P.stockH - P.geo.plate).toFixed(2), tol:0.1 }, holes, brief:`Fırın 40 dakika sonra açılıyor ve taş yerinden oynuyor! Lamanın tufalını alın (yüzey ${P.geo.plate.toFixed(2)} ±0.1) ve 4×Ø8.5 delik açın. Usta "çabuk olursan bir lahmacun da senden yana" diyor.`, val:300 + P.w * 0.8, target:140 + P.w * 0.5 }; } },
+    teyze:{ lv:0, absurd:true, ayni:{ ad:'bir tepsi börek', pay:50, rep:4 }, cust:[['Nermin Teyze', 'komşu'], ['Hayriye Teyze', 'komşu']], title:'Dikiş makinesi pedal mesnedi', value:150, make(P) {
+      const cx = P.w / 2, cy = r05(P.d / 2);
+      return { pockets:[{ x0:cx - 12, x1:cx + 12, y0:cy - 6, y1:cy + 6, depth:2, r:3 }], holes:[{ x:10, y:cy, d:5 }, { x:P.w - 10, y:cy, d:5 }],
+        brief:`"Evladım rahmetli eniştenin makinesi, pedalın yatağı kırıldı." 24×12 yatak cebi (2 derin, R3) ve iki uca Ø5 vida deliği. Ödeme: 50 ₺ ve bir tepsi börek (bütün mahalleye anlatır: itibar +4).`, val:50, target:150 }; } },
+    rende:{ lv:0, absurd:true, cust:[['Kars Kaşar Mandırası', 'mandıra'], ['Peynir Festivali Komitesi', 'dernek']], title:'Dev peynir rendesi', value:500, make(P) {
+      const holes = [], nx = 6, ny = 4, sx = (P.w - 40) / (nx - 1), sy = (P.d - 40) / (ny - 1);
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) holes.push({ x:r05(20 + i * sx), y:r05(20 + j * sy), d:5 });
+      return { holes, brief:`40 kiloluk tekerlek kaşar için rende plakası: ${holes.length}×Ø5 delik (${nx}×${ny} ızgara, boydan boya). Delik çok, sabır gerek; matkabı ısıtmayın.`, val:180 + holes.length * 32, target:120 + holes.length * 22 }; } },
+    altin:{ lv:1, absurd:true, cust:[['Fenomen @parlakyasam', 'sosyal medya'], ['Altın Kafes Ajansı', 'reklam']], title:'"Altın" telefon standı', value:1200, make(P) {
+      const yc = r05(P.d * 0.55);
+      return { face:{ depth:0.3, tol:0.03 }, pockets:[{ x0:8, x1:P.w - 8, y0:yc - 6, y1:yc + 6, depth:6, r:3 }],
+        brief:`"Çekimde yüzüm görünmeli!" Üst yüzden 0.30 mm alın, ayna gibi: yükseklik ve düzlemsellik ±0.03. Telefon yuvası ${P.w - 16}×12 (6 derin, R3). Son pasoyu ince ve hızlı alın.`, val:600 + P.w * P.d / 20, target:200 + P.w * P.d / 40 }; } },
+    robot:{ lv:1, absurd:true, cond:'acil', cust:[['Lise Robot Takımı "Demir Yumruk"', 'öğrenci takımı'], ['Robot Savaşları Kulübü', 'kulüp']], title:'Robot savaşı zırh plakası', value:600, make(P) {
+      const dep = rp([3, 4]), pockets = [{ x0:15, x1:P.w / 2 - 5, y0:20, y1:P.d - 20, depth:dep, r:5 }, { x0:P.w / 2 + 5, x1:P.w - 15, y0:20, y1:P.d - 20, depth:dep, r:5 }];
+      const holes = [[8, 8], [P.w - 8, 8], [P.w - 8, P.d - 8], [8, P.d - 8]].map(([x, y]) => ({ x, y, d:8.5 }));
+      return { pockets, holes, brief:`Turnuva yarın sabah! Zırhı hafifletin: iki cep (${dep} derin, R5) ve köşelere 4×Ø8.5 bağlantı deliği. Kazanırlarsa kupada atölyenizin adı yazacak.`, val:420 + dep * 60, target:220 + dep * 30 }; } },
   };
   // conta yüzü traşlama işi (silindir kapağı, egzoz flanşı): en yüksek nokta, izin verilen en alçak seviye
   function deckJob(P, flat, maxCut, brief, val, target) {
@@ -146,21 +170,22 @@ const CR = (() => {
     seri:{ tag:'SERİ ×3', txt:'SERİ İŞ: 3 adet. Her adet ayrı ödenir ve ham parçası ayrı alınır; üçü de kabul edilirse son adette +%10 seri primi.' },
     hassas:{ tag:'HASSAS', txt:'HASSAS İŞ: bütün toleranslar yarıya iner, ödeme ×1.5.' },
   };
-  function addCond(o, lv) {
-    const u = Math.random();
-    if (lv >= 2 && u < 0.15) {
+  function addCond(o, lv, sabit) {                                // sabit: işin her zaman taşıdığı koşul
+    const u = Math.random(), c = sabit || (lv >= 2 && u < 0.15 ? 'hassas' : u < 0.3 ? 'acil' : !o.own && lv >= 1 && u < 0.45 ? 'seri' : null);
+    if (c === 'hassas') {
       o.cond = 'hassas'; o.J.tolK = 0.5; o.pay = Math.round(o.pay * 1.5 / 10) * 10;
       for (const L of [...(o.J.levels || []), ...(o.J.pads || [])]) L.tol = +(L.tol / 2).toFixed(3);   // seviye ve ped toleransları da yarıya
       if (o.J.deck) o.J.deck.flat = +(o.J.deck.flat / 2).toFixed(3);
       if (o.J.face) o.J.face.tol = +(o.J.face.tol / 2).toFixed(3);
     }
-    else if (u < 0.3) { o.cond = 'acil'; o.J.target = Math.round(o.J.target * 0.55 / 10) * 10; o.pay = Math.round(o.pay * 1.6 / 10) * 10; }
-    else if (!o.own && lv >= 1 && u < 0.45) { o.cond = 'seri'; o.qty = 3; o.doneQty = 0; }
+    else if (c === 'acil') { o.cond = 'acil'; o.J.target = Math.round(o.J.target * 0.55 / 10) * 10; o.pay = Math.round(o.pay * 1.6 / 10) * 10; }
+    else if (c === 'seri') { o.cond = 'seri'; o.qty = 3; o.doneQty = 0; }
     if (o.cond) o.J.brief += ' ' + COND[o.cond].txt;
     return o;
   }
   function genBlankOrder(lv) {
-    const ids = Object.keys(BLANK_JOBS).filter(k => BLANK_JOBS[k].lv <= lv), id = pick(ids), B = BLANK_JOBS[id], seed = Math.random() * 1e9 | 0;
+    const ids = Object.keys(BLANK_JOBS).filter(k => BLANK_JOBS[k].lv <= lv), abs = ids.filter(k => BLANK_JOBS[k].absurd);
+    const id = abs.length && Math.random() < 0.25 ? pick(abs) : pick(ids.filter(k => !BLANK_JOBS[k].absurd)), B = BLANK_JOBS[id], seed = Math.random() * 1e9 | 0;   // absürt iş seyrek gelir
     const P = genBlank(id, seed);
     const F = withSeed(seed ^ 0x5bd1e995, () => B.make(P));
     const mf = MATF[P.mat] || 1;
@@ -169,8 +194,11 @@ const CR = (() => {
     const [cn, ck] = pick(B.cust);
     J.brief = `${cn} (${ck}) kendi parçasını getirdi: ${BLANKS.find(q => q.id === id).name}, ${MATS[P.mat].short} ${P.w}×${P.d}. ${F.brief} Hurdaya çıkarsa parça bedeli ${tl(B.value)} sizden.`;
     delete J.val; delete J.brief0;
-    return addCond({ id:st.seq++, cust:cn, mat:P.mat, J, pay:Math.round(F.val * mf * (1 + lv * 0.15) / 10) * 10, cost:0, free:true, own:true, value:B.value, lv }, lv);
+    const o = { id:st.seq++, cust:cn, mat:P.mat, J, pay:Math.round(F.val * mf * (1 + lv * 0.15) / 10) * 10, cost:0, free:true, own:true, value:B.value, lv };
+    if (B.ayni) Object.assign(o, { pay:B.ayni.pay, ayni:B.ayni.ad, ayniRep:B.ayni.rep });
+    return addCond(o, lv, B.cond || (B.ayni ? 'yok' : null));    // aynen ödeyen komşu acele etmez
   }
+  const payTxt = o => tl(o.pay) + (o.ayni ? ' + ' + o.ayni : '');
   function genOrder(free) {
     const lv = level();
     if (!free && Math.random() < 0.5) return genBlankOrder(lv);
@@ -248,7 +276,7 @@ const CR = (() => {
         const act = S.job && S.job.order && S.job.order.id === o.id && !S.job.done;
         b.classList.toggle('active', !!(sel && sel.id === o.id));
         const ct = o.cond ? ` <b class="cond ${o.cond}">${COND[o.cond].tag}${o.qty ? ' ' + (o.doneQty || 0) + '/' + o.qty : ''}</b>` : '';
-        b.innerHTML = `<span class="jn">#${o.id}</span><span class="jt">${o.J.title} · ${o.cust}${ct}${act ? ' <em>işleniyor</em>' : ''}</span><span class="js">${tl(o.pay)}<i> · ${MATS[o.mat].short} · ${o.free ? 'malzeme müşteriden' : 'ham ' + tl(o.cost)}</i></span>`;
+        b.innerHTML = `<span class="jn">#${o.id}</span><span class="jt">${o.J.title} · ${o.cust}${ct}${act ? ' <em>işleniyor</em>' : ''}</span><span class="js">${payTxt(o)}<i> · ${MATS[o.mat].short} · ${o.free ? 'malzeme müşteriden' : 'ham ' + tl(o.cost)}</i></span>`;
         b.addEventListener('click', () => select(o));
         L.append(b);
       });
@@ -283,7 +311,7 @@ const CR = (() => {
     sel = o; setSelJob(-2);
     if (o.J.blank && !o.J._P) Object.defineProperty(o.J, '_P', { value:genBlank(o.J.blank.id, o.J.blank.seed), enumerable:false, writable:true, configurable:true });                                         // iş emri listesindeki seçim kalkar
     $('jcNo').textContent = 'SİPARİŞ #' + o.id; $('jcTitle').textContent = `${o.J.title} · ${o.cust}`; $('jcBrief').textContent = o.J.brief;
-    $('jcMeta').innerHTML = `<span>Ödeme <b>${tl(o.pay)}</b></span><span>Hedef süre <b>${mmss(o.J.target)}</b></span><span>Ham parça <b>${o.free ? 'müşteriden' : tl(o.cost)}</b></span>${o.J.big ? '<span>Bağlama <b>pabuç / vakum</b></span>' : o.J.arcs && o.J.arcs.length ? '<span>Bağlama <b>döner tabla</b></span>' : ''}${o.cond ? `<span>Koşul <b>${COND[o.cond].tag}${o.qty ? ` · ${o.doneQty || 0}/${o.qty} teslim` : ''}</b></span>` : ''}`;
+    $('jcMeta').innerHTML = `<span>Ödeme <b>${payTxt(o)}</b></span><span>Hedef süre <b>${mmss(o.J.target)}</b></span><span>Ham parça <b>${o.free ? 'müşteriden' : tl(o.cost)}</b></span>${o.J.big ? '<span>Bağlama <b>pabuç / vakum</b></span>' : o.J.arcs && o.J.arcs.length ? '<span>Bağlama <b>döner tabla</b></span>' : ''}${o.cond ? `<span>Koşul <b>${COND[o.cond].tag}${o.qty ? ` · ${o.doneQty || 0}/${o.qty} teslim` : ''}</b></span>` : ''}`;
     $('jcBtns').hidden = false; $('vDraw').hidden = false;
     $('dwTitle').textContent = `TEKNİK RESİM · SİPARİŞ #${o.id} · ${o.J.title.toLocaleUpperCase('tr')}`;
     $('dwSvg').innerHTML = drawingSVG(o.J); $('dwTable').innerHTML = drawingTable(o.J);
@@ -336,6 +364,7 @@ const CR = (() => {
       pay = Math.round(o.pay * ({ 3:1.15, 2:1 }[r.stars] || 0.85) * (onTime ? 1.1 : 1) * (o.cond === 'acil' && !onTime ? 0.8 : 1) / 10) * 10; rep = Math.max(1, r.stars) + o.lv;
       if (o.cond === 'acil') tags.push(onTime ? ['Acil iş zamanında: ×1.6', 'ok'] : ['Acil iş gecikti: −%20', 'warn']);
       if (o.cond === 'hassas') tags.push(['Hassas iş: ×1.5', 'ok']);
+      if (o.ayni) { rep += o.ayniRep; tags.push([`${o.ayni[0].toLocaleUpperCase('tr')}${o.ayni.slice(1)} geldi: itibar +${o.ayniRep}`, 'gold']); }
       if (o.qty && (o.doneQty || 0) + 1 >= o.qty) { pay = Math.round(pay * 1.1 / 10) * 10; tags.push(['Seri tamamlandı +%10', 'ok']); }
       const clean = chipsOnPart() === 0;
       if (clean) pay = Math.round(pay * 1.05 / 10) * 10;
