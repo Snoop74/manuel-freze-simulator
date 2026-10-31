@@ -4,7 +4,7 @@ import { $, C, CUT, EDGE, H, LIM, NX, NY, PH, P_MAX, RAPID, S, app, clamp, isDri
 import { beep, crashSound, initAudio, thud } from './01-ses.js';
 import { LX, LY, ROT, toLv } from './03-tabla-parca.js';
 import { DIVY, DIVZ, VX } from './04-voksel.js';
-import { FIX, MK1, MK2, TAPC, TINTC, markDirty, markThrough } from './05-baglama.js';
+import { FIX, MK1, MK2, TAPC, TINTC, markDirty, markThrough, tapThread } from './05-baglama.js';
 import { burst, chipForm, chipsFor, kickChips } from './06-talas.js';
 import { HOLDERS, buildToolVisual, holderOf, holderR, profile } from './07-takim-gorsel.js';
 
@@ -295,6 +295,8 @@ function tapStep(nx, ny, nn, T, it, horiz) {
       if (dd <= T.d / 2 + C && dd >= T.drill / 2 - C) TAPC[j * NX + i] = 1;
     }
     markDirty(i0, i1, j0, j1);
+    const th = S.tap.th;                                           // içteki diş yüzeyi kılavuzun ulaştığı derinliğe uzar
+    if (th && down && tip + T.p * 2 < th.y0 - 0.4) { th.y0 = Math.max(0.05, tip + T.p * 2); tapThread(th); }
     return true;
   }
   // ilk temas
@@ -310,7 +312,14 @@ function tapStep(nx, ny, nn, T, it, horiz) {
     if (mat.chip === 'string') { crash('Paslanmazda yağsız kılavuz çekilmez: kılavuz sarıp kırıldı. Soğutma sıvısını açın.'); return false; }
     warnOnce('tapDry', 'Çelikte yağsız kılavuz çekiyorsunuz; kılavuz zorlanır. Soğutma sıvısını açın.', 'warn', 8000);
   }
-  S.tap = { p:T.p };
+  // deliğin ağzındaki yüzey yüksekliği (diş yüzeyinin üst ucu): delik çevresinden örnekle
+  let top = -1;
+  for (let k = 0; k < 8; k++) {
+    const a = k * Math.PI / 4, ci = Math.round((lx + Math.cos(a) * (rh + 1.2)) / C), cj = Math.round((ly + Math.sin(a) * (rh + 1.2)) / C);
+    if (ci >= 0 && cj >= 0 && ci < NX && cj < NY) top = Math.max(top, H[cj * NX + ci]);
+  }
+  S.tap = { p:T.p, th:{ cx:lx, cy:ly, rd:rh, p:T.p, y0:Math.max(0.05, tip + T.p * 2), y1:top > 0 ? top - 0.05 : tip + T.p * 3 } };
+  tapThread(S.tap.th);
   log(`${T.name} kavradı: kovanı mil sürüyor (her turda ${T.p} mm). Çıkarmak için mili GERİ çalıştırın.`, 'ok');
   return true;
 }

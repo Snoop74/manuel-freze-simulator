@@ -5,7 +5,7 @@ import { $, CUT, EDGE, H, INSP, MATS, NX, NY, PD, PH, PW, S, SURF, TOOLS, app, i
 import { ac, initAudio, master, noiseHit, thud } from './01-ses.js';
 import { M } from './02-sahne-tezgah.js';
 import { VX } from './04-voksel.js';
-import { FIX, MK1, MK2, TAPC, TINTC, markDirty, markThrough, topMat } from './05-baglama.js';
+import { FIX, MK1, MK2, TAPC, TINTC, clearThreads, markDirty, markThrough, topMat } from './05-baglama.js';
 import { chipMat, clearChips } from './06-talas.js';
 import { HKEY, HOLDERS, HSEL, buildToolVisual, holderOf, holds } from './07-takim-gorsel.js';
 import { press, release, stopMotion } from './08-kesme.js';
@@ -284,7 +284,7 @@ function setMaterial(k) {
 function resetPart(k) {
   if (S.spindle) spindle(false);
   if (k) setMaterial(k);
-  H.fill(PH); CUT.fill(0); INSP.fill(0); MK1.fill(0); MK2.fill(0); TINTC.fill(0); TAPC.fill(0); S.tap = null; markDirty(0, NX - 1, 0, NY - 1);
+  H.fill(PH); CUT.fill(0); INSP.fill(0); MK1.fill(0); MK2.fill(0); TINTC.fill(0); TAPC.fill(0); S.tap = null; clearThreads(); markDirty(0, NX - 1, 0, NY - 1);
   markThrough();                             // delik yüzey listesi de yenilensin (yoksa eski delikler açık görünür)
   EDGE.fill(9); SURF.fill(0); S.blank = null;
   S.temp = 0; S.power = 0; S.chatNow = 0; S.lastRa = null;

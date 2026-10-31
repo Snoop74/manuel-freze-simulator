@@ -44,8 +44,41 @@ function makeWall(n, place, normal) {
   const m = new THREE.Mesh(g, M.raw); m.castShadow = true; m.receiveShadow = true; rotIn.add(m);
   return { g, n, m };
 }
+/* Kılavuz dişleri: yükseklik haritası deliğin iç duvarını gösteremez. Kılavuz deliğe girdikçe deliğin içine, duvara
+   oturan ve içe doğru çıkıntı yapan sağ helis dişli bir yüzey konur (yalnızca görünüm; muayene ölçüleri değişmez).
+   th: { cx, cy: delik merkezi (parça koordinatı), rd: delik yarıçapı, p: adım, y0..y1: dişin alt ve üst yüksekliği } */
+const threadG = new THREE.Group(); rotIn.add(threadG);
+const threads = [];
+function threadGeo(rd, p, y0, y1) {
+  const seg = 72, ys = [], h = Math.min(0.54 * p, rd * 0.25), rRoot = rd + 0.25;
+  for (let y = y0; y < y1; y += p / 8) ys.push(y);
+  ys.push(y1);
+  const pos = [], idx = [], W = seg + 1;
+  for (const y of ys) for (let j = 0; j <= seg; j++) {
+    const th = j / seg * Math.PI * 2, ph = ((y / p - th / (Math.PI * 2)) % 1 + 1) % 1;
+    const tri = Math.min(1, Math.max(0, 1.25 - 2.5 * Math.abs(ph - 0.5)));      // kesik üçgen diş profili
+    const top = Math.min(1, (y1 - y) / p);                                         // ağızda diş yumuşakça başlar
+    const rr = rRoot - h * tri * top;
+    pos.push(Math.cos(th) * rr, y, Math.sin(th) * rr);
+  }
+  for (let k = 0; k < ys.length - 1; k++) for (let j = 0; j < seg; j++) { const a = k * W + j, b = a + 1, c = a + W, d = c + 1; idx.push(a, b, c, b, d, c); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+function tapThread(th) {
+  if (th.y1 - th.y0 < 0.3) return;
+  if (th.mesh) { threadG.remove(th.mesh); th.mesh.geometry.dispose(); }
+  else { th.mat = new THREE.MeshStandardMaterial({ color:new THREE.Color(...mat.cutL).multiplyScalar(0.62), roughness:0.42, metalness:0.6, side:THREE.DoubleSide }); threads.push(th); }   // deliğin içi gölgede: koyu
+  th.mesh = new THREE.Mesh(threadGeo(th.rd, th.p, th.y0, th.y1), th.mat);
+  th.mesh.position.set(th.cx, 0, -th.cy); threadG.add(th.mesh);
+}
+function clearThreads() {
+  for (const th of threads) { threadG.remove(th.mesh); th.mesh.geometry.dispose(); th.mat.dispose(); }
+  threads.length = 0;
+}
 function buildStock(w, d, h) {
-  jawOverride = null;
+  jawOverride = null; clearThreads();
   nV = allocGrid(w, d, h);
   if (topMesh) { rotIn.remove(topMesh); topGeo.dispose(); }
   for (const w of walls) { rotIn.remove(w.w.m); w.w.g.dispose(); }
@@ -299,6 +332,6 @@ function flushMesh() {
    Freze talaşı bir ağzın kestiği virgül biçimli şerittir: bir ucu ince, öbür ucu kalın; bir yüzü takıma sürtünüp parlar, öbürü mat kalır.
    Her biçimin birkaç rastgele çeşidi üretilir. Talaşlar havada döner, sekip yatar ve düştükleri yerde yığılır (iç içe geçmez). */
 
-export { FIX, MK1, MK2, PAR, TAPC, TINTC, buildStock, buildVise, clampLay, divCrank, divRot, flushMesh, jawTop,
+export { FIX, MK1, MK2, PAR, TAPC, TINTC, buildStock, clearThreads, tapThread, buildVise, clampLay, divCrank, divRot, flushMesh, jawTop,
   markDirty, markStockReady, markThrough, nV, parAxis, parBands, parConflicts, rotCrank, setClampLay, setFIX,
   setJawOverride, stockBase, straps, syncFixtures, topGeo, topMat, topMesh, walls, warnParallels };
