@@ -1,4 +1,5 @@
 // ── Sahne ve tezgâh: renderer, ışık, malzemeler, atölye, gövde, kafa, kovan, kollar, soğutma hortumu
+import { kayit } from './00-kayit.js';
 import { $, S, TAU, app, clamp, tool } from './00-temel.js';
 
 const canvas = $('c'), stage = $('stage');
@@ -364,40 +365,53 @@ const spindleG = new THREE.Group(); scene.add(spindleG);   // y = mil burnu
 const noseCap = cyl(38, 40, 18, M.dark); noseCap.position.y = 9; spindleG.add(noseCap);
 const toolRot = new THREE.Group(); spindleG.add(toolRot);
 
-// Soğutma: eklemli (loc-line) hortum + damlacık jeti
+// Soğutma: eklemli (loc-line) hortum + damlacık jeti. Hortum kafanın sol arkasındaki vanadan çıkar ve takıma arkadan yaklaşır
+// (operatörün görüşünü kapatmaz). Gerçek loc-line gibi elle ayarlanır: hortum ya da meme sürüklenince meme takımın
+// çevresinde döner (az: yatay açı, +Z'den; el: yükseklik açısı). Ayar kaydedilir.
 const UP = new THREE.Vector3(0, 1, 0);
 const hdum = new THREE.Object3D();
-const HOSE_MAX = 80;
-const hoseMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(5.4, 14, 10),
-  new THREE.MeshStandardMaterial({ color:0x2f6c9e, roughness:0.35, metalness:0.1 }), HOSE_MAX);
-hoseMesh.castShadow = true; hoseMesh.frustumCulled = false; scene.add(hoseMesh);
-const nozzle = cyl(2.2, 5, 16, new THREE.MeshStandardMaterial({ color:0xd9822b, roughness:0.4 }), 16); scene.add(nozzle);
-const HOSE_BASE = new THREE.Vector3(104, 326, 50);
-const coolValve = new THREE.Group(); coolValve.position.set(104, 342, 50); scene.add(coolValve);   // soğutma vanası
+const HOSE_MAX = 90;
+// bir loc-line halkası: alt ucu top, üst ucu bir sonrakinin topunu saran yuva (7.5 mm adım)
+const segGeo = new THREE.LatheGeometry([[0.01, -3.9], [3.2, -3.9], [4.6, -3.2], [5.3, -1.8], [5.5, 0], [5.2, 1.8], [4.4, 2.8], [4.9, 3.3], [5.2, 3.9], [0.01, 3.9]]
+  .map(([x, y]) => new THREE.Vector2(x, y)), 18);
+const hoseGrp = new THREE.Group(); scene.add(hoseGrp);
+const hoseMesh = new THREE.InstancedMesh(segGeo, new THREE.MeshStandardMaterial({ color:lin(0x2f6c9e), roughness:0.45, metalness:0.05 }), HOSE_MAX);
+hoseMesh.castShadow = true; hoseMesh.frustumCulled = false; hoseGrp.add(hoseMesh);
+const nozzle = cyl(2.2, 5, 16, new THREE.MeshStandardMaterial({ color:lin(0xd9822b), roughness:0.4 }), 16); hoseGrp.add(nozzle);
+const HOSE_BASE = new THREE.Vector3(-104, 350, -70);
+const coolValve = new THREE.Group(); coolValve.position.set(-104, 366, -70); scene.add(coolValve);   // soğutma vanası (kafanın sol yanı)
 { const b = cyl(11, 11, 22, smat(0xb8913a, 0.35, 0.85, 0.5), 6); coolValve.add(b);
-  const st = cyl(3, 3, 10, M.steel, 8); st.position.y = 15; coolValve.add(st); }
+  const st = cyl(3, 3, 10, M.steel, 8); st.position.y = 15; coolValve.add(st);
+  const fit = cyl(7, 7, 10, smat(0xb8913a, 0.35, 0.85, 0.5), 6); fit.position.y = -14; coolValve.add(fit); }
 const coolHandle = new THREE.Group(); coolHandle.position.y = 20; coolValve.add(coolHandle);
 rbox(-4, 44, -3, 3, -5, 5, 2.5, MX.red, coolHandle);
+const HOSE = Object.assign({ az:-2.35, el:0.5 }, kayit.oku('freze-hortum', {}));
+function setHose(az, el, save) {
+  HOSE.az = az; HOSE.el = clamp(el, 0.12, 1.25); hoseKey = '';
+  if (save) kayit.yaz('freze-hortum', { az:HOSE.az, el:HOSE.el });
+}
 const coolTarget = new THREE.Vector3(), nozzleEnd = new THREE.Vector3(), nozzleDir = new THREE.Vector3();
 let hoseKey = '';
 function updateHose(tip) {
   const T = tool();
   coolTarget.set(0, tip + Math.min(T.flute, 10) * 0.45, 0);
-  nozzleEnd.set(0.62, 0.42, 0.66).normalize().multiplyScalar(T.d / 2 + 60).add(coolTarget);
+  const ce = Math.cos(HOSE.el);
+  nozzleEnd.set(ce * Math.sin(HOSE.az), Math.sin(HOSE.el), ce * Math.cos(HOSE.az)).multiplyScalar(T.d / 2 + 60).add(coolTarget);
   if (nozzleEnd.y > 312) nozzleEnd.y = 312;
-  const key = nozzleEnd.y.toFixed(1) + T.no;
+  const key = nozzleEnd.y.toFixed(1) + T.no + HOSE.az.toFixed(3) + HOSE.el.toFixed(3);
   if (key === hoseKey) return;
   hoseKey = key;
   nozzleDir.subVectors(coolTarget, nozzleEnd).normalize();
   const nzBase = nozzleEnd.clone().addScaledVector(nozzleDir, -16);
   const back = nozzleEnd.clone().addScaledVector(nozzleDir, -55);
-  const curve = new THREE.CatmullRomCurve3([HOSE_BASE.clone(), new THREE.Vector3(125, (HOSE_BASE.y + back.y) / 2 + 25, 100), back, nzBase]);
+  const out = HOSE_BASE.clone().add(new THREE.Vector3(-28, -30, -10));         // vanadan dışarı ve aşağı
+  const curve = new THREE.CatmullRomCurve3([HOSE_BASE.clone(), out, back.clone().lerp(out, 0.35).setY(Math.max(back.y, out.y - 10)), back, nzBase]);
   const n = clamp(Math.round(curve.getLength() / 7.5), 4, HOSE_MAX);
   for (let i = 0; i < n; i++) {
     const u = i / (n - 1);
     hdum.position.copy(curve.getPointAt(u));
-    hdum.quaternion.setFromUnitVectors(UP, curve.getTangentAt(u));
-    hdum.scale.set(1, 0.85, 1);
+    hdum.quaternion.setFromUnitVectors(UP, curve.getTangentAt(u).negate());   // top uç memeye bakar
+    hdum.scale.setScalar(1);
     hdum.updateMatrix(); hoseMesh.setMatrixAt(i, hdum.matrix);
   }
   hoseMesh.count = n; hoseMesh.instanceMatrix.needsUpdate = true;
@@ -480,6 +494,6 @@ function updateCoolant(dt, tip) {
 }
 
 
-export { FLOOR_Y, M, MX, addSurface, bStart, box, boxR, camera, canvas, controls, coolHandle, coolValve, cyl, hwheel, lever,
-  motorSwitch, mush, quill, rbox, renderer, scene, smat, spLampMat, spindleG, stage, startBtnMat, toolRot,
+export { FLOOR_Y, HOSE, M, MX, addSurface, bStart, box, boxR, camera, canvas, controls, coolHandle, coolValve, cyl, hoseGrp, hwheel, lever,
+  motorSwitch, mush, quill, rbox, renderer, scene, setHose, smat, spLampMat, spindleG, stage, startBtnMat, toolRot,
   updateCoolant, zFine, zLever };

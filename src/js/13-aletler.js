@@ -1,7 +1,7 @@
 // ── Aletler: makine üstü etkileşim (IA), fareyle sürme (FD), hava tabancası (AG), mekanik taster (DT), 3B taster (PR), vakum (VAC), bağlama ve paralel seçimi
 import { $, C, H, PD, PH, PW, S, TAU, app, log, tipZ, tool, warnOnce } from './00-temel.js';
 import { SN, ac, beep, bus, initAudio, metalRing, noiseBuffer, noiseHit, thud } from './01-ses.js';
-import { bStart, box, camera, canvas, controls, coolHandle, coolValve, cyl, motorSwitch, mush, scene, smat,
+import { HOSE, bStart, box, camera, canvas, controls, coolHandle, coolValve, cyl, hoseGrp, motorSwitch, mush, scene, setHose, smat,
   stage, zFine, zLever } from './02-sahne-tezgah.js';
 import { FIXLIM, FIXNAME, ROT, pfLever, wheels, yWheel } from './03-tabla-parca.js';
 import { FIX, PAR, buildVise, clampLay, nV, parAxis, parConflicts, setClampLay, setFIX, stockBase, topMesh,
@@ -24,6 +24,7 @@ const IA = (() => {
     { o:mush, tip:'ACİL STOP', act:() => $('estopBtn').click() },
     { o:pfLever.parent, tip:() => 'Otomatik tabla ilerleme kolu · ' + (S.autoX ? 'tıkla: dur' : `tıkla: ${S.lastAuto > 0 ? 'sağa' : 'sola'} başlat`), act:() => setAuto(S.autoX ? 0 : S.lastAuto) },
     { o:coolValve, tip:() => 'Soğutma vanası · ' + (S.coolant ? 'tıkla: kapat' : 'tıkla: aç'), act:() => $('coolant').click() },
+    { o:hoseGrp, hose:true, noScale:true, tip:'Soğutma hortumu · sürükle: memeyi takımın çevresinde döndür, yukarı-aşağı eğ' },
   ];
   T.forEach(t => t.o.traverse(m => { m.userData.ia = t; }));
   const objs = T.map(t => t.o), ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -37,11 +38,11 @@ const IA = (() => {
     return h ? h.object.userData.ia : null;
   }
   function setHover(t, e) {
-    if (hover && hover !== t) hover.o.scale.setScalar(1);
+    if (hover && hover !== t && !hover.noScale) hover.o.scale.setScalar(1);
     hover = t;
-    canvas.style.cursor = t ? (t.wheel ? (drag ? 'grabbing' : 'grab') : 'pointer') : '';
+    canvas.style.cursor = t ? (t.wheel || t.hose ? (drag ? 'grabbing' : 'grab') : 'pointer') : '';
     if (!t) { tip.hidden = true; return; }
-    t.o.scale.setScalar(1.06);
+    if (!t.noScale) t.o.scale.setScalar(1.06);
     const r = stage.getBoundingClientRect();
     tip.textContent = typeof t.tip === 'function' ? t.tip() : t.tip; tip.hidden = false;
     tip.style.left = (e.clientX - r.left + 16) + 'px'; tip.style.top = (e.clientY - r.top + 14) + 'px';
@@ -59,7 +60,11 @@ const IA = (() => {
   canvas.addEventListener('pointerdown', e => {
     const t = pick(e); if (!t) return;
     e.preventDefault(); e.stopImmediatePropagation(); controls.enabled = false; initAudio();
-    if (t.wheel) {
+    if (t.hose) {                                                // hortum: yatay sürükleme döndürür, dikey eğer
+      try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      drag = { t, hose:true, x:e.clientX, y:e.clientY, az:HOSE.az, el:HOSE.el };
+      setHover(t, e);
+    } else if (t.wheel) {
       try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
       const f = wheelFrame(t);
       drag = { t, f, last:Math.atan2(e.clientY - f.y, e.clientX - f.x), acc:0 };
@@ -67,6 +72,7 @@ const IA = (() => {
     } else { t.act(); thud(200, 0.08, 0.06); setHover(t, e); }
   }, true);
   canvas.addEventListener('pointermove', e => {
+    if (drag && drag.hose) { setHose(drag.az - (e.clientX - drag.x) * 0.012, drag.el + (e.clientY - drag.y) * 0.008); return; }
     if (drag) {
       const a = Math.atan2(e.clientY - drag.f.y, e.clientX - drag.f.x);
       let d = a - drag.last; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU;
@@ -78,11 +84,11 @@ const IA = (() => {
     if (e.buttons) return;          // kamera döndürülürken üstünden geçilen kumandayı vurgulama
     setHover(pick(e), e);
   });
-  const end = () => { if (drag) { drag = null; canvas.style.cursor = hover ? 'grab' : ''; } controls.enabled = true; };
+  const end = () => { if (drag) { if (drag.hose) setHose(HOSE.az, HOSE.el, true); drag = null; canvas.style.cursor = hover ? 'grab' : ''; } controls.enabled = true; };
   canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
   canvas.addEventListener('pointerleave', () => { if (!drag) setHover(null); });
   canvas.addEventListener('wheel', e => {
-    const t = pick(e); if (!t || !t.wheel) return;
+    const t = pick(e); if (!t || !t.wheel) return;   // hortumun üstünde tekerlek kamerayı yakınlaştırır
     e.preventDefault(); e.stopImmediatePropagation(); initAudio();
     const f = wheelFrame(t);
     wheelTicks(t.wheel, (e.deltaY < 0 ? 1 : -1) * f.facing);
