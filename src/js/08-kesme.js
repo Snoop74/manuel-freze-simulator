@@ -283,6 +283,10 @@ function tapStep(nx, ny, nn, T, it, horiz) {
   }
   if (S.tap) {
     if (horiz > 0.001) { crash('Kılavuz delikteyken tabla oynatıldı; kılavuz kırıldı. Kılavuz yalnızca Z ekseninde çalışır.'); return false; }
+    if (down && tip < (S.tap.chk ?? Infinity) - 0.5) {           // delik aşağıda daralıyor mu (ağzı pahlı/havşalı küçük delik)
+      S.tap.chk = tip;
+      if (holeRadius(nx, ny, tip + 0.3) < T.drill / 2 - 0.6) { crash(`Delik aşağıda dar: ${T.name} sıkıştı ve kırıldı. Diş boyunca Ø${T.drill} kılavuz matkabıyla delin; kör delikte matkap ucunun konisine gelmeden durun.`); return false; }
+    }
     if (down) {
       const ci = Math.round(lx / C), cj = Math.round(ly / C);
       const bottom = ci >= 0 && cj >= 0 && ci < NX && cj < NY ? H[cj * NX + ci] : 0;

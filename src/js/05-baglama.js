@@ -72,6 +72,15 @@ function tapThread(th) {
   else { th.mat = new THREE.MeshStandardMaterial({ color:new THREE.Color(...mat.cutL).multiplyScalar(0.62), roughness:0.42, metalness:0.6, side:THREE.DoubleSide }); threads.push(th); }   // deliğin içi gölgede: koyu
   th.mesh = new THREE.Mesh(threadGeo(th.rd, th.p, th.y0, th.y1), th.mat);
   th.mesh.position.set(th.cx, 0, -th.cy); threadG.add(th.mesh);
+  // aynı delikte daha küçük eski diş: yeni dişin geçtiği boy kesilip gitmiştir (üstü yeni dişin dibine iner ya da silinir)
+  for (let n = threads.length - 1; n >= 0; n--) {
+    const o = threads[n];
+    if (o === th || o.rd >= th.rd || Math.hypot(o.cx - th.cx, o.cy - th.cy) > th.rd || o.y1 <= th.y0) continue;
+    threadG.remove(o.mesh); o.mesh.geometry.dispose();
+    if (th.y0 - 0.05 <= o.y0 + 0.3) { o.mat.dispose(); o.mesh = null; threads.splice(n, 1); continue; }
+    o.y1 = th.y0 - 0.05;
+    o.mesh = new THREE.Mesh(threadGeo(o.rd, o.p, o.y0, o.y1), o.mat); o.mesh.position.set(o.cx, 0, -o.cy); threadG.add(o.mesh);
+  }
 }
 // Parça değişince (pah, havşa, yüzey alma, büyük delik) diş yüzeyi kalan malzemeye göre kırpılır: delik çevresindeki
 // yüzey deliğin hemen kenarında ölçülür (36 nokta; delik içine düşen noktalar sayılmaz, ızgara basamağına takılmamak için
