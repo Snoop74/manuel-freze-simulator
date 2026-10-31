@@ -70,7 +70,7 @@ function blankTop(J, x, y) {
 function localTop(J, x, y) {
   if (J._P) {                                                      // hazır parça: bitmiş üst yüzey (eski delik dipleri değil)
     const g = J._P.geo, pd = J.pads && J.pads.find(q => inRect(x, y, q));
-    const top = pd ? pd.z : J.levels ? (Math.hypot(x - g.c, y - g.c) <= g.Rh ? J.levels[0].z : J.levels[1].z) : J.face ? jobTop(J) : J.flush ? J.flush.top : J.h;
+    const top = pd ? pd.z : J.levels ? (Math.hypot(x - g.c, y - g.c) <= g.Rh ? J.levels[0].z : J.levels[1].z) : J.face ? jobTop(J) : J.flush ? J.flush.top : J.deck ? J.deck.floor : J.h;   // traşlanan conta yüzü en alçak izinli seviyeye kadar inebilir
     let t = top; for (const p of J.pockets) if (inRR(x, y, p)) t = Math.min(t, top - p.depth); return t;
   }
   let t = jobTop(J);
@@ -316,7 +316,7 @@ function inspect(J) {
     let n = 0, cut = 0, sum = 0, mn = 1e9, mx = -1e9;
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
       const x = i * C, y = j * C;
-      if (J._P.Sf(x, y) !== (J.deck.sf ?? app.SF.old) || J._P.H(x, y) < J.deck.base) continue;
+      if (J._P.Sf(x, y) !== (J.deck.sf ?? app.SF.old) || J._P.H(x, y) < J.deck.base || allowedAt(J, x, y) < 0) continue;   // istenen delikler conta yüzü sayılmaz
       const k = j * NX + i, h = H[k]; n++; if (CUT[k]) cut++; sum += h; if (h < mn) mn = h; if (h > mx) mx = h;
     }
     const cov = n ? cut / n : 0, mean = n ? sum / n : 0, flat = mx - mn, take = J.deck.top0 - mean;

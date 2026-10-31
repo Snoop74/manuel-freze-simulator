@@ -97,6 +97,42 @@ const CR = (() => {
     pillow:{ lv:1, cust:[['Anadolu Pompa', 'fabrika'], ['Konveyör Sistemleri', 'fabrika'], ['Değirmen Ustası', 'atölye']], title:'Yatak gövdesi: ayak pedleri', value:1300, make(P) {
       const g = P.geo, pads = g.pads.map(q => ({ ...q, z:g.padZ, tol:0.1 })), holes = pads.map(q => ({ x:r05((q.x0 + q.x1) / 2), y:r05((q.y0 + q.y1) / 2), d:12 }));
       return { pads, holes, brief:`Ters bağlı döküm yatak gövdesinin iki ayak pedini ${g.padZ.toFixed(2)} yüksekliğe işleyin (tablaya göre, ±0.1, ikisi aynı seviyede) ve her pedin ortasına Ø12 bağlantı deliği açın. Rulman göbeğine dokunmayın.`, val:380 + P.w * 2.2, target:170 + P.w * 0.9 }; } },
+    jant:{ lv:1, cust:[['Drift Garajı Emre', 'oto tuning'], ['Klasik Oto Restorasyon', 'atölye'], ['Jantçı Selim', 'dükkân']], title:'Jant göbeği: alın ve bijon delikleri', value:1800, make(P) {
+      const g = P.geo, n = rp([4, 5]), a0 = rp([0, 45, 90]);
+      const holes = Array.from({ length:n }, (_, k) => { const a = (k * 360 / n + a0) * Math.PI / 180; return { x:+(g.c + g.lugR * Math.cos(a)).toFixed(3), y:+(g.c + g.lugR * Math.sin(a)).toFixed(3), d:12 }; });
+      return { levels:[{ name:'Göbek alnı', rmax:g.Rh - 1.5, z:g.hubN, tol:0.1 }, { name:'Jant alnı', rmin:g.Rh + 5, rmax:g.R - 2.5, z:g.flN, tol:0.1 }], holes,
+        brief:`Döküm jant göbeğinin göbek alnını ${g.hubN.toFixed(2)}, kol ve jant alnını ${g.flN.toFixed(2)} yüksekliğe işleyin (tablaya göre, ±0.1). Göbeğe PCD ${g.lugR * 2} dairesinde ${n}×Ø12 bijon deliği açın.`, val:420 + n * 70 + g.R * g.R / 14, target:220 + n * 55 + g.R * 2 }; } },
+    buhar:{ lv:0, cust:[['Öz Kalıp', 'kalıphane'], ['Köpük Ambalaj San.', 'EPS fabrikası'], ['Termo Kutu Ltd.', 'EPP fabrikası']], title:'Kalıp arka plakası: buhar memeleri', value:1600, make(P) {
+      const holes = P.vents.map(([x, y]) => ({ x, y, d:8.5 })), face = rr(0, 1) < 0.5 ? { depth:0.3, tol:0.05 } : null;
+      return { face, holes, brief:`${face ? 'Arka plakanın yüzeyinden 0.30 mm alın (±0.05), ' : ''}${holes.length} buhar memesi yuvasını (Ø8.5, boydan boya) ızgara düzeninde delin. Buhar giriş ve bağlantı deliklerine dokunmayın.`, val:220 + holes.length * 45 + (face ? P.w * P.d / 90 : 0), target:110 + holes.length * 32 + (face ? P.w * P.d / 110 : 0) }; } },
+    drone:{ lv:1, cust:[['Hobi Drone Kulübü', 'kulüp'], ['Üniversite Robot Takımı', 'öğrenci takımı'], ['FPV Yarışçısı Can', 'hobi']], title:'Drone gövdesi: hafifletme', value:900, make(P) {
+      const { cx, cy } = P.geo, dep = rp([3, 4, 5]), pockets = [], holes = [];
+      for (const s of [-1, 1]) pockets.push({ x0:cx + (s < 0 ? -22 : 4), x1:cx + (s < 0 ? -4 : 22), y0:cy - 16, y1:cy + 16, depth:dep, r:4 });
+      for (const [x, y] of P.motors) holes.push({ x, y, d:8.5 });
+      for (const sx of [-1, 1]) for (const sy of [-1, 1]) holes.push({ x:cx + sx * 22, y:cy + sy * 22, d:5 });
+      return { pockets, holes, brief:`İnce X gövdenin ortasına iki hafifletme cebi (18×32, ${dep} derin, R4), kol uçlarına 4×Ø8.5 motor deliği, gövdeye 4×Ø5 uçuş kartı deliği açın. Parça ince: bağlarken dikkat.`, val:320 + dep * 40 + 8 * 40, target:200 + dep * 25 + 8 * 30 }; } },
+    gitar:{ lv:0, cust:[['Luthier Deniz', 'enstrüman atölyesi'], ['Rock Barı Sahibi', 'müşteri'], ['Müzik Okulu', 'okul']], title:'Gitar köprüsü: tel delikleri ve eşik', value:500, make(P) {
+      const cx = P.w / 2, ys = r05(P.d * 0.32), yp = r05(P.d * 0.68), pl = P.w >= 96 ? 64 : 60, dep = rp([2, 3]), holes = [];
+      for (let k = 0; k < 6; k++) holes.push({ x:+(cx + (k - 2.5) * 10.5).toFixed(2), y:ys, d:5 });
+      for (const s of [-1, 1]) holes.push({ x:cx + s * 38, y:r05(P.d / 2), d:5 });
+      return { pockets:[{ x0:cx - pl / 2, x1:cx + pl / 2, y0:yp - 4, y1:yp + 4, depth:dep, r:3 }], holes,
+        brief:`Taşlanmış pirinç köprüye 6×Ø5 tel deliği (10.5 aralık), ${pl}×8 eşik kanalı (${dep} derin, R3) ve iki uca Ø5 bağlantı deliği açın. Üst yüz taşlanmış kalmalı.`, val:260 + 8 * 35 + pl * 2, target:150 + 8 * 28 + pl }; } },
+    kebap:{ lv:0, cust:[['Ocakbaşı Mehmet Usta', 'restoran'], ['Adana Kebap Salonu', 'restoran'], ['Mangal İmalatçısı', 'atölye']], title:'Şiş tutucu: tufal ve şiş delikleri', value:400, make(P) {
+      const n = rp([8, 9, 10]), x0 = 16, sp = (P.w - 2 * x0) / (n - 1), y = r05(P.d / 2), face = { depth:+(P.stockH - P.geo.plate).toFixed(2), tol:0.1 };
+      const holes = Array.from({ length:n }, (_, k) => ({ x:r05(x0 + k * sp), y, d:8.5 }));
+      return { face, holes, brief:`Lamanın üstündeki tufalı alın: yüzey ${P.geo.plate.toFixed(2)} yüksekliğe (±0.1). Ortadan ${n}×Ø8.5 şiş deliği açın (boydan boya, ~${r05(sp)} aralık).`, val:200 + n * 40 + P.w, target:120 + n * 30 + P.w * 0.6 }; } },
+    cene:{ lv:0, cust:[['Kendi atölyeniz', 'iç iş'], ['Komşu Tornacı Ali', 'atölye'], ['Meslek Lisesi Atölyesi', 'okul']], title:'Yumuşak çene: parça yuvası', value:300, make(P) {
+      const cx = P.w / 2, cy = r05(P.d / 2), L = rp([60, 70, 80, 90]), Wd = rp([12, 14, 16]), dep = rp([4, 5, 6]);
+      return { pockets:[{ x0:cx - L / 2, x1:cx + L / 2, y0:cy - Wd / 2, y1:cy + Wd / 2, depth:dep, r:5 }], holes:[{ x:15, y:cy, d:8.5 }, { x:P.w - 15, y:cy, d:8.5 }],
+        brief:`Alüminyum çeneye parçanın oturacağı ${L}×${Wd} yuvayı (${dep} derin, R5) ve iki uca Ø8.5 bağlantı deliğini açın.`, val:180 + L * Wd * dep / 60, target:110 + L * Wd * dep / 90 }; } },
+    tarim:{ lv:1, cust:[['Konya Tarım Makinaları', 'fabrika'], ['Biçerdöver Servisi Hüseyin', 'servis'], ['Tarım Kooperatifi Atölyesi', 'atölye']], title:'Bıçak tutucusu: ayar kanalı', value:700, make(P) {
+      const cx = P.w / 2, cy = r05(P.d / 2), sl = rp([40, 50]), dep = rp([3, 4]);
+      return { face:{ depth:+(P.stockH - 12).toFixed(2), tol:0.1 }, pockets:[{ x0:cx - sl / 2, x1:cx + sl / 2, y0:cy - 5, y1:cy + 5, depth:dep, r:5 }],
+        holes:[{ x:14, y:cy, d:12 }, { x:P.w - 14, y:cy, d:12 }, { x:cx - sl / 2 - 15, y:cy, d:8.5 }, { x:cx + sl / 2 + 15, y:cy, d:8.5 }],
+        brief:`Tufallı lamanın üstünü 12.00 yüksekliğe işleyin (±0.1), ortaya ${sl}×10 ayar kanalı (${dep} derin, R5), uçlara 2×Ø12 ve kanalın iki yanına 2×Ø8.5 delik açın.`, val:320 + P.w * 1.2 + sl * 3, target:180 + P.w * 0.8 + sl * 2 }; } },
+    tekstil:{ lv:1, cust:[['Bursa Dokuma A.Ş.', 'fabrika'], ['Tekstil Makine Servisi', 'servis'], ['Örme Fabrikası Bakım', 'bakım']], title:'Dişli kutusu kapağı: conta yüzü ve delikler', value:1500, make(P) {
+      const holes = P.bolts.map(([x, y]) => ({ x, y, d:8.5 }));
+      return Object.assign(deckJob(P, 0.1, 1.0, `Yağ kaçıran dişli kutusu kapağının conta yüzünü tamamen düzleyin (düzlemsellik ≤ 0.10, en yüksek noktadan en çok 1.0 mm), sonra conta yüzüne ${holes.length}×Ø8.5 cıvata deliği açın.`, 400 + P.w * P.d / 35 + holes.length * 40, 160 + P.w * P.d / 80 + holes.length * 35), { holes }); } },
   };
   // conta yüzü traşlama işi (silindir kapağı, egzoz flanşı): en yüksek nokta, izin verilen en alçak seviye
   function deckJob(P, flat, maxCut, brief, val, target) {

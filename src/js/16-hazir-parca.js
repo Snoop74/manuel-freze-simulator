@@ -152,6 +152,86 @@ const BLANKS = [
         },
         Sf:() => SF.cast };
     } },
+  { id:'jant', name:'Jant göbeği', cat:'Oto', desc:'Döküm alüminyum jant göbeği: ortada göbek ve merkez deliği, çevresinde kol araları, 1–1.5 mm işleme payı. Göbek alnı ve jant alnı işlenecek, bijon delikleri delinecek.',
+    gen() {
+      const D = rp([110, 120]), R = D / 2, c = R, Rh = rp([32, 34]), bore = rp([12, 13.5]), kol = rp([5, 6]), a = +rr(1, 1.5).toFixed(1), hub = rp([26, 28]), fl = rp([16, 18]), nz = castNoise(), ph = RNG() * 6.28;
+      const win = (x, y) => {                                        // kol araları (pencereler): göbekle jant kenarı arasında
+        const r = Math.hypot(x - c, y - c); if (r < Rh + 5 || r > R - 7) return false;
+        const u = (((Math.atan2(y - c, x - c) + ph) * kol / (Math.PI * 2)) % 1 + 1) % 1;
+        return u > 0.24 && u < 0.76;
+      };
+      return { w:D, d:D, h:hub + a + 0.6, mat:'al', geo:{ c, R, Rh, flN:fl, hubN:hub, bore, lugR:Rh - 9 }, round:{ c, R }, exist:[[c, c, bore], [c, c, Rh]],
+        info:`Ø${D} jant göbeği, ${kol} kollu, göbek Ø${Rh * 2}, işleme payı ${a} mm`,
+        H:(x, y) => {
+          const r = Math.hypot(x - c, y - c);
+          if (r > R || r < bore || win(x, y)) return 0;
+          const f = fl + a + nz(x, y) * 0.5, hb = hub + a + nz(x * 1.3, y * 1.3) * 0.4;
+          if (r <= Rh) return hb;
+          if (r <= Rh + 4) return f + (hb - f) * (1 - (r - Rh) / 4) ** 2;
+          if (r > R - 1.5) return f - (r - (R - 1.5)) * 1.2;
+          return f;
+        },
+        Sf:() => SF.cast };
+    } },
+  { id:'buhar', name:'EPS kalıp arka plakası', cat:'Kalıphane', desc:'EPS/EPP köpük kalıbının alüminyum arka plakası: buhar giriş delikleri ve bağlantı delikleri hazır. Buhar memesi yuvaları ızgara düzeninde delinecek.',
+    gen() {
+      const w = rp([170, 180, 190]), d = rp([110, 120]), h = rp([20, 25]), nx = rp([4, 5]);
+      const inlets = [[18, d / 2], [w - 18, d / 2]], mounts = [[9, 9], [w - 9, 9], [w - 9, d - 9], [9, d - 9]];
+      const vents = [];
+      for (let j = 0; j < 3; j++) for (let i = 0; i < nx; i++) vents.push([r05(40 + i * (w - 80) / (nx - 1)), r05(d / 2 + (j - 1) * 24)]);
+      return { w, d, h, mat:'al', vents, exist:[...inlets.map(([x, y]) => [x, y, 7]), ...mounts.map(([x, y]) => [x, y, 4.25])], info:`${w}×${d}×${h}, ${vents.length} meme yuvası (${nx}×3)`,
+        H:(x, y) => inlets.some(([a, b]) => Math.hypot(x - a, y - b) <= 7) || mounts.some(([a, b]) => Math.hypot(x - a, y - b) <= 4.25) ? 0 : h,
+        Sf:() => SF.old };
+    } },
+  { id:'drone', name:'Drone gövde plakası', cat:'Hobi', desc:'Su jetiyle X biçiminde kesilmiş alüminyum plaka: ortada gövde, dört kolun ucunda motor yuvaları. Hafifletme cepleri ve motor delikleri açılacak.',
+    gen() {
+      const w = rp([160, 170]), d = rp([120, 130]), h = 10, cx = w / 2, cy = d / 2, B = 28, kol = rp([16, 18]), pr = 14;
+      const motors = [[pr + 2, pr + 2], [w - pr - 2, pr + 2], [w - pr - 2, d - pr - 2], [pr + 2, d - pr - 2]];
+      const onArm = (x, y) => motors.some(([mx, my]) => {           // gövde merkezinden motora uzanan kol
+        const vx = mx - cx, vy = my - cy, L2 = vx * vx + vy * vy, t = clamp(((x - cx) * vx + (y - cy) * vy) / L2, 0, 1);
+        return Math.hypot(x - cx - vx * t, y - cy - vy * t) <= kol / 2;
+      });
+      const inside = (x, y) => (Math.abs(x - cx) <= B && Math.abs(y - cy) <= B) || onArm(x, y) || motors.some(([mx, my]) => Math.hypot(x - mx, y - my) <= pr);
+      return { w, d, h, mat:'al', geo:{ cx, cy, B }, motors, exist:[], info:`${w}×${d}×${h} X gövde, kol ${kol} mm, motor yuvası Ø${pr * 2}`,
+        H:(x, y) => inside(x, y) ? h : 0, Sf:() => SF.raw };
+    } },
+  { id:'gitar', name:'Gitar köprüsü', cat:'Müzik', desc:'Taşlanmış pirinç köprü plakası. Altı tel deliği, eşik kanalı ve iki bağlantı deliği açılacak.',
+    gen() {
+      const w = rp([90, 96, 100]), d = rp([30, 34]), h = 12;
+      return { w, d, h, mat:'brass', exist:[], info:`${w}×${d}×${h} pirinç`, H:() => h, Sf:() => SF.ground };
+    } },
+  { id:'kebap', name:'Şiş tutucu blok', cat:'Mutfak', desc:'Hadde tufalı çelik lama: ocakbaşı mangalının şiş tutucusu olacak. Üst yüzün tufalı alınacak, şiş delikleri sıra halinde delinecek.',
+    gen() {
+      const w = rp([200, 210]), d = rp([36, 40]), h = rp([16, 20]), nz = castNoise();
+      return { w, d, h:h + 0.4, mat:'s235', geo:{ plate:h }, exist:[], info:`${w}×${d}×${h} lama, tufallı`,
+        H:(x, y) => h + 0.2 + nz(x * 2, y * 2) * 0.15, Sf:() => SF.scale };
+    } },
+  { id:'cene', name:'Yumuşak çene', cat:'Atölye', desc:'Testereyle kesilmiş alüminyum çene: mengeneye vidalanacak, içine parçanın oturacağı yuva işlenecek.',
+    gen() {
+      const w = 150, d = rp([30, 34, 36]), h = rp([30, 35, 40]);
+      return { w, d, h, mat:'al', exist:[], info:`${w}×${d}×${h} çene`, H:() => h, Sf:() => SF.raw };
+    } },
+  { id:'tarim', name:'Bıçak tutucusu', cat:'Tarım', desc:'Hadde tufalı çelik lama: biçerdöver bıçak tutucusu. Bağlantı delikleri ve ayar kanalı açılacak.',
+    gen() {
+      const w = rp([160, 170]), d = rp([50, 56, 60]), h = 12, nz = castNoise();
+      return { w, d, h:h + 0.3, mat:'s235', exist:[], info:`${w}×${d}×${h} lama, tufallı`, H:(x, y) => h + 0.1 + nz(x * 2, y * 2) * 0.12, Sf:() => SF.scale };
+    } },
+  { id:'tekstil', name:'Dişli kutusu kapağı', cat:'Tekstil', desc:'Dokuma makinesinin döküm alüminyum dişli kutusu kapağı (ters bağlı): conta yüzü çarpılmış, iç boşluk döküm. Conta yüzü düzlenecek, kenara cıvata delikleri delinecek.',
+    gen() {
+      const w = rp([160, 170]), d = rp([100, 110]), h = rp([28, 30]), rim = 16, floor = 8, warp = +rr(0.15, 0.45).toFixed(2), a = +rr(0.4, 0.8).toFixed(1), nz = castNoise();
+      const tilt = (x, y) => warp * (0.5 + 0.5 * Math.cos(x / w * Math.PI + y / d * 0.8));
+      const inner = (x, y) => x > rim && x < w - rim && y > rim && y < d - rim;
+      const bolts = [];                                               // conta yüzünün ortasından cıvata yerleri
+      for (const t of [0.12, 0.5, 0.88]) bolts.push([r05(w * t), rim / 2], [r05(w * t), d - rim / 2]);
+      bolts.push([rim / 2, d / 2], [w - rim / 2, d / 2]);
+      return { w, d, h:h + a + warp + 0.4, mat:'al', warp, deckBase:h, deckSf:SF.cast, bolts, exist:[], info:`${w}×${d}, conta yüzü ${rim} mm, çarpılma ${warp.toFixed(2)} mm`,
+        H:(x, y) => {
+          if (Math.min(x, w - x) < 3 && Math.min(y, d - y) < 3) return 0;   // köşe yuvarlatma
+          if (inner(x, y)) return floor + nz(x, y) * 0.3;
+          return h + a + tilt(x, y) + nz(x, y) * 0.12;
+        },
+        Sf:() => SF.cast };
+    } },
 ];
 // şablonu mengeneye bağla: ölçü, malzeme, yükseklik ve yüzey haritası
 function genBlank(id, seed) {
