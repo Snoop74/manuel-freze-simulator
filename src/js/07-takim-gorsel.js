@@ -272,22 +272,30 @@ function buildToolInto(grp, T, broken) {
     return;
   }
   if (T.type === 'dial') {
-    // mekanik 3B taster: kırmızı stylus ve bilye, yassı oval gövde, önde kadran (operatöre dönük), üstte şaft
-    const b = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), TMAT.ruby); b.castShadow = true; place(b, 0);
-    place(latheMesh([[0.8, 1.6], [0.8, 20], [1.6, 21], [1.6, 26]], TMAT.red, 20), 0);
-    place(latheMesh([[1.6, 26], [5, 28], [6, 31], [6, 33]], TMAT.bright, 24), 0);
-    const body = latheMesh([[6, 33], [20, 35], [25, 40], [26, 50], [26, 66], [24, 72], [14, 78], [9, 80]], TMAT.bright, 48); body.scale.z = 0.72; place(body, 0);   // paslanmaz gövde
-    place(latheMesh([[8, 82], [10.5, 82.5], [10.5, 89.5], [8, 90]], TMAT.bright, 40), 0);              // şaft yakası
-    for (let k = 0; k < 36; k++) { const a = k / 36 * TAU, kn = box(0.9, 6.4, 0.9, TMAT.holder, Math.cos(a) * 10.55, 0, Math.sin(a) * 10.55); kn.rotation.y = -a; kn.castShadow = false; place(kn, 86); }   // tırtıl
-    place(latheMesh([[8, 80], [8, T.stick]], TMAT.bright, 32), 0);
-    const face = new THREE.Mesh(new THREE.CircleGeometry(20, 48), new THREE.MeshStandardMaterial({ map:dialTexture3B(), roughness:0.5 }));
-    place(face, 54).position.z = 26 * 0.72 + 0.3;
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(20.6, 1.6, 10, 48), TMAT.red);   // kırmızı kadran çerçevesi place(rim, 54).position.z = 26 * 0.72 + 0.3;
+    // mekanik 3B taster (kadran saati biçimi): yakut bilye, ince paslanmaz stylus ve stylus yuvası; ekseni operatöre bakan
+    // yassı yuvarlak paslanmaz kasa, önde krom çerçeve ve kubbeli cam, yanlarda vida delikleri; üstte kademeli boyun ve şaft
+    const Y = 54, R = 26, D = 11;                                  // kasa merkezi (uçtan), yarıçapı, yarı derinliği
+    const b = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 20), TMAT.ruby); b.castShadow = true; place(b, r);
+    place(latheMesh([[0.9, r * 1.6], [1.0, 18], [1.6, 19], [1.6, 22]], TMAT.bright, 20), 0);                          // stylus
+    place(latheMesh([[1.6, 22], [3.2, 22.5], [3.2, 26], [4.5, 26.5], [4.5, Y - R + 1.5]], TMAT.bright, 24), 0);       // stylus yuvası
+    const cs = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 2 * D, 72), TMAT.bright); cs.rotation.x = Math.PI / 2; cs.castShadow = true; place(cs, Y);
+    const back = new THREE.Mesh(new THREE.CylinderGeometry(R - 1.6, R - 0.4, 1.2, 72), TMAT.bright); back.rotation.x = Math.PI / 2; place(back, Y).position.z = -D - 0.6;
+    const bez = new THREE.Mesh(new THREE.TorusGeometry(R - 1.4, 2.4, 16, 72), TMAT.bright); bez.castShadow = true; place(bez, Y).position.z = D + 0.6;   // ön çerçeve
+    const face = new THREE.Mesh(new THREE.CircleGeometry(R - 3.6, 64), new THREE.MeshStandardMaterial({ map:dialTexture3B(), roughness:0.5 }));
+    place(face, Y).position.z = D + 0.2;
+    const GR = 70, ga = Math.asin((R - 3) / GR), gh = GR - Math.sqrt(GR * GR - (R - 3) * (R - 3));
+    const glass = new THREE.Mesh(new THREE.SphereGeometry(GR, 48, 6, 0, TAU, 0, ga), new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.04, metalness:0, transparent:true, opacity:0.12, depthWrite:false }));
+    glass.material.envMapIntensity = 1.2; glass.rotation.x = Math.PI / 2; place(glass, Y).position.z = D + 1.6 + gh - GR;   // kubbeli cam
+    for (const sx of [-1, 1]) for (const dy of [-9, 9]) {                                                             // yan vida delikleri
+      const h = cyl(1.8, 1.8, 0.6, DARK, 14); h.rotation.z = Math.PI / 2; place(h, Y + dy).position.x = sx * (R + 0.02);
+    }
+    place(latheMesh([[5, Y + R - 1], [5, Y + R + 3], [7.5, Y + R + 3.5], [7.5, Y + R + 8], [6, Y + R + 8.5], [6, Y + R + 11], [8, Y + R + 11.5], [8, T.stick]], TMAT.bright, 40), 0);   // boyun ve şaft
     const nd = new THREE.Group(), tn = new THREE.Group();
-    const n1 = box(0.9, 17, 0.4, TMAT.holder, 0, 7, 0, nd); n1.castShadow = false;
-    const n2 = box(0.6, 2.6, 0.3, TMAT.red, 0, 1.3, 0, tn); n2.castShadow = false;
-    place(nd, 54).position.z = 26 * 0.72 + 0.9;
-    place(tn, 54 - 7.5).position.z = 26 * 0.72 + 0.6;          // küçük tur ibresi
+    const n1 = box(0.9, 18, 0.4, TMAT.red, 0, 7.5, 0, nd); n1.castShadow = false;                                   // kırmızı ana ibre
+    const hub = cyl(1.6, 1.6, 0.8, TMAT.holder, 16); hub.rotation.x = Math.PI / 2; nd.add(hub);
+    const n2 = box(0.6, 2.6, 0.3, TMAT.holder, 0, 1.3, 0, tn); n2.castShadow = false;
+    place(nd, Y).position.z = D + 0.9;
+    place(tn, Y - 7.5).position.z = D + 0.6;                       // küçük tur ibresi
     if (grp === toolRot) { dialNeedle = nd; dialTurns = tn; }
     return;
   }
