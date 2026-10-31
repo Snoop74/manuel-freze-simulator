@@ -365,6 +365,6 @@ function flushMesh() {
    Freze talaşı bir ağzın kestiği virgül biçimli şerittir: bir ucu ince, öbür ucu kalın; bir yüzü takıma sürtünüp parlar, öbürü mat kalır.
    Her biçimin birkaç rastgele çeşidi üretilir. Talaşlar havada döner, sekip yatar ve düştükleri yerde yığılır (iç içe geçmez). */
 
-export { FIX, MK1, MK2, PAR, TAPC, TINTC, buildStock, clearThreads, tapThread, buildVise, clampLay, divCrank, divRot, flushMesh, jawTop,
+export { FIX, MK1, MK2, PAR, TAPC, TINTC, buildStock, clearThreads, tapThread, threads, buildVise, clampLay, divCrank, divRot, flushMesh, jawTop,
   markDirty, markStockReady, markThrough, nV, parAxis, parBands, parConflicts, rotCrank, setClampLay, setFIX,
   setJawOverride, stockBase, straps, syncFixtures, topGeo, topMat, topMesh, walls, warnParallels };

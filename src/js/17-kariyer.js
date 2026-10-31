@@ -6,7 +6,7 @@ import { FIXLIM } from './03-tabla-parca.js';
 import { FIX, PAR, warnParallels } from './05-baglama.js';
 import { HOLDERS } from './07-takim-gorsel.js';
 import { renderRack, resetPart, setRackTag, updateToolUI } from './09-kumanda.js';
-import { buildScribe, drawingSVG, drawingTable, inRect, mmss, selectJob, setSelJob } from './10-is-emri-muayene.js';
+import { DIS, buildScribe, drawingSVG, drawingTable, inRect, mmss, selectJob, setSelJob } from './10-is-emri-muayene.js';
 import { PM, toolIcon } from './12-dongu-ust-cubuk.js';
 import { chipsOnPart, setFix } from './13-aletler.js';
 import { setStock } from './14-parca-masasi.js';
@@ -133,6 +133,14 @@ const CR = (() => {
     tekstil:{ lv:1, cust:[['Bursa Dokuma A.Ş.', 'fabrika'], ['Tekstil Makine Servisi', 'servis'], ['Örme Fabrikası Bakım', 'bakım']], title:'Dişli kutusu kapağı: conta yüzü ve delikler', value:1500, make(P) {
       const holes = P.bolts.map(([x, y]) => ({ x, y, d:8.5 }));
       return Object.assign(deckJob(P, 0.1, 1.0, `Yağ kaçıran dişli kutusu kapağının conta yüzünü tamamen düzleyin (düzlemsellik ≤ 0.10, en yüksek noktadan en çok 1.0 mm), sonra conta yüzüne ${holes.length}×Ø8.5 cıvata deliği açın.`, 400 + P.w * P.d / 35 + holes.length * 40, 160 + P.w * P.d / 80 + holes.length * 35), { holes }); } },
+    // montajlı iş: delik + kılavuz, sonra müşterinin parçası vidayla bağlanır (montaj masası, 21-montaj)
+    kule:{ lv:0, cust:[['Akın Otomasyon', 'fabrika'], ['Konveyör Sistemleri Ltd.', 'fabrika'], ['Paketleme Hattı Bakım', 'bakım']], title:'Montaj: sensör kulesi', value:900, make(P) {
+      const bolt = rp(['M6', 'M6', 'M10']), m = bolt === 'M6' ? { F:60, s:44, tf:8, L:16 } : { F:76, s:56, tf:10, L:22 }, D = DIS[bolt];
+      const cx = r05(rr(m.F / 2 + 8, P.w - m.F / 2 - 8)), sl = Math.max(0, (P.d - m.F) / 2 - 3), cy = r05(P.d / 2 + rr(-sl, sl)), tapLen = m.L - m.tf + 0.5, a = m.s / 2;
+      const holes = [[-a, -a], [a, -a], [a, a], [-a, a]].map(([u, v]) => ({ x:cx + u, y:cy + v, d:D.drill, tap:bolt, tapLen }));
+      return { holes, montaj:Object.assign({ parca:'kule', bolt, cx, cy }, m),
+        brief:`Konveyör hattının fotoselli sensör kulesini getirdiler. Taban plakasına 4×${bolt} diş açın (Ø${D.drill} delip kılavuz çekin, diş boyu en az ${tapLen} mm): kare ${m.s} aralık, merkez (${cx}, ${cy}). Sonra kuleyi 4×${bolt}×${m.L} imbus cıvatayla bağlayın: çapraz sırayla, ${D.tq[0]}–${D.tq[1]} Nm. Fazla sıkarsanız alüminyumda diş sıyırır.`,
+        val:380 + (bolt === 'M10' ? 160 : 0), target:300 + (bolt === 'M10' ? 60 : 0) }; } },
     // absürt işler: seyrek gelir (absurd), bazılarının koşulu sabittir (cond), bazısı parayla değil aynen öder (ayni: pay sabit, itibar primi)
     reaktor:{ lv:1, absurd:true, cond:'hassas', cust:[['Nükleer Santral Bakım Müdürlüğü', 'enerji'], ['Gizli Araştırma Tesisi', 'kurum']], title:'Reaktör: kontrol çubuğu tutucu', value:25000, make(P) {
       const holes = [], sx = (P.w - 60) / 3, sy = (P.d - 50) / 2;
@@ -432,6 +440,8 @@ const CR = (() => {
       txt = `Müşterinin parçası hurdaya çıktı: parça bedeli −${tl(v)} · itibar −3.`; tags.push([`Müşteri parçası hurda: parça bedeli −${tl(v)}`, 'warn']);
     }
     else { rep = -2; txt = `Parça hurda: ödeme yok · itibar −2. Sipariş panoda duruyor, yeni ham parçayla tekrar deneyebilirsiniz.`; tags.push(['Hurda: sipariş panoda, tekrar deneyebilirsiniz', 'warn']); }
+    if (run.montaj && run.montaj.cost) { pay -= run.montaj.cost; tags.push([`Yay diş (Heli-Coil) ×${run.montaj.coil}: −${tl(run.montaj.cost)}`, 'warn']); }
+    if (run.montaj && r.allOk) tags.unshift(['Kule bağlandı, sensör yandı', 'gold']);
     const lv0 = level();
     st.money += pay; st.earned += pay; st.rep = Math.max(0, st.rep + rep);
     if (pay > 0 && o.qty && (o.doneQty = (o.doneQty || 0) + 1) < o.qty) { st.done++; tags.push([`Seri: ${o.doneQty}/${o.qty} teslim edildi, sıradaki adet için "Sıradaki adet"`, 'ok']); }   // seri: sipariş panoda kalır

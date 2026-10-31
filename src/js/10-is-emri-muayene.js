@@ -3,7 +3,7 @@ import { kayit } from './00-kayit.js';
 import { $, C, CUT, EDGE, H, INSP, NX, NY, PD, PH, PW, S, TOOLS, app, clamp, isDrill, log } from './00-temel.js';
 import { beep, initAudio } from './01-ses.js';
 import { rotIn } from './03-tabla-parca.js';
-import { FIX, PAR, markDirty, parAxis, parBands, straps, warnParallels } from './05-baglama.js';
+import { FIX, PAR, markDirty, parAxis, parBands, straps, threads, warnParallels } from './05-baglama.js';
 import { burst } from './06-talas.js';
 import { resetPart } from './09-kumanda.js';
 
@@ -29,6 +29,10 @@ const JOBS = [
     brief:'Döner tablayla çalışın (iş başlarken bağlanır; parçanın ortası (75, 50) tabla merkezinde). R35 dairesi üzerine 60°\'de bir 6×Ø8.5 boydan boya delik (ilki 0°, merkezin sağında), ortaya R20, 10 mm genişlikte, 3 mm derin, 30°–150° arası yay kanal. İpucu: matkabı X 110, Y 50\'ye getirip delin; her delikten sonra takımı pabuçların üstüne kaldırıp (Z +20) tablayı 60° çevirin. Yay için T3 Ø10\'u X 95, Y 50\'ye getirin, tablayı −30°\'ye alıp kilidi açın, 3 mm dalın ve tablayı −150°\'ye çevirin: tabla döndükçe takım parçaya göre ters yönde ilerler.',
     holes:[0, 60, 120, 180, 240, 300].map(a => ({ x:+(75 + 35 * Math.cos(a * Math.PI / 180)).toFixed(3), y:+(50 + 35 * Math.sin(a * Math.PI / 180)).toFixed(3), d:8.5 })),
     arcs:[{ cx:75, cy:50, r:20, w:10, a0:30, a1:150, depth:3 }] },
+  { title:'Montaj: sensör kulesi', target:600, acik:true,
+    brief:'4×M6 diş açın: Ø5 delip T11 M6 kılavuzla diş çekin (mil yavaş, soğutma açık; diş en az 8.5 mm). Kare 44 aralık, merkez (75, 50). Teslimde montaj masası açılır: kuleyi koyun, cıvataları elle takın, tork anahtarıyla çapraz sırayla (1-3-2-4) 8–10 Nm sıkın.',
+    holes:[[-22, -22], [22, -22], [22, 22], [-22, 22]].map(([u, v]) => ({ x:75 + u, y:50 + v, d:5, tap:'M6', tapLen:8.5 })),
+    montaj:{ parca:'kule', bolt:'M6', cx:75, cy:50, F:60, s:44, tf:8, L:16 } },
 ];
 JOBS.forEach(J => { J.pockets = J.pockets || []; J.holes = J.holes || []; J.arcs = J.arcs || []; J.pockets.forEach(p => { if (p.r == null) p.r = 5; }); });
 // cep köşe radyüslü dikdörtgen: dönen takım iç köşeyi keskin açamaz, resimdeki R en büyük köşe radyüsüdür (daha küçüğü fazla kesim sayılmaz)
@@ -46,6 +50,18 @@ function inArc(x, y, A, m = 0) {
   for (const a of [A.a0, A.a1]) if (Math.hypot(x - A.cx - Math.cos(a * Math.PI / 180) * A.r, y - A.cy - Math.sin(a * Math.PI / 180) * A.r) <= hw) return true;
   return false;
 }
+// vida dişleri: kılavuz matkabı, vida başı geçiş deliği (flanş), sıkma torku (alüminyumda, Nm)
+const DIS = { M6:{ p:1, d:6, drill:5, clr:6.6, head:10, tq:[8, 10] }, M10:{ p:1.5, d:10, drill:8.5, clr:11, head:16, tq:[36, 44] } };
+// deliğe açılmış diş: merkezine 1 mm'den yakın, adımı tutan en uzun diş yüzeyi (yoksa adımı tutmayan)
+function threadAt(x, y, p) {
+  let best = null;
+  for (const th of threads) {
+    if (Math.hypot(th.cx - x, th.cy - y) > 1) continue;
+    const ok = Math.abs(th.p - p) < 0.01, L = th.y1 - th.y0;
+    if (!best || (ok && !best.ok) || (ok === best.ok && L > best.L)) best = { ok, L, th };
+  }
+  return best;
+}
 const HOLE_TOL0 = 0.2, DEPTH_TOL0 = 0.1, SIZE_TOL0 = 0.3;
 let HOLE_TOL = HOLE_TOL0, DEPTH_TOL = DEPTH_TOL0, SIZE_TOL = SIZE_TOL0;
 
@@ -53,7 +69,7 @@ let progress = {};
 progress = kayit.oku('freze-progress', {}) || {};
 function saveProgress() { kayit.yaz('freze-progress', progress); }
 const bestStars = i => (progress['j' + i] && progress['j' + i].stars) || 0;
-const unlocked = i => i === 0 || bestStars(i - 1) >= 1;
+const unlocked = i => i === 0 || JOBS[i].acik || bestStars(i - 1) >= 1;   // acik: yeni iş tipi, sıradan bağımsız denenebilir
 
 const jobTop = J => (J.h || PH) - (J.face ? J.face.depth : 0);
 const inRect = (x, y, p, m = 0) => x >= p.x0 - m && x <= p.x1 + m && y >= p.y0 - m && y <= p.y1 + m;
@@ -149,7 +165,8 @@ function drawingSVG(J) {
     const r = h.d / 2 * k;
     s += `<line class="dw-cl" x1="${X(h.x) - r - 4}" y1="${Y(h.y)}" x2="${X(h.x) + r + 4}" y2="${Y(h.y)}"/><line class="dw-cl" x1="${X(h.x)}" y1="${Y(h.y) - r - 4}" x2="${X(h.x)}" y2="${Y(h.y) + r + 4}"/>`;
     s += `<circle class="dw-feat" cx="${X(h.x)}" cy="${Y(h.y)}" r="${r}"/>`;
-    s += `<text x="${X(h.x) + r + 1}" y="${Y(h.y) - r - 0.5}" font-size="5">D${i + 1}</text>`;
+    if (h.tap) s += `<circle cx="${X(h.x)}" cy="${Y(h.y)}" r="${DIS[h.tap].d / 2 * k}" fill="none" style="stroke:var(--ink)" stroke-width=".4" stroke-dasharray="${(DIS[h.tap].d * k * 2.3).toFixed(2)} ${(DIS[h.tap].d * k * 0.85).toFixed(2)}"/>`;   // diş: 3/4 daire
+    s += `<text x="${X(h.x) + r + 1}" y="${Y(h.y) - r - 0.5}" font-size="5">D${i + 1}${h.tap ? ' ' + h.tap : ''}</text>`;
   });
   (J.arcs || []).forEach((A, i) => {
     const P = a => [X(A.cx + Math.cos(a * Math.PI / 180) * A.r), Y(A.cy + Math.sin(a * Math.PI / 180) * A.r)];
@@ -172,7 +189,7 @@ function drawingTable(J) {
   let t = '';
   if (J.holes.length) {
     t += '<tr><th>Delik</th><th>X</th><th>Y</th><th>Ø</th><th>Derinlik</th></tr>';
-    J.holes.forEach((h, i) => t += `<tr><td>D${i + 1}</td><td>${h.x.toFixed(2)}</td><td>${h.y.toFixed(2)}</td><td>${h.d}</td><td>boydan boya</td></tr>`);
+    J.holes.forEach((h, i) => t += `<tr><td>D${i + 1}</td><td>${h.x.toFixed(2)}</td><td>${h.y.toFixed(2)}</td><td>${h.tap ? `${h.tap} (Ø${h.d})` : h.d}</td><td>boydan boya${h.tap ? `, diş ≥ ${h.tapLen}` : ''}</td></tr>`);
   }
   if (J.pockets.length) {
     t += '<tr><th>Cep</th><th>X</th><th>Y</th><th>Ölçü</th><th>Derinlik</th></tr>';
@@ -278,6 +295,11 @@ function inspect(J) {
     }
     const tf = inner ? thru / inner : 0;
     add(g, 'Boydan boya', '%100 açık', '%' + (tf * 100).toFixed(0), tf >= 0.9, tf);
+    if (h.tap) {                                                   // kılavuz çekilmiş delik: diş adımı ve boyu
+      const t = threadAt(cx, cy, DIS[h.tap].p);
+      add(g, 'Diş', h.tap, !t ? 'yok' : t.ok ? h.tap : `adım ${t.th.p}`, !!t && t.ok, t && t.ok ? 1 : 0, 2);
+      add(g, 'Diş boyu', '≥ ' + h.tapLen, t && t.ok ? t.L.toFixed(1) : '—', !!t && t.ok && t.L >= h.tapLen, t && t.ok ? clamp(t.L / h.tapLen, 0, 1) : 0);
+    }
   });
   (J.arcs || []).forEach((A, idx) => {
     const g = 'Y' + (idx + 1), floorN = top - A.depth, thr = top - A.depth / 2;
@@ -447,6 +469,11 @@ function submitJob() {
   if (S.spindle) { log('Parçayı teslim etmeden önce mili durdurun.', 'warn'); return; }
   const run = S.job, J = run.J;
   const items = inspect(J);
+  if (J.montaj && app.MT) { app.MT.open(run, items, extra => deliver(run, items.concat(extra))); return; }   // montajlı iş: önce müşterinin parçası bağlanır
+  deliver(run, items);
+}
+function deliver(run, items) {
+  const J = run.J;
   const r = scoreJob(J, run, items);
   run.done = true;
   if (run.order) {
@@ -513,5 +540,5 @@ $('rpClose').addEventListener('click', () => { $('report').hidden = true; app.FW
 /* ---------------- Havai fişek: başarılı teslimde ekranın üstünde patlar ----------------
    Yıldız sayısı gösteriyi büyütür; 2B tuval, olayı bitince kendini kapatır. Patlama sesi süzülmüş gürültü + kısa çıtırtı. */
 
-export { JOBS, buildScribe, drawingSVG, drawingTable, inRect, mmss, renderJobs, selJob, selectJob, setSelJob,
+export { DIS, JOBS, buildScribe, localTop, threadAt, drawingSVG, drawingTable, inRect, mmss, renderJobs, selJob, selectJob, setSelJob,
   startJob, submitJob };

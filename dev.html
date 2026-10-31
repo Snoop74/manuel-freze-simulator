@@ -681,6 +681,26 @@ table{color:inherit;font-size:inherit}
 .menu-alt .menu-dugme{padding:8px 14px}
 .menu-not{color:var(--muted);font-size:12px;text-align:center;margin-top:6px}
 @media (max-width:520px){.menu-satir{grid-template-columns:1fr}}
+/* teklif verme (kariyer) */
+.teklif{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:6px}
+.teklif .tk-not{grid-column:1/-1;font-size:12px;color:var(--muted)}.teklif .tk-not b{color:var(--fg);font-family:var(--f-dro)}
+.teklif .btn{display:flex;flex-direction:column;align-items:center;padding:5px 2px;font-size:11.5px}
+.teklif .btn small{font-family:var(--f-dro);font-weight:400;font-size:11px;opacity:.85}
+.teklif .tk-termin{grid-column:1/-1}.teklif .tk-termin.on{color:var(--bad);border-color:var(--bad)}
+.teklif.karsi{grid-template-columns:1fr 1fr}
+/* montaj masası */
+.mt-steps{margin:0 0 8px;padding-left:18px;font-size:12.5px;line-height:1.45}
+.mt-steps li{color:var(--muted)}.mt-steps li.ok{color:var(--ok)}.mt-steps li.ok::marker{content:'✓ '}
+.mt-gauge svg{width:100%;max-width:220px;display:block;margin:0 auto;font-family:var(--f-dro)}
+.mt-gauge{opacity:.75;transition:opacity .15s}.mt-gauge.on{opacity:1}
+.mt-tq{text-align:center;font-family:var(--f-dro);font-size:18px;margin:-4px 0 6px}
+.mt-list{list-style:none;margin:0 0 6px;padding:0;font-size:12.5px}
+.mt-list li{padding:3px 6px;border-left:3px solid var(--line);margin-bottom:2px}
+.mt-list li b{display:inline-block;width:14px}
+.mt-list li.ok{border-color:var(--ok)}.mt-list li.warn{border-color:var(--warn)}.mt-list li.bad{border-color:var(--bad);color:var(--bad)}
+#montaj .bench-side .btn{width:100%;margin-top:6px}
+.mt-num{position:absolute;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:rgba(10,14,16,.85);border:1px solid #6b767a;color:#e8ecea;font:600 12px/18px var(--f-dro);text-align:center;pointer-events:none}
+.mt-num.ok{border-color:#3fd47a;color:#9dffc4}.mt-num.bad{border-color:#e5484d;color:#ff9a9d}
 </style>
 
 <div class="app">
@@ -806,6 +826,29 @@ table{color:inherit;font-size:inherit}
         </div>
       </div>
     </div>
+    <div class="bench" id="montaj" hidden>
+      <div class="bench-box" role="dialog" aria-label="Montaj masası">
+        <div class="bench-head"><b>MONTAJ MASASI</b><span id="mtInfo"></span><button class="btn" id="mtBack">Tezgâha dön</button></div>
+        <div class="bench-body">
+          <div class="bench-view" id="mtView"><canvas id="mtC" aria-label="Montajın 3B görünümü"></canvas><div class="bench-hint" id="mtHint"></div></div>
+          <div class="bench-side">
+            <div class="sub">Adımlar</div>
+            <ol class="mt-steps" id="mtSteps"></ol>
+            <button class="btn start" id="mtPlace">Kuleyi yerleştir</button>
+            <div class="sub">Tork anahtarı</div>
+            <div class="mt-gauge" id="mtGauge"></div>
+            <div class="mt-tq" id="mtTq">0.0 Nm</div>
+            <div class="sub">Cıvatalar</div>
+            <ul class="mt-list" id="mtList"></ul>
+            <div class="dro-note" id="mtOrder"></div>
+            <button class="btn" id="mtCoil" hidden>Yay diş tak</button>
+            <button class="btn" id="mtUndo">Cıvataları sök</button>
+            <button class="btn start" id="mtDone">Montajı bitir ve teslim et</button>
+            <div class="dro-note">Deliğe tıkla: cıvata elle girer. Cıvatanın üstünde basılı tut: tork anahtarı. Takılan cıvataya tıkla: söker. Boşlukta sürükle: döndür, tekerlek: yakınlaştır.</div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="report" id="report" hidden>
       <div class="box" role="dialog" aria-labelledby="rpTitle">
         <div class="rp-head"><span id="rpJob">İŞ 1</span><h2 id="rpTitle">Muayene raporu</h2></div>
@@ -927,6 +970,7 @@ table{color:inherit;font-size:inherit}
         <div class="jc-head"><span class="jc-no" id="jcNo">SERBEST</span><b id="jcTitle">Serbest çalışma</b></div>
         <p id="jcBrief">İş emri seçmeden tezgâhı serbestçe kullanın. Bir iş seçerseniz teknik resim açılır, teslimde parça ölçülür ve puanlanır.</p>
         <div class="jc-meta" id="jcMeta"></div>
+        <div class="teklif" id="jcTeklif" hidden></div>
         <div class="row2" id="jcBtns" hidden>
           <button class="btn" id="jobStart">İşe başla</button>
           <button class="btn start" id="jobSubmit">Parçayı teslim et</button>

@@ -578,3 +578,16 @@ table{color:inherit;font-size:inherit}
 .teklif .btn small{font-family:var(--f-dro);font-weight:400;font-size:11px;opacity:.85}
 .teklif .tk-termin{grid-column:1/-1}.teklif .tk-termin.on{color:var(--bad);border-color:var(--bad)}
 .teklif.karsi{grid-template-columns:1fr 1fr}
+/* montaj masası */
+.mt-steps{margin:0 0 8px;padding-left:18px;font-size:12.5px;line-height:1.45}
+.mt-steps li{color:var(--muted)}.mt-steps li.ok{color:var(--ok)}.mt-steps li.ok::marker{content:'✓ '}
+.mt-gauge svg{width:100%;max-width:220px;display:block;margin:0 auto;font-family:var(--f-dro)}
+.mt-gauge{opacity:.75;transition:opacity .15s}.mt-gauge.on{opacity:1}
+.mt-tq{text-align:center;font-family:var(--f-dro);font-size:18px;margin:-4px 0 6px}
+.mt-list{list-style:none;margin:0 0 6px;padding:0;font-size:12.5px}
+.mt-list li{padding:3px 6px;border-left:3px solid var(--line);margin-bottom:2px}
+.mt-list li b{display:inline-block;width:14px}
+.mt-list li.ok{border-color:var(--ok)}.mt-list li.warn{border-color:var(--warn)}.mt-list li.bad{border-color:var(--bad);color:var(--bad)}
+#montaj .bench-side .btn{width:100%;margin-top:6px}
+.mt-num{position:absolute;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:rgba(10,14,16,.85);border:1px solid #6b767a;color:#e8ecea;font:600 12px/18px var(--f-dro);text-align:center;pointer-events:none}
+.mt-num.ok{border-color:#3fd47a;color:#9dffc4}.mt-num.bad{border-color:#e5484d;color:#ff9a9d}

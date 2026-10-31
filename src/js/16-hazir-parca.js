@@ -232,6 +232,11 @@ const BLANKS = [
         },
         Sf:() => SF.cast };
     } },
+  { id:'kule', name:'Sensör kulesi taban plakası', cat:'Montaj', desc:'Taşlanmış alüminyum taban plakası. Üstüne müşterinin getirdiği sensör kulesi vidalanacak: diş açılacak, kule bağlanacak.',
+    gen() {
+      const w = rp([120, 130, 140]), d = rp([80, 90]), h = 15;
+      return { w, d, h, mat:'al', exist:[], info:`${w}×${d}×${h} alüminyum, taşlanmış`, H:() => h, Sf:() => SF.ground };
+    } },
   // absürt işler: parça sıradan, hikâye değil
   { id:'reaktor', name:'Kontrol çubuğu tutucu plakası', cat:'Nükleer ☢', desc:'Taşlanmış paslanmaz plaka. Reaktörün kontrol çubuklarını tutan delikler açılacak. Müşteri ölçüleri çok ciddiye alıyor.',
     gen() {
