@@ -50,7 +50,7 @@ function renderRack() {
     if (T.custom) { b.classList.add('custom'); b.title = 'Sağ tık: editörde aç'; b.addEventListener('contextmenu', e => { e.preventDefault(); app.TE.show(i); }); }
     const tg = rackTag && rackTag(i);
     if (tg && !tg.own) b.classList.add('locked');
-    b.innerHTML = `<span class="ico">${app.toolIcon(T)}</span><span class="nm"><b>${T.no}</b>${T.name}</span><span class="d">Ø${T.d} · ${tg && !tg.own ? 'satın al ' + tg.price : T.mat.split(',')[0]}</span>`;
+    b.innerHTML = `<span class="ico">${app.toolIcon(T)}</span><span class="nm"><b>${T.no}</b>${T.name}</span><span class="d">Ø${T.d} · ${tg && !tg.own ? (tg.kirik ? 'kırık · bilet ' : 'satın al ') + tg.price : T.mat.split(',')[0]}</span>`;
     b.addEventListener('click', () => requestToolChange(i));
     rk.append(b);
   });

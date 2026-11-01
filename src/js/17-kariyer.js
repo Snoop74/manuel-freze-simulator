@@ -1,6 +1,6 @@
 // ── Kariyer (CR): kasa, itibar, sipariş üretimi, koşullar, dükkân, ekipman, teslimde ödeme
 import { kayit } from './00-kayit.js';
-import { $, MATS, PD, PH, PW, S, TOOLS, app, clamp, isProbe, isTaster, log } from './00-temel.js';
+import { $, MATS, PD, PH, PW, S, TOOLS, app, clamp, isTaster, log } from './00-temel.js';
 import { beep, initAudio } from './01-ses.js';
 import { FIXLIM } from './03-tabla-parca.js';
 import { FIX, PAR, warnParallels } from './05-baglama.js';
@@ -39,12 +39,14 @@ const CR = (() => {
     { id:'div', n:'Divizör', t:'Yuvarlak parçaya altıgen, kare, kama kanalı', p:12000 },
   ];
   let st = null, on = false, sel = null, arm = { i:-1, t:0 };
-  const fresh = () => ({ money:1500, rep:0, done:0, earned:0, owned:Object.fromEntries(START.map(n => [n, 1])), eq:{}, orders:[], seq:1 });
+  const fresh = () => ({ money:1500, rep:0, done:0, earned:0, owned:Object.fromEntries(START.map(n => [n, 1])), eq:{}, orders:[], seq:1, kirik:{}, eksi:0 });
   function load() {
     st = kayit.oku(KEY, null);
     if (!st || typeof st.money !== 'number' || !Number.isFinite(st.money)) st = fresh();
     if (!st.owned || typeof st.owned !== 'object') st.owned = {};
     if (!st.eq || typeof st.eq !== 'object') st.eq = {};
+    if (!st.kirik || typeof st.kirik !== 'object') st.kirik = {};
+    if (typeof st.eksi !== 'number') st.eksi = 0;
     st.orders = Array.isArray(st.orders) ? st.orders.filter(o => o && o.J && MATS[o.mat]) : [];
     st.orders.forEach(o => (o.J.pockets || []).forEach(p => { if (p.r == null) p.r = 5; }));
     on = kayit.oku(MKEY) === 'career';
@@ -54,13 +56,23 @@ const CR = (() => {
   const level = () => { let l = 0; LEVELS.forEach(([r], i) => { if (st.rep >= r) l = i; }); return l; };
   const priceOf = T => T.price || BUILTIN_PRICE[T.no] || toolPrice(TE.specOf(T));
   const stockCost = (w, d, h, m) => Math.round(w * d * h / 1e6 * MATS[m].rho * PRICE_KG[m] + 20);   // kg × ₺/kg + kesim
-  const owns = i => !on || (isTaster(TOOLS[i]) ? !!st.eq[TOOLS[i].type] : !!st.owned[TOOLS[i].no]);
+  const owns = i => !on || (isTaster(TOOLS[i]) ? !!st.eq[TOOLS[i].type] : !!st.owned[TOOLS[i].no] && !st.kirik[TOOLS[i].no]);
+  /* -- Kasa eksiye düşebilir (kredili hesap): limit seviyeyle büyür. 5 teslim içinde artıya dönmezse her teslimde borcun %8'i faiz.
+     Kırılan takım hurdaya gitmez, dolapta kırık durur: biletmek (ya da alın frezesinde uç değiştirmek) fiyatın %30'u. Böylece oyun kilitlenmez. -- */
+  const KREDI_SURE = 5, FAIZ = 0.08;
+  const kredi = () => 2500 + level() * 1500;
+  const yeter = v => st.money - v >= -kredi();                    // bu harcama kredi limitini aşmıyor mu
+  const bileme = T => Math.max(60, Math.round(priceOf(T) * 0.3 / 10) * 10);
+  function harca(v) {                                             // kasadan düş; ilk kez eksiye düşünce haber ver
+    const once = st.money; st.money -= v;
+    if (once >= 0 && st.money < 0) log(`Kasa eksiye düştü (${tl(st.money)}): kredi limiti ${tl(kredi())}. ${KREDI_SURE} teslim içinde artıya dönmezseniz faiz işler.`, 'warn');
+  }
   const hasEq = id => !on || !!st.eq[id];
   function buyEq(id) {
     const E = EQUIP.find(q => q.id === id);
     if (!E || !on || st.eq[id]) return;
-    if (st.money < E.p) { log(`${E.n} için kasada yeterli para yok: ${tl(E.p)} gerekli.`, 'warn'); return; }
-    st.money -= E.p; st.eq[id] = 1; save(); cash(-E.p);
+    if (!yeter(E.p)) { log(`${E.n} için kredi limiti yetmiyor: ${tl(E.p)} gerekli.`, 'warn'); return; }
+    harca(E.p); st.eq[id] = 1; save(); cash(-E.p);
     log(`${E.n} atölyeye geldi: −${tl(E.p)}.`, 'ok'); render();
   }
 
@@ -314,7 +326,7 @@ const CR = (() => {
   function fillBoard() {
     while (st.orders.length < 3) st.orders.push(teklifIste(genOrder(false)));
     // kasada ham parçaya bile para yoksa müşteri malzemesini getirir: oyun kilitlenmez
-    if (!st.orders.some(o => o.cost <= st.money)) st.orders[0] = genOrder(true);
+    if (!st.orders.some(o => yeter(o.cost))) st.orders[0] = genOrder(true);
   }
 
   /* -- Arayüz -- */
@@ -326,6 +338,8 @@ const CR = (() => {
     if (on) {
       const lv = level(), nx = LEVELS[lv + 1];
       $('tbMoney').textContent = $('crMoney').textContent = tl(st.money);
+      $('tbMoney').classList.toggle('neg', st.money < 0); $('crMoney').classList.toggle('neg', st.money < 0);
+      $('crMoney').title = st.money < 0 ? `Eksi hesap: limit ${tl(kredi())}, ${Math.max(0, KREDI_SURE - st.eksi)} teslim daha faizsiz` : `Kredi limiti ${tl(kredi())}`;
       $('crRep').textContent = st.rep; $('crLevel').textContent = LEVELS[lv][1] + (nx ? ` · sonraki ${nx[0]}` : '');
       $('crDone').textContent = st.done;
       $('starTotal').textContent = `${st.done} teslim`;
@@ -351,7 +365,7 @@ const CR = (() => {
       const own = owns(i), p = priceOf(T), d = document.createElement('div'); d.className = 'sh-item' + (own ? ' own' : '');
       d.innerHTML = `<span class="ico">${toolIcon(T)}</span><span class="nm"><b>${T.no}</b> ${T.name} Ø${T.d}<small>${T.mat}</small></span>`;
       const b = document.createElement('button'); b.className = 'btn' + (own ? '' : ' start');
-      b.textContent = own ? 'dolapta' : tl(p); b.disabled = own || !on || st.money < p;
+      b.textContent = own ? 'dolapta' : st.kirik[T.no] ? 'kırık · bilet ' + tl(bileme(T)) : tl(p); b.disabled = own || !on || !yeter(st.kirik[T.no] ? bileme(T) : p);
       b.addEventListener('click', () => buy(i));
       d.append(b); T0.append(d);
     });
@@ -361,7 +375,7 @@ const CR = (() => {
       d.innerHTML = `<span class="ico">◇</span><span class="nm"><b>${E.n}</b><small>${E.t}</small></span>`;
       const b = document.createElement('button'); b.className = 'btn' + (own || !E.ready ? '' : ' start');
       b.textContent = !E.ready ? tl(E.p) + ' · yakında' : own ? 'atölyede' : tl(E.p);
-      b.disabled = !E.ready || own || st.money < E.p;
+      b.disabled = !E.ready || own || !yeter(E.p);
       b.addEventListener('click', () => buyEq(E.id));
       d.append(b); E0.append(d);
     });
@@ -384,7 +398,7 @@ const CR = (() => {
     if (!sel) { log('Önce panodan bir sipariş seçin.', 'warn'); return; }
     const o = sel;
     if (o.teklif === 'bekliyor' || o.teklif === 'karsi') { log('Bu müşteri önce fiyat teklifi bekliyor: kartın altından teklifinizi verin.', 'warn'); return; }
-    if (o.cost > st.money) { log(`Kasada ham parça için yeterli para yok (${tl(o.cost)}). Malzemesi müşteriden gelen bir iş seçin ya da panoyu yenileyin.`, 'warn'); return; }
+    if (!yeter(o.cost)) { log(`Kasada ham parça için yeterli para yok (${tl(o.cost)}). Malzemesi müşteriden gelen bir iş seçin ya da panoyu yenileyin.`, 'warn'); return; }
     // bağlama: büyük plaka mengeneye sığmaz; kurulu bağlama parçayı almıyorsa uygun olana geçilir
     if (o.J.arcs && o.J.arcs.length) {                              // yay kanal: döner tabla şart
       if (!hasEq('rot')) { log('Bu işteki yay kanal döner tabla ister: dükkândan alabilirsiniz.', 'warn'); openShop(); return; }
@@ -397,8 +411,8 @@ const CR = (() => {
       setFix(k, true);
     }
     const sac = PAR.sac && ['vise', 'clamp', 'rot'].includes(FIX) ? 40 : 0;   // kurban plaka sarf malzemesi
-    if (o.cost + sac > st.money) { log(`Kasada ham parça ve kurban plaka için yeterli para yok (${tl(o.cost + sac)}).`, 'warn'); return; }
-    st.money -= o.cost + sac; save();
+    if (!yeter(o.cost + sac)) { log(`Ham parça ve kurban plaka için kredi limiti yetmiyor (${tl(o.cost + sac)}).`, 'warn'); return; }
+    harca(o.cost + sac); save();
     if (sac) log(`Kurban plaka: −${tl(sac)}.`);
     if (o.J.blank) {                                                 // müşterinin parçası: aynı tohumla aynı parça
       const P = loadBlank(o.J.blank.id, o.J.blank.seed, true);
@@ -436,7 +450,7 @@ const CR = (() => {
       txt = `Müşteri memnun: +${tl(pay)}${run.time <= o.J.target ? ' (zamanında teslim primi dahil)' : ''}${clean ? ' · temiz teslim +%5' : ' · parça talaşlı geldi, temizleseydiniz +%5'} · itibar +${rep}`;
     } else if (r.stars >= 1) { pay = Math.round(o.pay * 0.04) * 10; txt = `Şartlı kabul, indirimli ödeme: +${tl(pay)} · itibar değişmedi`; tags.push(['Şartlı kabul: ödemenin %40\'ı', 'warn']); }
     else if (o.own) {
-      rep = -3; const v = Math.min(st.money, o.value); pay = -v;
+      rep = -3; const v = Math.max(0, Math.min(o.value, st.money + kredi())); pay = -v;
       txt = `Müşterinin parçası hurdaya çıktı: parça bedeli −${tl(v)} · itibar −3.`; tags.push([`Müşteri parçası hurda: parça bedeli −${tl(v)}`, 'warn']);
     }
     else { rep = -2; txt = `Parça hurda: ödeme yok · itibar −2. Sipariş panoda duruyor, yeni ham parçayla tekrar deneyebilirsiniz.`; tags.push(['Hurda: sipariş panoda, tekrar deneyebilirsiniz', 'warn']); }
@@ -444,6 +458,11 @@ const CR = (() => {
     if (run.montaj && r.allOk) tags.unshift(['Kule bağlandı, sensör yandı', 'gold']);
     const lv0 = level();
     st.money += pay; st.earned += pay; st.rep = Math.max(0, st.rep + rep);
+    if (st.money < 0) {                                            // eksi hesap: süre dolunca her teslimde faiz
+      st.eksi = (st.eksi || 0) + 1;
+      if (st.eksi > KREDI_SURE) { const f = Math.round(-st.money * FAIZ / 10) * 10; st.money -= f; tags.push([`Eksi hesap faizi: −${tl(f)}`, 'warn']); }
+      else tags.push([`Kasa eksi: ${st.eksi}/${KREDI_SURE} teslim faizsiz`, 'warn']);
+    } else { if (st.eksi) tags.push(['Kasa artıya döndü', 'ok']); st.eksi = 0; }
     if (pay > 0 && o.qty && (o.doneQty = (o.doneQty || 0) + 1) < o.qty) { st.done++; tags.push([`Seri: ${o.doneQty}/${o.qty} teslim edildi, sıradaki adet için "Sıradaki adet"`, 'ok']); }   // seri: sipariş panoda kalır
     else if (pay > 0 || o.own) { if (pay > 0) st.done++; st.orders = st.orders.filter(q => q.id !== o.id); sel = null; fillBoard(); }   // müşteri parçası tek: hurdada da sipariş gider
     save();
@@ -460,34 +479,51 @@ const CR = (() => {
   function buy(i) {
     const T = TOOLS[i], p = priceOf(T);
     if (!on || st.owned[T.no]) return true;
-    if (st.money < p) { log(`${T.no} için kasada yeterli para yok: ${tl(p)} gerekli.`, 'warn'); return false; }
-    st.money -= p; st.owned[T.no] = 1; save(); cash(-p);
+    if (st.kirik[T.no]) return bilet(i);
+    if (!yeter(p)) { log(`${T.no} için kredi limiti yetmiyor: ${tl(p)} gerekli.`, 'warn'); return false; }
+    harca(p); st.owned[T.no] = 1; save(); cash(-p);
     log(`${T.no} ${T.name} Ø${T.d} satın alındı: −${tl(p)}.`, 'ok');
     render(); return true;
   }
-  // dolapta olmayan takım: ilk tık fiyatı söyler, 4 s içinde ikinci tık satın alır
+  function bilet(i) {                                             // kırık takımı biletme / alın frezesinde uç değişimi
+    const T = TOOLS[i], c = bileme(T);
+    if (st.money - c < -kredi() - 1500) { log(`${T.no} biletmek için kredi limiti yetmiyor (${tl(c)}).`, 'warn'); return false; }   // bileme veresiye: limitin 1.500 ₺ ötesine kadar (takımsız kalıp kilitlenmesin)
+    harca(c); delete st.kirik[T.no]; S.wear[i] = 0; save(); cash(-c);
+    log(`${T.no} ${T.type === 'face' ? 'uçları değiştirildi' : 'biletildi'}: −${tl(c)}. Takım kullanıma hazır.`, 'ok');
+    render(); return true;
+  }
+  // dolapta olmayan ya da kırık takım: ilk tık fiyatı söyler, 4 s içinde ikinci tık satın alır / biletir
   function allowTool(i) {
     if (owns(i)) return true;
+    if (on && st.kirik[TOOLS[i].no] && st.owned[TOOLS[i].no]) {
+      const T = TOOLS[i], c = bileme(T);
+      if (arm.i === i && performance.now() - arm.t < 4000) { arm.i = -1; return bilet(i); }
+      arm = { i, t:performance.now() };
+      log(`${T.no} kırık. ${T.type === 'face' ? 'Uçlarını değiştirmek' : 'Biletmek'} için tekrar tıklayın: ${tl(c)} (yenisi ${tl(priceOf(T))}).`, 'warn');
+      return false;
+    }
     if (isTaster(TOOLS[i])) { log(`${TOOLS[i].name} atölyede yok: dükkândan alabilirsiniz.`, 'warn'); openShop(); return false; }
     const T = TOOLS[i], p = priceOf(T);
-    if (st.money < p) { log(`${T.no} ${T.name} dolapta yok ve kasada ${tl(p)} yok.`, 'warn'); return false; }
+    if (!yeter(p)) { log(`${T.no} ${T.name} dolapta yok ve kredi limiti ${tl(p)} için yetmiyor.`, 'warn'); return false; }
     if (arm.i === i && performance.now() - arm.t < 4000) { arm.i = -1; return buy(i); }
     arm = { i, t:performance.now() };
     log(`${T.no} ${T.name} dolapta yok. Satın alıp takmak için tekrar tıklayın: ${tl(p)}.`, 'warn');
     return false;
   }
   function lost(i) {
-    if (on && TOOLS[i].type === 'dial') { if (st.money >= 180) { st.money -= 180; save(); cash(-180); } log('Yedek stylus takıldı: −180 ₺. Taster sağlam.', 'warn'); render(); return; }
-    if (on && isProbe(TOOLS[i]) && st.eq.probe) { delete st.eq.probe; save(); log('3B taster kırıldı. Yenisi dükkânda (2.500 ₺).', 'warn'); render(); return; }
+    if (on && isTaster(TOOLS[i])) {                               // taster: kırılan stylus, gövde sağlam
+      const c = TOOLS[i].type === 'dial' ? 180 : 250; harca(c); save(); cash(-c);
+      log(`Yedek stylus takıldı: −${tl(c)}. Taster sağlam.`, 'warn'); render(); return;
+    }
     if (!on || !st.owned[TOOLS[i].no]) return;
-    delete st.owned[TOOLS[i].no]; save();
-    log(`${TOOLS[i].no} kırıldı ve hurdaya gitti. Yenisi ${tl(priceOf(TOOLS[i]))}; takım kartına iki kez tıklayın.`, 'warn');
+    st.kirik[TOOLS[i].no] = 1; save();
+    log(`${TOOLS[i].no} kırıldı, dolapta duruyor. ${TOOLS[i].type === 'face' ? 'Uç değişimi' : 'Biletme'} ${tl(bileme(TOOLS[i]))} (yenisi ${tl(priceOf(TOOLS[i]))}): takım kartına iki kez tıklayın.`, 'warn');
     render();
   }
   function charge(v, what) {
     if (!on) return true;
-    if (st.money < v) { log(`${what} için kasada yeterli para yok (${tl(v)}).`, 'warn'); return false; }
-    st.money -= v; save(); cash(-v); log(`${what}: −${tl(v)}.`); render(); return true;
+    if (!yeter(v)) { log(`${what} için kredi limiti yetmiyor (${tl(v)}).`, 'warn'); return false; }
+    harca(v); save(); cash(-v); log(`${what}: −${tl(v)}.`); render(); return true;
   }
   function forget(no) { if (st.owned[no]) { delete st.owned[no]; save(); } }
   function setMode(c) {
@@ -504,7 +540,7 @@ const CR = (() => {
   $('shClose').addEventListener('click', () => { $('shop').hidden = true; });
   window.addEventListener('keydown', e => { if (!$('shop').hidden && e.code === 'Escape') { e.stopImmediatePropagation(); $('shop').hidden = true; } }, true);
   load();
-  setRackTag(i => on ? { own:owns(i), price:tl(priceOf(TOOLS[i])) } : null);
+  setRackTag(i => on ? { own:owns(i), price:st.kirik[TOOLS[i].no] && st.owned[TOOLS[i].no] ? tl(bileme(TOOLS[i])) : tl(priceOf(TOOLS[i])), kirik:!!(st.kirik[TOOLS[i].no] && st.owned[TOOLS[i].no]) } : null);
   $('modeSw').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode === 'career'); });
   $('crRefresh').addEventListener('click', () => {
     if (S.job && S.job.order && !S.job.done) { log('İş sürerken pano yenilenmez.', 'warn'); return; }

@@ -118,7 +118,15 @@ function tryStep(nx, ny, nn, dtStep) {
   else if (FIX === 'div' && ROT.turning) { const a = VX.local(S.px, S.py, tip, ROT.a0), b = VX.local(nx, ny, tip, ROT.a); mdx = Math.hypot(b[1] - a[1], b[2] - a[2]); mdy = 0; }
   const horiz = Math.hypot(mdx, mdy), down = nn < S.nose;
   const fh = fixtureHit(nx, ny, T.type === 'dial' ? tip - 2 : tip, T);
-  if (fh) { crash(fh); return false; }
+  if (fh) {
+    // taster mil dururken ve yavaş yaklaşırken bağlamaya değerse kırılmaz: tezgâh durur, alarm verir (gerçek tasterin esneme payı)
+    if (isTaster(T) && !S.spindle && S.feedNow <= 1500) {
+      stopMotion(); thud(700, 0.06, 0.05);
+      warnOnce('tasterFix', `Taster ${fh.replace(/^Takım /, '').replace(/ çarptı!$/, '')} değdi: tezgâh durdu. Geri çekip yeniden yaklaşın.`, 'warn', 3000);
+      return false;
+    }
+    crash(fh); return false;
+  }
   if (T.type === 'dial') return app.DT.step(nx, ny, nn, T);
   const it = interfere(nx, ny, tip, T);
   if (S.loose && it.any) { warnOnce('loose', 'Parça bağlı değil, tabladan kopmuş. Yeni ham parça bağlayın.', 'bad'); return false; }
@@ -244,7 +252,9 @@ function tryStep(nx, ny, nn, dtStep) {
     return false;
   }
   if (L.stress > 1.5) S.damage += (L.stress - 1.5) * 0.35 * winT / md.tough;
-  if (L.chip > 2.5) S.damage += (L.chip - 2.5) * 0.12 * winT / md.tough;
+  // kalın talaşın zararı kavramayla orantılı: ince pasoda (az kavrama) yüksek ilerleme takımı yormaz (yüksek ilerlemeli frezeleme)
+  if (L.chip > 2.5) S.damage += (L.chip - 2.5) * 0.12 * winT / md.tough * clamp(L.eng * 1.5, 0.1, 1);
+  if (L.stress < 1 && L.chip < 2) S.damage = Math.max(0, S.damage - 0.04 * winT);   // rahat kesmede birikmiş zorlanma yavaşça geçer
   // çok ağızlı takımda talaş cebi dar: yumuşak malzemede tam kanalda talaş sıkışır
   if (T.z >= 4 && (S.mat === 'al' || mat.melt) && L.ae > 0.9 && W.ap > 0.5 * T.d && T.type !== 'face') {
     S.damage += 0.5 * winT / md.tough;

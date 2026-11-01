@@ -2,8 +2,8 @@
 import { kayit } from './00-kayit.js';
 import { ayarDinle } from './00-tercihler.js';
 import { $, C, H, NX, NY, PD, PW, RAPID, S, TAU, app, clamp, isDrill, log, mat, rapid, tipZ, tool } from './00-temel.js';
-import { initAudio, thud, updateAudio } from './01-ses.js';
-import { camera, controls, motorSwitch, mush, quill, renderer, scene, spLampMat, spindleG, stage, startBtnMat,
+import { beep, initAudio, thud, updateAudio } from './01-ses.js';
+import { FLOOR_Y, camera, controls, motorSwitch, mush, quill, renderer, scene, spLampMat, spindleG, stage, startBtnMat,
   toolRot, updateCoolant, zFine, zLever } from './02-sahne-tezgah.js';
 import { ROT, pfLever, rotG, saddle, table, wheels, yWheel } from './03-tabla-parca.js';
 import { VX } from './04-voksel.js';
@@ -65,11 +65,17 @@ new ResizeObserver(resize).observe(stage); resize();
 ayarDinle('cozunurluk', resize);                                 // piksel oranı değişince tampon ve partikül ölçeği yenilensin
 
 /* ---------------- Ana döngü ---------------- */
+// kamera atölyenin içinde kalır: uzaklaşma sınırı ve duvar/zemin/tavan içinde (duvar iç yüzlerinden 50 mm pay)
+controls.maxDistance = 2600;
+function odadaKal() {
+  const p = camera.position;
+  p.set(clamp(p.x, -3310, 3550), clamp(p.y, FLOOR_Y + 60, 2350), clamp(p.z, -1550, 2950));
+}
 let last = performance.now(), uiT = 0;
 const vA = new THREE.Vector3(), vB = new THREE.Vector3();
 function frame(now) {
   if (S.duraklat) {                                                // menü açık: simülasyon durur, sahne çizilmeye devam eder
-    last = now; controls.update(); renderer.render(scene, camera); requestAnimationFrame(frame); return;
+    last = now; controls.update(); odadaKal(); renderer.render(scene, camera); requestAnimationFrame(frame); return;
   }
   S.realDt = Math.max(0.001, (now - last) / 1000);
   const dt = Math.min(0.05, S.realDt); last = now;
@@ -118,7 +124,7 @@ function frame(now) {
     controls.target.lerpVectors(camAnim.t0, camAnim.t1, e);
     if (camAnim.t >= 1) camAnim = null;
   }
-  controls.update();
+  controls.update(); odadaKal();
   renderer.render(scene, camera);
   updateAudio(dt);
 
@@ -175,6 +181,18 @@ function updateHud(T, tip) {
   const db = $('hDmgBar');
   db.style.width = Math.min(100, S.damage * 100) + '%';
   db.style.background = S.damage > 0.6 ? 'var(--bad)' : 'var(--warn)';
+  // görüş alanında takım yükü: keserken ya da zorlanma birikmişken görünür; zorlanma tehlikeli bölgedeyse bipler
+  const yh = $('yukHud'), gor = (S.spindle && performance.now() - S.lastCut < 1500) || S.damage > 0.05;
+  yh.hidden = !gor;
+  if (gor) {
+    $('yhLoad').style.width = Math.min(100, stress / 3 * 100) + '%';
+    $('yhLoad').style.background = stress > 1.5 ? 'var(--bad)' : stress > 1.1 ? 'var(--warn)' : 'var(--ok)';
+    $('yhDmg').style.width = Math.min(100, S.damage * 100) + '%';
+    $('yhLoadV').textContent = cuttingNow ? stress.toFixed(1) + '×' : '—';
+    $('yhDmgV').textContent = Math.round(S.damage * 100) + '%';
+    yh.classList.toggle('tehlike', S.damage > 0.6);
+    if (S.damage > 0.6 && cuttingNow && performance.now() - (S.yukBip || 0) > 650) { S.yukBip = performance.now(); beep(1500, 0.05, 0.05); }
+  }
   $('hFeed').textContent = S.changing ? 'takım değişimi' : S.feedNow > 0 && (performance.now() - S.lastMove < 200) ? `${Math.round(S.curFeed)} mm/dk` : rapid() ? `HIZLI ${RAPID} mm/dk` : `${S.feed} mm/dk`;
   $('hJobRow').hidden = $('hTimeRow').hidden = !S.job;
   if (S.job) {
