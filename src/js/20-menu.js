@@ -103,6 +103,7 @@ MENU.ekran('ana', (k, M) => {
   if (app.EG.bitti) M.dugme('Eğitim', egitim, { alt:'Otto Usta ile ilk parçayı yeniden yap' });
   M.dugme('Nasıl oynanır', () => { MENU.kapat(); const h = document.querySelector('[data-menu="help"]'); if (h) h.click(); }, { alt:'ilk adımlar ve kısayollar' });
   M.el('div', 'menu-not', 'Menü: üst çubukta ☰ · tezgâhta Esc her zaman ACİL STOP');
+  M.el('div', 'menu-not surum-not', 'sürüm ' + (app.SURUM || 'dev'));
 });
 MENU.ekran('ayarlar', (k, M) => {
   M.baslik('Ayarlar');

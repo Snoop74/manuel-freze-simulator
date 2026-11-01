@@ -8,6 +8,7 @@ import { readFileSync, writeFileSync, watch } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildSync } from 'esbuild';
+import { execSync } from 'node:child_process';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const SRC = join(ROOT, 'src');
@@ -29,8 +30,16 @@ function fontCss() {
   return out;
 }
 
+// derleme numarası: bu derlemeyi içerecek commit'in sırası (commit sayısı + 1) ve tarih; oyunda köşede ve menüde görünür
+function surum() {
+  let n = '?';
+  try { n = +execSync('git rev-list --count HEAD', { cwd:ROOT, stdio:['ignore', 'pipe', 'ignore'] }).toString().trim() + 1; } catch {}
+  const t = new Date(), iki = v => String(v).padStart(2, '0');
+  return `b${n} · ${t.getFullYear()}-${iki(t.getMonth() + 1)}-${iki(t.getDate())}`;
+}
+
 export function build() {
-  const tpl = rd(join(SRC, 'sayfa.html'));
+  const tpl = rd(join(SRC, 'sayfa.html')).replace('@SURUM@', surum());
   for (const mark of ['/*@CSS@*/\n', '//@JS@\n'])
     if (tpl.split(mark).length !== 2) throw new Error(`sayfa.html içinde ${mark.trim()} işareti tam bir kez olmalı`);
   const r = buildSync({
@@ -47,6 +56,7 @@ export function build() {
   const importMap = '<script type="importmap">{ "imports": { "three": "./node_modules/three/build/three.module.js", "three/": "./node_modules/three/" } }</script>\n';
   writeFileSync(join(ROOT, 'dev.html'), page
     .replace('<script>\n//@JS@\n</script>', importMap + '<script type="module" src="src/js/main.js"></script>')
+    .replace(/<meta name="surum" content="[^"]*">/, '<meta name="surum" content="dev">')
     .replace(/<!-- Üretilmiş dosya:[^\n]*-->/, '<!-- Geliştirme sayfası: modüller src/js altından doğrudan yüklenir (node build.mjs üretir). -->'));
   return { bytes: Buffer.byteLength(js) };
 }
