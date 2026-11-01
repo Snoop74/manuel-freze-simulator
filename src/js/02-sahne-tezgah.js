@@ -221,12 +221,14 @@ const MX = {
   red: smat(0xb3261e, 0.45, 0.05, 0.3), green: smat(0x2f8f4e, 0.45, 0.05, 0.3),
   stripe: smat(0xe0a92a, 0.7, 0, 0.15),
   cabinet: smat(0x9b2b24, 0.6, 0.15, 0.3), cabinetDark: smat(0x2b2f33, 0.6, 0.3, 0.3),
-  wood: smat(0x7a5a3a, 0.85, 0, 0.1), chrome: smat(0xd8dde0, 0.18, 1, 0.8),
+  wood: smat(0xb8ae9e, 0.8, 0, 0.12), chrome: smat(0xd8dde0, 0.18, 1, 0.8),
   glow: new THREE.MeshBasicMaterial({ color:0xf4f1e6 }),
 };
 // duvarlar: boyalı beton (beton dokusunun detayı, rengi duvar boyasından)
 addSurface(MX.wallLow, 'garage_floor', { mSc:0.006, mAmt:0.06, sc:1 / 1800, alb:0, mean:0.161, rough:0.6, nStr:0.7 });
 addSurface(MX.wallHigh, 'garage_floor', { mSc:0.006, mAmt:0.06, sc:1 / 1800, alb:0, mean:0.161, rough:0.6, nStr:0.7 });
+// çalışma tezgâhının tablası: eski, lekeli, cilalı tahta (renk dokudan)
+addSurface(MX.wood, 'plank_flooring', { mSc:0.01, mAmt:0.06, sc:1 / 2200, alb:0.85, mean:0.25, rough:1, nStr:0.8 });
 addMottle(MX.cabinet, 0.05, 0.05);
 // Yuvarlatılmış kenarlı kutu (döküm ve sac parçalar için)
 function rbox(x0, x1, y0, y1, z0, z1, r, mat, parent, shadow = true) {
