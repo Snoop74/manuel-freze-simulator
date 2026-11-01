@@ -1,5 +1,5 @@
 // ── Bağlama: divizör gövdesi, mengene, pabuç, paraleller, çarpışma kutuları, parça yüzeyinin çizimi
-import { C, CUT, H, INSP, NX, NY, PD, PH, PW, SURF, allocGrid, app, clamp, log, mat } from './00-temel.js';
+import { C, CUT, H, INSP, NX, NY, PD, PH, PW, S, SURF, allocGrid, app, clamp, log, mat } from './00-temel.js';
 import { M, MX, box, boxR, cyl, hwheel, rbox, smat } from './02-sahne-tezgah.js';
 import { ROT, VISE_PAINT, rotG, rotIn, table, viseBase } from './03-tabla-parca.js';
 import { DIVY, DIVZ, VX } from './04-voksel.js';
@@ -172,6 +172,17 @@ function buildDivJaws(rs) {
 let FIX = 'vise', clampLay = 'fb', straps = [];
 const setFIX = k => { FIX = k; }, setClampLay = v => { clampLay = v; };
 const viseG = new THREE.Group(); rotIn.add(viseG);
+/* Mengenede parçanın X kayıklığı (KAY): her yeni parça çeneler arasında biraz farklı yere bağlanır, eski X sıfırı tutmaz.
+   Parça koordinatları değişmez; mengene ve tabla parçaya göre −KAY kayar (tabla görünümü 12'de, çene ve paraleller viseG'de,
+   çarpışma kutuları syncFixtures'ta). Makine yerinde durduğu için DRO okuması değişmez: S.px ve S.zx birlikte kayar. */
+let KAY = 0;
+function setKay(v) {
+  if (FIX !== 'vise') v = 0;
+  const d = v - KAY; KAY = v;
+  S.px -= d; S.zx -= d;
+  viseG.position.x = -KAY;
+  if (stockReady) syncFixtures();
+}
 const rotBase = new THREE.Group(); table.add(rotBase);   // döner tablanın sabit gövdesi
 let rotCrank = null;
 const MDF = smat(0x8a6a48, 0.85, 0, 0.1), ALU = smat(0xa7aeb3, 0.4, 0.75);
@@ -218,6 +229,7 @@ function buildVise() {
   divG.visible = FIX === 'div'; rotIn.visible = FIX !== 'div';
   if (FIX === 'div') { buildDivBody(); buildDivJaws(PD / 2); }
   ROT.on = FIX === 'rot'; ROT.a = ROT.a0 = ROT.pend = ROT.hold = ROT.z0 = 0; ROT.cx = PW / 2; ROT.cy = PD / 2;
+  if (FIX !== 'vise' && KAY) setKay(0);
   rotG.position.set(ROT.cx, 0, -ROT.cy); rotIn.position.set(-ROT.cx, 0, ROT.cy); rotG.rotation.y = 0;
   if (FIX === 'rot') {
     const cx = ROT.cx, cz = -ROT.cy;
@@ -305,6 +317,7 @@ function syncFixtures() {
     { n:'döner tabla plakasına', c:[ROT.cx, ROT.cy, 112], top:-4 }, { n:'döner tabla gövdesine', b:[ROT.cx - 125, ROT.cx + 125, ROT.cy - 115, ROT.cy + 115], top:-26 });
   else app.FIXTURES.push({ n:'vakum tablasına (kurban plakasını geçti)', b:[-30, 290, -25, 165], top:-5 });
   app.FIXTURES.push({ n:'tablaya', b:[-400, 550, -50, 150], top:-60 });
+  if (KAY) for (const f of app.FIXTURES) if (f.b && !f.rot) { f.b = f.b.slice(); f.b[0] -= KAY; f.b[1] -= KAY; }   // mengene ve tabla parçaya göre kayık
 }
 let dirty = { i0:0, i1:0, j0:0, j1:0 }, isDirty = true;
 buildStock(PW, PD, PH);
@@ -365,6 +378,6 @@ function flushMesh() {
    Freze talaşı bir ağzın kestiği virgül biçimli şerittir: bir ucu ince, öbür ucu kalın; bir yüzü takıma sürtünüp parlar, öbürü mat kalır.
    Her biçimin birkaç rastgele çeşidi üretilir. Talaşlar havada döner, sekip yatar ve düştükleri yerde yığılır (iç içe geçmez). */
 
-export { FIX, MK1, MK2, PAR, TAPC, TINTC, buildStock, clearThreads, tapThread, threads, buildVise, clampLay, divCrank, divRot, flushMesh, jawTop,
+export { FIX, KAY, MK1, MK2, PAR, TAPC, TINTC, buildStock, clearThreads, setKay, tapThread, threads, buildVise, clampLay, divCrank, divRot, flushMesh, jawTop,
   markDirty, markStockReady, markThrough, nV, parAxis, parBands, parConflicts, rotCrank, setClampLay, setFIX,
   setJawOverride, stockBase, straps, syncFixtures, topGeo, topMat, topMesh, walls, warnParallels };

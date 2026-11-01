@@ -7,7 +7,7 @@ import { FLOOR_Y, camera, controls, motorSwitch, mush, quill, renderer, scene, s
   toolRot, updateCoolant, zFine, zLever } from './02-sahne-tezgah.js';
 import { ROT, pfLever, rotG, saddle, table, wheels, yWheel } from './03-tabla-parca.js';
 import { VX } from './04-voksel.js';
-import { FIX, divCrank, divRot, flushMesh, nV, rotCrank } from './05-baglama.js';
+import { FIX, KAY, divCrank, divRot, flushMesh, nV, rotCrank } from './05-baglama.js';
 import { CHIP_TXT, ambientParticles, psAdd, psAlpha, updateChips, updatePS } from './06-talas.js';
 import { profile } from './07-takim-gorsel.js';
 import { loadRatio, motion, press, pressed, release, stopMotion } from './08-kesme.js';
@@ -91,7 +91,7 @@ function frame(now) {
 
   const T = tool(), tip = tipZ();
   saddle.position.z = S.py;
-  table.position.x = -S.px;
+  table.position.x = -(S.px + KAY);                               // parça mengenede KAY kadar kayık bağlı
   rotG.rotation.y = ROT.on ? ROT.a * Math.PI / 180 : 0;
   if (rotCrank) rotCrank.rotation.z = -ROT.a * 90 * Math.PI / 180;
   divRot.rotation.x = FIX === 'div' ? ROT.a * Math.PI / 180 : 0;

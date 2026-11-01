@@ -1,11 +1,11 @@
 // ── Kumanda: DRO, devir/ilerleme, takım dolabı, takım değişimi, mil, jog, el çarkları, malzeme ve parça sıfırlama
 import { kayit } from './00-kayit.js';
-import { $, CUT, EDGE, H, INSP, MATS, NX, NY, PD, PH, PW, S, SURF, TOOLS, app, isDrill, isProbe, isTaster, log,
+import { $, CUT, EDGE, H, INSP, MATS, NX, NY, PD, PH, PW, S, SURF, TOOLS, app, clamp, isDrill, isProbe, isTaster, log,
   mat, rapid, recFeed, recRpm, setMat, tipZ, tool, unslip } from './00-temel.js';
 import { ac, initAudio, noiseHit, sesSeviye, thud } from './01-ses.js';
 import { M } from './02-sahne-tezgah.js';
 import { VX } from './04-voksel.js';
-import { FIX, MK1, MK2, TAPC, TINTC, clearThreads, markDirty, markThrough, topMat } from './05-baglama.js';
+import { FIX, MK1, MK2, TAPC, TINTC, clearThreads, markDirty, markThrough, setKay, topMat } from './05-baglama.js';
 import { chipMat, clearChips } from './06-talas.js';
 import { HKEY, HOLDERS, HSEL, buildToolVisual, holderOf, holds } from './07-takim-gorsel.js';
 import { press, release, stopMotion } from './08-kesme.js';
@@ -292,6 +292,9 @@ function resetPart(k) {
   S.removed = 0; S.cutTime = 0; S.peck.active = false; clearChips();
   S.loose = null; for (const m of app.partMeshes()) { m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); }
   if (FIX === 'div') VX.build(PW, PD);
+  // yeni parça mengenede her seferinde biraz farklı X'e bağlanır (çeneler 220 mm; parça taşmasın): sıfır her işte yeniden alınır
+  const kl = clamp((220 - PW) / 2 - 3, 0, 15);
+  setKay(FIX === 'vise' ? Math.round((Math.random() * 2 - 1) * kl * 100) / 100 : 0);
   stopMotion();
   if (tipZ() < PH + 5) S.nose = PH + 20 + tool().len;
 }
