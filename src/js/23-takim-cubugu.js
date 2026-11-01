@@ -41,12 +41,20 @@ const TC = (() => {
     });
     return b;
   }
+  // şeritte yalnızca elimizdeki takımlar (kariyerde dolapta olmayanlar sepetten alınır; kırık olan dolapta durur, biletilir)
+  const elde = i => { const tg = rackTagOf(i); return !tg || tg.own || tg.kirik || i === S.tool; };
   function ciz(zorla) {
-    const imza = TOOLS.map((T, i) => T.gone ? '' : T.no + (durum(T, i) || [''])[0] + (i === S.tool)).join('|') + S.broken;
+    const imza = TOOLS.map((T, i) => T.gone || !elde(i) ? '' : T.no + (durum(T, i) || [''])[0] + (i === S.tool)).join('|') + S.broken;
     if (!zorla && imza === sonImza) return;
     sonImza = imza;
     const L = $('tcList'); L.innerHTML = '';
-    TOOLS.forEach((T, i) => { if (!T.gone) L.append(kart(T, i)); });
+    TOOLS.forEach((T, i) => { if (!T.gone && elde(i)) L.append(kart(T, i)); });
+    if (app.CR.on) {                                               // kariyer: dolapta olmayan takım dükkândan
+      const sb = document.createElement('button'); sb.className = 'tc-card add';
+      sb.innerHTML = '<span class="ico">🛒</span><b>Takım al</b><span class="nm">dükkân</span>';
+      sb.addEventListener('click', () => { kapat(); app.CR.openShop(); });
+      L.append(sb);
+    }
     const nb = document.createElement('button'); nb.className = 'tc-card add';
     nb.innerHTML = '<span class="ico">+</span><b>Yeni</b><span class="nm">Takım tasarla</span>';
     nb.addEventListener('click', () => { kapat(); app.TE.show(null); });
