@@ -43,13 +43,27 @@ const GL = (() => {
 
   /* -- Yerleşim: hazır modellerin kök konumu (mm, Y yukarı) ve Y ekseni dönüşü -- */
   function yerlesim() {
-    return PROPS.map(p => ({ ad:p.o.name, x:r1(p.o.position.x), y:r1(p.o.position.y), z:r1(p.o.position.z), ry:Math.round(p.o.rotation.y * 1000) / 1000 }));
+    return PROPS.map(p => {
+      const e = new THREE.Euler().setFromQuaternion(p.o.quaternion, 'YXZ');   // ry: dikey eksen etrafında; eğikse rx/rz de yazılır
+      const k = { ad:p.o.name, x:r1(p.o.position.x), y:r1(p.o.position.y), z:r1(p.o.position.z), ry:Math.round(e.y * 1000) / 1000 };
+      if (Math.abs(e.x) > 0.002 || Math.abs(e.z) > 0.002) Object.assign(k, { rx:Math.round(e.x * 1000) / 1000, rz:Math.round(e.z * 1000) / 1000 });
+      return k;
+    });
   }
+  // Blender'dan gelen kayıtta ref (modelin en büyük mesh'i) ve m (onun oyun dünyasındaki dönüşümü, satır sıralı) varsa
+  // kök, o mesh oraya gelecek biçimde yeniden kurulur: kök' = M · ref⁻¹ · kök (kök sahnenin doğrudan çocuğu)
+  const _M = new THREE.Matrix4(), _R = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3();
   function uygula(liste) {
     let n = 0;
     for (const q of liste) {
       const p = PROPS.find(p => p.o.name === q.ad); if (!p) continue;
-      p.o.position.set(q.x, q.y, q.z); if (q.ry != null) p.o.rotation.y = q.ry; p.o.updateMatrixWorld(true); n++;
+      const o = p.o, ref = q.ref && q.m && (o.getObjectByName(q.ref) || o.getObjectByName(q.ref.replace(/_\d+$/, '')));
+      if (ref) {
+        o.updateMatrixWorld(true);
+        _M.set(...q.m).multiply(_R.copy(ref.matrixWorld).invert()).multiply(o.matrixWorld);
+        _M.decompose(o.position, _q, _s); o.quaternion.copy(_q);
+      } else { o.position.set(q.x, q.y, q.z); if (q.ry != null) o.rotation.y = q.ry; }
+      o.updateMatrixWorld(true); n++;
     }
     log(`Yerleşim uygulandı: ${n} eşya (yalnızca bu oturum; kalıcı olması için dosyayı Claude'a verin).`, n ? 'ok' : 'warn');
   }
