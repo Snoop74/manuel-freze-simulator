@@ -11,6 +11,8 @@ buildToolVisual(); updateToolUI(); updateRec(); updateSpindleUI();
 setRpm(4200); setFeed(500);
 renderJobs(); selectJob(-1); CR.render();
 log('Tezgâh hazır. T3 Ø10 parmak freze takılı. Sıfır noktası parçanın sol-ön-üst köşesinde.', 'ok');
+// dosyaya çift tıklayınca (file://) tarayıcı dokuları, ortam yansımasını ve modelleri yüklemez: oyun düz renkle açılır
+if (location.protocol === 'file:') log('Oyun dosyadan açıldı: dokular ve atölye modelleri yüklenemiyor, sahne düz görünür. Tam grafik için baslat.bat ile açın.', 'warn');
 for (const id of ['alarm', 'report', 'toast', 'bench', 'montaj', 'mtHint', 'mtTip', 'yukHud', 'tedit', 'shop']) document.body.append($(id));
 setMaterial('al');
 PM.init();
