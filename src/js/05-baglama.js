@@ -172,6 +172,7 @@ function buildDivJaws(rs) {
 let FIX = 'vise', clampLay = 'fb', straps = [];
 const setFIX = k => { FIX = k; }, setClampLay = v => { clampLay = v; };
 const viseG = new THREE.Group(); rotIn.add(viseG);
+const onCene = new THREE.Group(); viseG.add(onCene);              // hareketli ön çene: mengene S.mAcik mm açılınca operatöre doğru (y −) kayar
 /* Mengenede parçanın X kayıklığı (KAY): her yeni parça çeneler arasında biraz farklı yere bağlanır, eski X sıfırı tutmaz.
    Parça koordinatları değişmez; mengene ve tabla parçaya göre −KAY kayar (tabla 12'de −(px + KAY), parça grubu rotG +KAY, çene ve paraleller viseG'de −KAY,
    çarpışma kutuları syncFixtures'ta). Makine yerinde durduğu için DRO okuması değişmez: S.px ve S.zx birlikte kayar. */
@@ -224,6 +225,8 @@ function strap(c, side) {
 }
 function buildVise() {
   while (viseG.children.length) { const o = viseG.children[0]; viseG.remove(o); if (o.geometry) o.geometry.dispose(); }
+  while (onCene.children.length) { const o = onCene.children[0]; onCene.remove(o); if (o.geometry) o.geometry.dispose(); }
+  viseG.add(onCene); onCene.position.z = S.mAcik || 0;
   while (rotBase.children.length) { const o = rotBase.children[0]; rotBase.remove(o); if (o.geometry) o.geometry.dispose(); }
   viseBase.visible = FIX === 'vise'; straps = []; rotCrank = null;
   if (stockReady) app.syncParUI();
@@ -275,13 +278,14 @@ function buildVise() {
   const jb = Math.max(-30, jawTop - 3);
   rbox(-35, 185, -35, jawTop, -PD - 25, -PD - 6, 2, VISE_PAINT, viseG);           // arka (sabit) ağız
   rbox(-35, 185, -35, jb, -PD - 50, -PD - 24, 3, VISE_PAINT, viseG);
-  rbox(-35, 185, -35, jawTop, 6, 25, 2, VISE_PAINT, viseG);                      // ön (hareketli) ağız
-  rbox(-35, 185, -35, jb, 24, 60, 3, VISE_PAINT, viseG);
+  rbox(-35, 185, -35, jawTop, 6, 25, 2, VISE_PAINT, onCene);                     // ön (hareketli) ağız
+  rbox(-35, 185, -35, jb, 24, 60, 3, VISE_PAINT, onCene);
   // taşlanmış çene plakaları (6 mm) ve havşa başlı iki vida; plakanın parçaya bakan yüzü y = 0 ve y = PD
   const py0 = Math.max(-33, jawTop - 32), pym = (py0 + jawTop) / 2;
   for (const [z0, z1, fz] of [[-PD - 6, -PD, -PD + 0.15], [0, 6, -0.15]]) {
-    rbox(-30, 180, py0, jawTop - 0.3, z0, z1, 0.6, M.ground, viseG);
-    for (const x of [-14, 164]) { const sc = cyl(4.5, 4.5, 0.4, M.black, 16); sc.rotation.x = Math.PI / 2; sc.position.set(x, pym, fz); viseG.add(sc); }
+    const g = z0 < 0 ? viseG : onCene;
+    rbox(-30, 180, py0, jawTop - 0.3, z0, z1, 0.6, M.ground, g);
+    for (const x of [-14, 164]) { const sc = cyl(4.5, 4.5, 0.4, M.black, 16); sc.rotation.x = Math.PI / 2; sc.position.set(x, pym, fz); g.add(sc); }
   }
   for (const [a, b] of parBands()) rbox(-5, 155, -35, -sacT(), -b, -a, 1, M.steel, viseG);   // paraleller
   if (PAR.sac) rbox(0, PW, -6, -0.05, -PD, 0, 0.5, MDF, viseG);             // kurban plaka
@@ -307,8 +311,9 @@ function rebuildIndex() {
 }
 function syncFixtures() {
   app.FIXTURES.length = 0;
-  if (FIX === 'vise') app.FIXTURES.push({ n:'mengene ön çenesine', b:[-35, 185, -25, 0], top:jawTop }, { n:'mengene arka çenesine', b:[-35, 185, PD, PD + 25], top:jawTop },
-    ...parBands().map(([a, b]) => ({ n:'paralel altlığa', b:[-10, 160, a, b], top:-sacT() })), { n:'mengene ağız gövdesine', b:[-35, 185, -60, -25], top:Math.max(-30, jawTop - 3) },
+  const ac = S.mAcik || 0;                                         // açık mengenede ön çene operatöre doğru kaymış
+  if (FIX === 'vise') app.FIXTURES.push({ n:'mengene ön çenesine', b:[-35, 185, -25 - ac, -ac], top:jawTop }, { n:'mengene arka çenesine', b:[-35, 185, PD, PD + 25], top:jawTop },
+    ...parBands().map(([a, b]) => ({ n:'paralel altlığa', b:[-10, 160, a, b], top:-sacT() })), { n:'mengene ağız gövdesine', b:[-35, 185, -60 - ac, -25 - ac], top:Math.max(-30, jawTop - 3) },
     { n:'mengene ağız gövdesine', b:[-35, 185, PD + 25, PD + 50], top:Math.max(-30, jawTop - 3) },
     { n:'mengene vida yatağına', b:[25, 125, -95, -75], top:-18 }, { n:'mengene koluna', b:[-5, 155, -125, -95], top:-24 },
     { n:'mengene gövdesine', b:[-40, 190, -95, 200], top:-35 });
@@ -379,6 +384,6 @@ function flushMesh() {
    Freze talaşı bir ağzın kestiği virgül biçimli şerittir: bir ucu ince, öbür ucu kalın; bir yüzü takıma sürtünüp parlar, öbürü mat kalır.
    Her biçimin birkaç rastgele çeşidi üretilir. Talaşlar havada döner, sekip yatar ve düştükleri yerde yığılır (iç içe geçmez). */
 
-export { FIX, KAY, MK1, MK2, PAR, TAPC, TINTC, buildStock, clearThreads, setKay, tapThread, threads, buildVise, clampLay, divCrank, divRot, flushMesh, jawTop,
+export { FIX, KAY, MK1, MK2, onCene, PAR, TAPC, TINTC, buildStock, clearThreads, setKay, tapThread, threads, buildVise, clampLay, divCrank, divRot, flushMesh, jawTop,
   markDirty, markStockReady, markThrough, nV, parAxis, parBands, parConflicts, rotCrank, setClampLay, setFIX,
   setJawOverride, stockBase, straps, syncFixtures, topGeo, topMat, topMesh, walls, warnParallels };

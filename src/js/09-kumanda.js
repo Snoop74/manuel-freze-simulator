@@ -93,6 +93,7 @@ function spindle(on) {
   if (on && S.alarm) { log('Alarm aktifken mil çalıştırılamaz.', 'warn'); return; }
   if (on && S.changing) return;
   if (on && S.broken) { log('Takım kırık. Mili çalıştırmadan önce takımı değiştirin.', 'warn'); return; }
+  if (on && FIX === 'vise' && S.mAcik > 0.05) { log('Mengene açık: parça bağlı değilken mil çalıştırılmaz. Kola tıklayıp mengeneyi sıkın.', 'warn'); return; }
   if (on && isTaster(tool())) { log('3B taster takılıyken mil çalıştırılmaz: taster dönerken kırılır.', 'warn'); return; }
   if (S.spindle === on) return;
   S.spindle = on; updateSpindleUI(); thud(on ? 120 : 85, 0.16, 0.16);   // kavrama / fren
@@ -294,6 +295,7 @@ function resetPart(k) {
   if (FIX === 'div') VX.build(PW, PD);
   // yeni parça mengenede her seferinde biraz farklı X'e bağlanır (çeneler 220 mm; parça taşmasın): sıfır her işte yeniden alınır
   const kl = clamp((220 - PW) / 2 - 3, 0, 15);
+  if (app.MG) app.MG.kapat(true);                                  // yeni parça sıkılı gelir
   setKay(FIX === 'vise' ? Math.round((Math.random() * 2 - 1) * kl * 100) / 100 : 0);
   stopMotion();
   if (tipZ() < PH + 5) S.nose = PH + 20 + tool().len;

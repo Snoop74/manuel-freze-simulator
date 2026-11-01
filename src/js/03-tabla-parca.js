@@ -38,6 +38,7 @@ hwheel(yWheel, 48);
 // Döküm gövde y -95..200 (taban -60..-38), iki yanda T cıvatalı bağlama kulağı, üstte taşlanmış kızak yolları,
 // önde vida yatağı, trapez vida ve kol. Çeneler ve ağız gövdeleri parçaya göre 05-baglama.js'te kurulur.
 const viseBase = new THREE.Group(); table.add(viseBase);
+const viseKol = new THREE.Group();
 const VISE_PAINT = smat(0x3f4c55, 0.7, 0.15, 0.3);
 addSurface(VISE_PAINT, 'green_metal_rust', { mSc:0.08, mAmt:0.05, sc:1 / 350, alb:0, mean:0.063, rough:0.7, nStr:0.7, det:0.8 });
 rbox(-40, 190, -60, -38, -200, 95, 4, VISE_PAINT, viseBase);                     // gövde
@@ -62,9 +63,10 @@ for (const s of [-1, 1]) {
 rbox(25, 125, -60, -18, 75, 95, 4, VISE_PAINT, viseBase);                           // vida yatağı (y -95..-75)
 { const s = cyl(9, 9, 52, M.ground, 16); s.rotation.x = Math.PI / 2; s.position.set(75, -32, 49); viseBase.add(s);   // trapez vida
   for (let z = 26; z <= 72; z += 4) { const r = new THREE.Mesh(new THREE.TorusGeometry(9.2, 1.1, 5, 16), M.steel); r.position.set(75, -32, z); viseBase.add(r); }
-  const b = cyl(13, 13, 14, M.ground, 6); b.rotation.x = Math.PI / 2; b.position.set(75, -32, 102); viseBase.add(b);   // kare uç
-  const hd = cyl(5, 5, 130, MX.chrome, 10); hd.rotation.z = Math.PI / 2; hd.position.set(75, -32, 112); viseBase.add(hd);   // kol
-  for (const x of [12, 138]) { const k = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 8), M.black); k.position.set(x, -32, 112); viseBase.add(k); } }
+  viseKol.position.set(75, -32, 0); viseBase.add(viseKol);         // kare uç ve kol vida ekseninde döner (25-mengene)
+  const b = cyl(13, 13, 14, M.ground, 6); b.rotation.x = Math.PI / 2; b.position.set(0, 0, 102); viseKol.add(b);   // kare uç
+  const hd = cyl(5, 5, 130, MX.chrome, 10); hd.rotation.z = Math.PI / 2; hd.position.set(0, 0, 112); viseKol.add(hd);   // kol
+  for (const x of [-63, 63]) { const k = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 8), M.black); k.position.set(x, 0, 112); viseKol.add(k); } }
 { // yan plaka: marka ve çene genişliği
   const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
   const g = cv.getContext('2d');
@@ -101,4 +103,4 @@ function toLv(x, y, a = ROT.a) {
    Izgaranın her yanında 2 voksel boşluk vardır (uç yüzler kapalı çizilsin).
    Tezgâh (parça) koordinatında eksen y = DIVY, z = DIVZ çizgisidir. */
 
-export { FIXLIM, FIXNAME, LX, LY, ROT, VISE_PAINT, pfLever, rotG, rotIn, saddle, table, toLv, viseBase, wheels, yWheel };
+export { FIXLIM, FIXNAME, LX, LY, ROT, VISE_PAINT, pfLever, rotG, rotIn, saddle, table, toLv, viseBase, viseKol, wheels, yWheel };

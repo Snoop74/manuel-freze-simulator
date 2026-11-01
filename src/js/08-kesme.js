@@ -131,6 +131,7 @@ function tryStep(nx, ny, nn, dtStep) {
   if (T.type === 'dial') return app.DT.step(nx, ny, nn, T);
   const it = interfere(nx, ny, tip, T);
   if (S.loose && it.any) { warnOnce('loose', 'Parça bağlı değil, tabladan kopmuş. Yeni ham parça bağlayın.', 'bad'); return false; }
+  if (FIX === 'vise' && S.mAcik > 0.05 && it.any) { stopMotion(); warnOnce('mAcik', 'Mengene açık, parça bağlı değil. Önce mengeneyi sıkın (kola tıklayın).', 'bad'); return false; }
   if (S.broken && it.any) {                                       // kırık takım parçanın içinde: yalnızca Z ile yukarı çekilebilir (kilitlenmesin)
     if (nn > S.nose && horiz < 1e-6) return true;
     warnOnce('broken', 'Takım kırık ve parçanın içinde: önce Z ile yukarı çekin, sonra takımı değiştirin.', 'bad'); return false;

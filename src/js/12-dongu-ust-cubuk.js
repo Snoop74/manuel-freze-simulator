@@ -115,7 +115,7 @@ function frame(now) {
   updatePS(psAdd, dt); updatePS(psAlpha, dt);
   if (S.job && !S.job.done && (S.spindle || now - S.lastMove < 120)) S.job.time += dt * S.sim;
   if (app.CR.on && (S.spindle || now - S.lastMove < 120)) app.CR.ilerle(dt * S.sim);   // kariyerde mesai saati: 1 s ≈ 1 dk
-  drawWheels(); drawGauge(); app.IA.update(dt);
+  drawWheels(); drawGauge(); app.IA.update(dt); app.MG.update(dt);
   zFine.rotation.z = -S.nose / 2;
   pfLever.parent.rotation.z += (-S.autoX * 0.5 - pfLever.parent.rotation.z) * Math.min(1, dt * 12);
   if (camAnim) {
