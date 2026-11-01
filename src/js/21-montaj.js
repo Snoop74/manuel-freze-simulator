@@ -128,15 +128,16 @@ const MT = (() => {
     const band = new THREE.Mesh(new THREE.CylinderGeometry(D.head * 0.56, D.head * 0.56, 4, 28), mats.dark); band.position.y = D.d + 19; g.add(band);
     const head = new THREE.Mesh(new THREE.CylinderGeometry(12, 12, 13, 32), mats.steel); head.position.y = y; g.add(head);
     const lev = new THREE.Mesh(new THREE.BoxGeometry(10, 2.5, 5), mats.dark); lev.position.set(0, y + 7.5, 0); g.add(lev);   // cırcır yön mandalı
-    const neck = new THREE.Mesh(new THREE.BoxGeometry(30, 9, 13), mats.steel); neck.position.set(22, y, 0); g.add(neck);
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 6.5, 110, 20), mats.steel); beam.rotation.z = Math.PI / 2; beam.position.set(90, y, 0); g.add(beam);
-    const box = new THREE.Mesh(new THREE.CylinderGeometry(27, 27, 14, 40), mats.dark); box.position.set(160, y + 2, 0); g.add(box);
-    const bez = new THREE.Mesh(new THREE.TorusGeometry(25.5, 1.8, 10, 40), mats.steel); bez.rotation.x = Math.PI / 2; bez.position.set(160, y + 9, 0); g.add(bez);
-    const fg = new THREE.CircleGeometry(24.5, 48); fg.rotateZ(Math.PI / 2);   // kadranın altı +x'e bakar; döner tabla (piv) onu kameraya çevirir
+    const neck = new THREE.Mesh(new THREE.BoxGeometry(30, 9, 13), mats.steel); neck.position.set(24, y, 0); g.add(neck);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 6.5, 112, 20), mats.steel); beam.rotation.z = Math.PI / 2; beam.position.set(136, y, 0); g.add(beam);
+    const DX = 64;                                                // kadran başa yakın: yakın kamerada da görünür
+    const box = new THREE.Mesh(new THREE.CylinderGeometry(24, 24, 14, 40), mats.dark); box.position.set(DX, y + 2, 0); g.add(box);
+    const bez = new THREE.Mesh(new THREE.TorusGeometry(22.5, 1.8, 10, 40), mats.steel); bez.rotation.x = Math.PI / 2; bez.position.set(DX, y + 9, 0); g.add(bez);
+    const fg = new THREE.CircleGeometry(21.6, 48); fg.rotateZ(Math.PI / 2);   // kadranın altı +x'e bakar; döner tabla (piv) onu kameraya çevirir
     const face = new THREE.Mesh(fg, new THREE.MeshStandardMaterial({ map:dialTex, roughness:0.55, metalness:0 }));
-    face.rotation.x = -Math.PI / 2; const piv = new THREE.Group(); piv.position.set(160, y + 9.05, 0); piv.add(face); g.add(piv); g.userData.piv = piv;
-    const glass = new THREE.Mesh(new THREE.CircleGeometry(25, 48), new THREE.MeshStandardMaterial({ color:0xffffff, transparent:true, opacity:0.12, roughness:0.05, metalness:0.2 }));
-    glass.rotation.x = -Math.PI / 2; glass.position.set(160, y + 10.2, 0); g.add(glass);
+    face.rotation.x = -Math.PI / 2; const piv = new THREE.Group(); piv.position.set(DX, y + 9.05, 0); piv.add(face); g.add(piv); g.userData.piv = piv;
+    const glass = new THREE.Mesh(new THREE.CircleGeometry(22, 48), new THREE.MeshStandardMaterial({ color:0xffffff, transparent:true, opacity:0.12, roughness:0.05, metalness:0.2 }));
+    glass.rotation.x = -Math.PI / 2; glass.position.set(DX, y + 10.2, 0); g.add(glass);
     const grip = new THREE.Mesh(new THREE.CylinderGeometry(9, 8.5, 90, 28), mats.rubber); grip.rotation.z = Math.PI / 2; grip.position.set(235, y, 0); g.add(grip);
     for (let k = 0; k < 7; k++) { const r = new THREE.Mesh(new THREE.TorusGeometry(9, 0.9, 6, 28), mats.rubber); r.rotation.y = Math.PI / 2; r.position.set(198 + k * 12, y, 0); g.add(r); }   // sap tırtılı
     const cap = new THREE.Mesh(new THREE.SphereGeometry(9, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), mats.dark); cap.rotation.z = -Math.PI / 2; cap.position.set(280, y, 0); g.add(cap);
@@ -217,7 +218,7 @@ const MT = (() => {
   }
   function remove(b) {
     if (b.mesh) grp.remove(b.mesh);
-    Object.assign(b, { mesh:null, st:'bos', z:0, ang:0, tq:0, half:false });
+    Object.assign(b, { mesh:null, st:'bos', z:0, ang:0, angV:null, tq:0, half:false, pull:0 });
     st.order = st.order.filter(i => i !== b.i);
   }
   // elle çevirme (alyan): da > 0 sıkar. Oturunca 'el', geri çevirince çıkar
@@ -236,7 +237,7 @@ const MT = (() => {
   // tork: n tekerlek çentiği; hızlı çevirince çentik başına artış büyür (taşırma kolay)
   function torque(b, add) {
     if (b.st !== 'el') return;
-    b.tq += add; b.ang += add * 0.012;
+    b.tq += add; b.ang += add * 0.012; b.pull = Math.min(0.3, (b.pull || 0) + 0.09);   // kol her çentikte ileri gider, cırcırla geri gelir
     if (b.tq >= tq0() * 0.5 && !b.half) { b.half = true; if (st.bolts.some(o => o !== b && o.st !== 'el' && o.st !== 'siyrik')) st.early++; }   // diğer cıvatalar oturmadan sıkmak
     if (b.tq >= tq0() && !st.order.includes(b.i)) st.order.push(b.i);
     if (b.tq > strip()) {
@@ -260,18 +261,25 @@ const MT = (() => {
     }
     if (st.drop > 0) { st.drop = Math.max(0, st.drop - dt * 2.2); st.tw.position.y = PH + 70 * st.drop * st.drop; if (!st.drop) thud(90, 0.25, 0.25); }
     for (const b of st.bolts) if (b.fall) { b.z = Math.max(need(), b.z - 90 * dt); if (b.z <= need()) b.fall = false; }
+    const kf = Math.min(1, dt * 12);                               // görüntü hedefe yumuşakça yetişir (tekerlek çentikleri kesikli gelir)
     for (const b of st.bolts) if (b.mesh) {
       const h = J.holes[b.i];
-      b.mesh.position.copy(P3(h.x + st.ox, h.y + st.oy, PH + m.tf + b.z)); b.mesh.rotation.y = -b.ang;
+      if (b.angV == null || b.fall) { b.angV = b.ang; b.zV = b.z; }
+      b.angV += (b.ang - b.angV) * kf; b.zV += (b.z - b.zV) * kf;
+      b.pull = (b.pull || 0) * Math.exp(-dt * 7);
+      b.mesh.position.copy(P3(h.x + st.ox, h.y + st.oy, PH + m.tf + b.zV)); b.mesh.rotation.y = -b.angV;
     }
     // alet: imlecin altındaki (ya da az önce çevrilen) cıvatada; oturmamışsa alyan, oturmuşsa tork anahtarı
     const tb = (performance.now() - st.toolT < 900 ? st.toolB : null) || hover;
     const showA = tb && tb.st === 'agiz' && !tb.fall, showW = tb && tb.st === 'el';
     st.al.visible = !!showA; st.wr.visible = !!showW;
     if (tb && (showA || showW)) {
-      const h = J.holes[tb.i], p = P3(h.x + st.ox, h.y + st.oy, PH + m.tf + tb.z);
-      st.al.position.copy(p); st.al.rotation.y = outA(tb) + ((tb.ang % (Math.PI / 3)) + Math.PI / 3) % (Math.PI / 3) - Math.PI / 6;   // alyan ±30° salınır: çevir, bırak, yeniden tut
-      st.wr.position.copy(p); st.wr.rotation.y = outA(tb) - Math.min(0.5, tb.tq / strip() * 0.4);   // sıktıkça kol biraz döner
+      const h = J.holes[tb.i], p = P3(h.x + st.ox, h.y + st.oy, PH + m.tf + tb.zV);
+      const Q = Math.PI / 2, sw = ((tb.angV % Q) + Q) % Q;           // alyan cıvatayla döner: çeyrek tur çevir, bırak, yeniden tut (kulenin içinden geçmez)
+      st.al.position.copy(p); st.al.rotation.y = outA(tb) + Q / 2 - sw;
+      const wt = outA(tb) - Math.min(0.5, tb.tq / strip() * 0.4) - (tb.pull || 0);   // sıktıkça kol biraz döner, her çekişte ileri gidip gelir
+      st.wrV = st.wrB === tb ? st.wrV + (wt - st.wrV) * kf : wt; st.wrB = tb;
+      st.wr.position.copy(p); st.wr.rotation.y = st.wrV;
       if (showW) {                                                 // kadran kameradan okunur: yazının altı kameraya döner
         const piv = st.wr.userData.piv; st.wr.updateMatrixWorld(); piv.getWorldPosition(_d);
         piv.rotation.y = Math.atan2(-(camera.position.z - _d.z), camera.position.x - _d.x) - st.wr.rotation.y;
