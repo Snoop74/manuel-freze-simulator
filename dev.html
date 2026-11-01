@@ -766,6 +766,55 @@ body.montaj-on .topbar{pointer-events:none;opacity:.45}
 body.montaj-on .tc{display:none}
 .yuk-hud{bottom:76px}
 @media (max-width:900px){.tc-cur{min-width:0}.tc-txt span{display:none}}
+/* atölye bilgisayarı: üst çubukta saat/mail; monitör görünümünde posta, banka; gün sonu raporu */
+.tb-saat{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:7px;padding:4px 10px;border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--muted);white-space:nowrap}
+.tb-saat:hover{border-color:#6b767a}.tb-saat[hidden]{display:none}
+.tb-saat b{font-family:var(--f-dro);font-size:15px;color:#e8ecea}.tb-saat.gec b{color:var(--warn)}
+.ts-mail{background:#1f4f7a;color:#cfe6ff;border-radius:10px;padding:1px 7px;font-size:11.5px}.ts-mail[hidden]{display:none}
+.tb-saat.yeni{animation:tsYeni .9s ease 2}
+@keyframes tsYeni{50%{border-color:#4fa3ff;box-shadow:0 0 0 3px rgba(79,163,255,.35)}}
+.pc{position:fixed;inset:0;z-index:84;background:rgba(6,10,12,.7);display:grid;place-items:center;padding:16px}
+.pc[hidden]{display:none}.pc-rapor{z-index:86}
+.pc-mon{width:min(1040px,100%);display:grid;justify-items:center}
+.pc-mon.dar{width:min(620px,100%)}
+.pc-ekran{width:100%;height:min(640px,calc(100vh - 90px));display:grid;grid-template-rows:auto 1fr auto;background:#eef0ec;color:#1d2124;border:14px solid #2a2d2f;border-radius:12px;box-shadow:0 0 0 2px #121415,0 24px 60px rgba(0,0,0,.6);overflow:hidden;font-family:var(--f-body,inherit)}
+.pc-mon.dar .pc-ekran{height:auto}
+.pc-ayak{width:160px;height:26px;background:linear-gradient(#2a2d2f,#1b1d1e);clip-path:polygon(18% 0,82% 0,100% 100%,0 100%)}
+.pc-ust{display:flex;align-items:center;gap:10px;padding:7px 12px;background:#2f5f8a;color:#fff;font-size:13px}
+.pc-ust b{flex:1;letter-spacing:.04em}.pc-ust span{opacity:.85;font-family:var(--f-dro)}
+.pc-x{all:unset;cursor:pointer;width:24px;text-align:center;font-size:18px;line-height:1}
+.pc-govde{display:grid;grid-template-columns:minmax(220px,.85fr) minmax(0,1.7fr);min-height:0}
+.pc-govde.tek{display:block;padding:14px}
+.pc-kutu{overflow:auto;border-right:1px solid #c9cdc6;background:#e4e7e1}
+.pc-m{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:1px 8px;width:100%;padding:8px 11px;border-bottom:1px solid #cdd1ca;font-size:12.5px}
+.pc-m:hover{background:#d8ddd5}.pc-m.on{background:#cfe0ef}
+.pc-m .k{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pc-m .t{color:#6b7275;font-size:11.5px}
+.pc-m .s{grid-column:1/-1;color:#3d4447;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-m .d{grid-column:1/-1;font-size:11px;color:#8a5a00}.pc-m.acil .d{color:#b42318;font-weight:600}
+.pc-m.yeni .k::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:#2f7fd0;margin-right:6px;vertical-align:1px}
+.pc-oku{overflow:auto;padding:14px 18px;display:grid;gap:12px;align-content:start;font-size:13.5px}
+.pc-mbas{display:grid;gap:2px;border-bottom:1px solid #cdd1ca;padding-bottom:8px}.pc-mbas b{font-size:15px}.pc-mbas span{color:#6b7275;font-size:12px}
+.pc-metin{line-height:1.6}
+.pc-etiket{display:flex;flex-wrap:wrap;gap:6px}.pc-etiket span{border:1px solid #c3c8c0;border-radius:5px;padding:2px 8px;font-size:12px;background:#f6f7f4}
+.pc-etiket span.c{border-color:#b42318;color:#b42318;font-weight:600}
+.pc-islem{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:1px solid #cdd1ca;padding-top:10px}
+.pc-islem .btn{background:#f8f9f6;color:#1d2124;border-color:#b9beb6}.pc-islem .btn.start{background:#2f5f8a;color:#fff;border-color:#2f5f8a}
+.pc-not{font-size:12.5px;color:#4a5155;flex-basis:100%}
+.pc-bos{padding:18px;color:#6b7275;font-size:13px}
+.pc-alt{display:flex;gap:4px;align-items:center;padding:5px 8px;background:#d5d9d2;border-top:1px solid #bfc4bc}
+.pc-alt button{all:unset;cursor:pointer;padding:5px 11px;border-radius:5px;font-size:12.5px;color:#2b3134}
+.pc-alt button:hover{background:#c6cbc3}.pc-alt button.on{background:#2f5f8a;color:#fff}
+.pc-alt span{flex:1}.pc-alt i{font-style:normal;background:#2f7fd0;color:#fff;border-radius:9px;padding:0 6px;font-size:11px}.pc-alt i:empty{display:none}
+.pc-alt .pc-bitir{border:1px solid #9aa19a}
+.pc-banka{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;padding:16px;align-content:start}
+.pc-kart{background:#f8f9f6;border:1px solid #c9cdc6;border-radius:8px;padding:10px 12px;display:grid;gap:2px}
+.pc-kart span{font-size:12px;color:#6b7275}.pc-kart b{font-size:22px;font-family:var(--f-dro)}.pc-kart small{font-size:11.5px;color:#6b7275}
+.pc-kart b.neg,.pc-rkart .neg{color:#b42318}.pc-rkart .pos{color:#1f7a3f}
+.pc-rkart{display:grid;gap:10px}.pc-rsat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.pc-rsat div{background:#e4e7e1;border-radius:7px;padding:8px 10px;display:grid}.pc-rsat span{font-size:11.5px;color:#6b7275}.pc-rsat b{font-size:18px;font-family:var(--f-dro)}.pc-rsat small{font-size:10.5px;color:#6b7275}
+.pc-rkart.buyuk .pc-rsat b{font-size:22px}
+@media (max-width:700px){.pc-govde{grid-template-columns:1fr}.pc-kutu{max-height:180px}.pc-rsat{grid-template-columns:repeat(2,1fr)}}
+.pc-islem > span:empty{flex:1}
 </style>
 
 <div class="app">
@@ -1026,9 +1075,9 @@ body.montaj-on .tc{display:none}
       <div class="mode-sw" id="modeSw"><button class="btn on" data-mode="free">Serbest atölye</button><button class="btn" data-mode="career">Kariyer</button></div>
       <div class="career" id="career" hidden>
         <div class="cr-head"><div><span class="k">Kasa</span><b id="crMoney"></b></div><div><span class="k">İtibar</span><b id="crRep"></b><small id="crLevel"></small></div><div><span class="k">Teslim</span><b id="crDone"></b></div></div>
-        <div class="sub">Sipariş panosu</div>
+        <div class="sub">Aktif iş</div>
         <div class="jobs orders" id="orderList"></div>
-        <div class="cr-foot"><button class="btn start" id="crShop">Dükkân</button><button class="btn" id="crRefresh">Panoyu yenile</button><button class="btn" id="crReset">Kariyeri sıfırla</button></div>
+        <div class="cr-foot"><button class="btn start" id="crPc">Bilgisayar (mailler)</button><button class="btn" id="crShop">Dükkân</button><button class="btn" id="crReset">Kariyeri sıfırla</button></div>
       </div>
       <div class="jobs" id="jobList"></div>
       <div class="job-card" id="jobCard">

@@ -434,8 +434,8 @@ function selectJob(i) {
   renderJobs();
   $('jcBtns').hidden = !J; $('vDraw').hidden = !J; $('jcTeklif').hidden = true; $('jobDemo').hidden = !(J && J.montaj && AYAR.gelistirici);   // deneme plakası yalnızca geliştirici modunda
   if (!J) {
-    $('jcNo').textContent = app.CR.on ? 'KARİYER' : 'SERBEST'; $('jcTitle').textContent = app.CR.on ? 'Sipariş seçin' : 'Serbest çalışma';
-    $('jcBrief').textContent = app.CR.on ? 'Panodan bir sipariş seçin: teknik resim açılır, "İşe başla" ile ham parça kasadan alınır ve mengeneye bağlanır. Teslimde parça ölçülür, müşteri ödemeyi yapar.'
+    $('jcNo').textContent = app.CR.on ? 'KARİYER' : 'SERBEST'; $('jcTitle').textContent = app.CR.on ? 'İş kabul edin' : 'Serbest çalışma';
+    $('jcBrief').textContent = app.CR.on ? 'Siparişler bilgisayara mail olarak gelir (üst çubuktaki saat ya da "Bilgisayar"). Maildeki işi kabul edince ham parça mengeneye bağlanır ve termin başlar. Saat yalnızca makine çalışırken ilerler; 18:00'de gün biter, kira ve elektrik düşülür.'
       : 'İş emri seçmeden tezgâhı serbestçe kullanın. Bir iş seçerseniz teknik resim açılır, teslimde parça ölçülür ve puanlanır.';
     $('jcMeta').innerHTML = ''; $('drawing').hidden = true; buildScribe(null); S.job = null;
     return;

@@ -39,7 +39,8 @@ const CR = (() => {
     { id:'div', n:'Divizör', t:'Yuvarlak parçaya altıgen, kare, kama kanalı', p:12000 },
   ];
   let st = null, on = false, sel = null, arm = { i:-1, t:0 };
-  const fresh = () => ({ money:1500, rep:0, done:0, earned:0, owned:Object.fromEntries(START.map(n => [n, 1])), eq:{}, orders:[], seq:1, kirik:{}, eksi:0 });
+  const fresh = () => ({ money:1500, rep:0, done:0, earned:0, owned:Object.fromEntries(START.map(n => [n, 1])), eq:{}, orders:[], seq:1, kirik:{}, eksi:0,
+    gun:1, dk:0, mail:[], mailSeq:1, sonrakiMail:40, bugun:{ gelir:0, gider:0, rep:0, teslim:0, olay:[] } });
   function load() {
     st = kayit.oku(KEY, null);
     if (!st || typeof st.money !== 'number' || !Number.isFinite(st.money)) st = fresh();
@@ -47,6 +48,8 @@ const CR = (() => {
     if (!st.eq || typeof st.eq !== 'object') st.eq = {};
     if (!st.kirik || typeof st.kirik !== 'object') st.kirik = {};
     if (typeof st.eksi !== 'number') st.eksi = 0;
+    if (!Array.isArray(st.mail)) Object.assign(st, { gun:1, dk:0, mail:[], mailSeq:1, sonrakiMail:40 });   // gün ve posta öncesi kayıt
+    if (!st.bugun || typeof st.bugun !== 'object') st.bugun = { gelir:0, gider:0, rep:0, teslim:0, olay:[] };
     st.orders = Array.isArray(st.orders) ? st.orders.filter(o => o && o.J && MATS[o.mat]) : [];
     st.orders.forEach(o => (o.J.pockets || []).forEach(p => { if (p.r == null) p.r = 5; }));
     on = kayit.oku(MKEY) === 'career';
@@ -64,7 +67,7 @@ const CR = (() => {
   const yeter = v => st.money - v >= -kredi();                    // bu harcama kredi limitini aşmıyor mu
   const bileme = T => Math.max(60, Math.round(priceOf(T) * 0.3 / 10) * 10);
   function harca(v) {                                             // kasadan düş; ilk kez eksiye düşünce haber ver
-    const once = st.money; st.money -= v;
+    const once = st.money; st.money -= v; if (st.bugun) st.bugun.gider += v;
     if (once >= 0 && st.money < 0) log(`Kasa eksiye düştü (${tl(st.money)}): kredi limiti ${tl(kredi())}. ${KREDI_SURE} teslim içinde artıya dönmezseniz faiz işler.`, 'warn');
   }
   const hasEq = id => !on || !!st.eq[id];
@@ -270,6 +273,102 @@ const CR = (() => {
     const t = btn(hizliSec ? 'Termin: HIZLI (süre ×0.7)' : 'Termin: normal', 'tk-termin' + (hizliSec ? ' on' : ''), () => { hizliSec = !hizliSec; teklifKart(o); });
     t.title = 'Hızlı termin müşterinin kabulünü kolaylaştırır; geç kalırsanız ödemeden %30 kesilir';
   }
+
+  /* -- Gün ve posta: siparişler mail olarak gelir; saat makine çalışırken ilerler (1 s kesme ≈ 1 dk mesai, 08:00–18:00).
+     Normal sipariş ertesi gün akşamına kadar cevap bekler, ACİL olan 1 saat; kabul edilen işin termini var (ACİL: bugün akşam).
+     Aynı anda tek iş kabul edilir. 18:00'de (mil dururken) gün biter: kira ve elektrik düşülür, muhasebeden gün sonu raporu gelir. -- */
+  const MESAI = 600, ACIL_CEVAP = 60;
+  const kira = () => 120 + level() * 80;
+  const simdi = () => st.gun * 1440 + st.dk;                      // karşılaştırma için mutlak dakika
+  const GUNLER = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+  const saatTxt = dk => `${String(8 + Math.floor(dk / 60)).padStart(2, '0')}:${String(Math.floor(dk % 60)).padStart(2, '0')}`;
+  const anTxt = t => { const g = Math.floor(t / 1440), dk = t - g * 1440; return `${g === st.gun ? 'bugün' : g === st.gun + 1 ? 'yarın' : GUNLER[(g - 1) % 7]} ${saatTxt(dk)}`; };
+  const bosGun = () => ({ gelir:0, gider:0, rep:0, teslim:0, olay:[] });
+  let raporBekliyor = false, sonKayit = 0;
+  function mailEkle(m) {
+    Object.assign(m, { id:st.mailSeq++, gun:st.gun, dk:Math.round(st.dk), okundu:false });
+    st.mail.unshift(m); if (st.mail.length > 40) st.mail.length = 40;
+    return m;
+  }
+  function siparisMaili(o) {                                      // siparişin cevap süresi ve maili
+    o.son = o.cond === 'acil' ? simdi() + ACIL_CEVAP : (st.gun + 1) * 1440 + MESAI;
+    o.mailId = mailEkle({ tip:'siparis', orderId:o.id, kimden:o.cust, kind:o.kind, konu:o.J.title }).id;
+  }
+  const bekleyen = () => st.orders.filter(o => !o.kabul);
+  function yeniSiparis(bildir) {
+    if (bekleyen().length >= 5) return;
+    const o = teklifIste(genOrder(false)); st.orders.push(o); siparisMaili(o);
+    if (bildir) { beep(1100, 0.06); setTimeout(() => beep(1500, 0.08), 120); log(`Yeni mail: ${o.cust} · ${o.J.title}`, 'ok'); if (app.PC) app.PC.yeniMail(); }
+  }
+  function suresiDolanlar() {                                     // cevap verilmeyen siparişler başka atölyeye gider
+    for (const o of bekleyen()) if (o.son && simdi() > o.son && !(sel && sel.id === o.id && S.job && S.job.order === o)) {
+      st.orders = st.orders.filter(q => q !== o);
+      const m = st.mail.find(q => q.id === o.mailId); if (m) m.durum = 'süresi doldu';
+      log(`${o.cust} cevap alamadı, başka atölyeye gitti.`, 'warn');
+      if (sel === o) { sel = null; selectJob(-1); }
+    }
+  }
+  function ilerle(d) {                                            // 12'deki döngü çağırır: makine çalışırken d dakika
+    if (!on || raporBekliyor || !st) return;
+    st.dk += d;
+    if (st.dk >= st.sonrakiMail && st.dk < MESAI) { yeniSiparis(true); st.sonrakiMail = st.dk + rnd(70, 160); }
+    suresiDolanlar();
+    if (st.dk - sonKayit > 5) { sonKayit = st.dk; save(); }
+    kontrol();
+  }
+  function kontrol() { if (on && st.dk >= MESAI && !S.spindle && !raporBekliyor) gunSonu(); }
+  function gunuBitir() {
+    if (S.spindle) { log('Günü bitirmek için önce mili durdurun.', 'warn'); return; }
+    st.dk = Math.max(st.dk, MESAI); gunSonu();
+  }
+  function gunSonu() {
+    raporBekliyor = true;
+    const k = kira(); harca(k); cash(-k);
+    const b = st.bugun, yarin = st.orders.filter(o => o.kabul && o.termin && o.termin <= (st.gun + 1) * 1440 + MESAI).map(o => `${o.J.title} (${o.cust}): ${anTxt(o.termin)}`);
+    const r = { gun:st.gun, gunAd:GUNLER[(st.gun - 1) % 7], gelir:b.gelir, gider:b.gider, kira:k, kar:b.gelir - b.gider, rep:b.rep, teslim:b.teslim, olay:b.olay.slice(),
+      kasa:st.money, eksi:st.money < 0 ? `${st.eksi}/${KREDI_SURE} teslim` : '', yarin, bekleyen:bekleyen().length };
+    mailEkle({ tip:'rapor', kimden:'Muhasebe', kind:'atölye', konu:`${r.gun}. gün raporu (${r.gunAd})`, rapor:r });
+    save(); render();
+    if (app.PC) app.PC.rapor(r); else ertesiGun();
+  }
+  function ertesiGun() {
+    raporBekliyor = false;
+    st.gun++; st.dk = 0; sonKayit = 0; st.sonrakiMail = rnd(25, 80); st.bugun = bosGun();
+    suresiDolanlar(); fillBoard(); yeniSiparis(false);
+    save(); render(); log(`${st.gun}. gün (${GUNLER[(st.gun - 1) % 7]}) başladı: 08:00. Maillere bakın.`, 'ok');
+  }
+  function kabul(o) {                                             // iş kabul edilir: termin konur, iş başlar
+    const akt = st.orders.find(q => q.kabul && q !== o);
+    if (akt) { log(`Önce aktif işi bitirin: ${akt.J.title} (${akt.cust}).`, 'warn'); return false; }
+    if (bekler(o)) { log('Önce fiyat teklifi verin.', 'warn'); return false; }
+    o.kabul = true;
+    o.termin = o.cond === 'acil' ? (st.dk < 420 ? st.gun * 1440 + MESAI : (st.gun + 1) * 1440 + 240) : (st.gun + (o.qty ? 2 : 1)) * 1440 + MESAI;
+    const m = st.mail.find(q => q.id === o.mailId); if (m) m.durum = 'kabul edildi';
+    save(); select(o); start();
+    return true;
+  }
+  function reddet(o) {
+    const m = st.mail.find(q => q.id === o.mailId); if (m) m.durum = 'reddedildi';
+    vazgec(o, `${o.cust} işini geri çevirdiniz.`);
+  }
+  // teslimden sonra müşterinin cevabı (kurgu: parçanın sonrası)
+  const SONUC = {
+    reaktor:['Reaktör... stabil. Şimdilik. Bu yazışma hiç olmadı.', 'Ölçüm odası "sıradan" dedi. Bizim için en büyük iltifat budur.'],
+    lahmacun:['Fırın yandı, ilk lahmacun sizin! Akşam uğrayın usta.', 'Taş yerine oturdu, müşteri kuyruğu kapıya kadar.'],
+    teyze:['Makine tıkır tıkır evladım, börek yolda. Annene selam söyle.', 'Komşulara da söyledim, sizi soran olursa bilin.'],
+    robot:['KAZANDIK HOCAM! Kupada atölyenin adı yazacak.', 'Rakip robot ilk turda arenadan uçtu. Zırh sağlam!'],
+    altin:['Story 2 milyon izlenme aldı, sizi etiketledim ✨', 'Takipçiler "bu parlaklık nasıl" diye soruyor, sizi gönderdim.'],
+    rende:['Kars\'ta kaşar rendeleniyor, eksik olmayın.', 'Rende o kadar iyi ki komşu köyden de sipariş var.'],
+    kule:['Fotosel yandı, hat çalışıyor. Teşekkürler usta.', 'Kule sallanmıyor bile, montaj tertemiz.'],
+  };
+  const GENEL = ['Parça elimize ulaştı, tam oturdu. Eline sağlık usta.', 'Ölçüler tıkır tıkır. Bir dahaki işi de size getiriyoruz.', 'Hızlı ve temiz iş, sağ olun.', 'Montajda hiç uğraşmadık, teşekkürler.'];
+  const KOTU = ['Parça ölçü dışı geldi, açıkçası hayal kırıklığı.', 'Biraz uğraştırdı ama idare ettik. Bir dahakine daha dikkatli olalım.'];
+  const HURDA = ['Parçamız hurda olmuş... bedelini kestik, üzgünüz.', 'Bu parça kullanılamaz. Başka atölyeye gideceğiz sanırım.'];
+  function sonucMaili(o, r, pay) {
+    const id = o.J.blank && o.J.blank.id, k = r.allOk ? (SONUC[id] || GENEL) : r.stars >= 1 ? KOTU : HURDA;
+    mailEkle({ tip:'bilgi', kimden:o.cust, kind:o.kind, konu:`Re: ${o.J.title}`, metin:pick(k) + (pay > 0 ? `\n\nÖdeme: ${tl(pay)}${o.ayni ? ' + ' + o.ayni : ''}` : '') });
+    if (app.PC) app.PC.yeniMail();
+  }
   function genOrder(free) {
     const lv = level();
     if (!free && Math.random() < 0.5) return genBlankOrder(lv);
@@ -323,10 +422,11 @@ const CR = (() => {
       (big ? 'Mengeneye sığmaz: pabuç ya da vakum tabla gerekir. ' : '') + (arc ? 'Yay kanal için döner tabla gerekir. ' : '') + (free ? 'Malzemeyi müşteri getirdi.' : `Ham parça ${tl(cost)}, iş başlayınca kasadan çıkar.`);
     return addCond({ id:st.seq++, cust:cn, kind:ck, mat:m, J, pay:Math.round((val * (big ? 1.25 : 1) + cost * 1.25) / 10) * 10, cost, free, lv }, lv);
   }
-  function fillBoard() {
-    while (st.orders.length < 3) st.orders.push(teklifIste(genOrder(false)));
+  function fillBoard() {                                          // gelen kutusunda en az 2 bekleyen sipariş (gün içinde yenileri gelir)
+    while (bekleyen().length < 2) { const o = teklifIste(genOrder(false)); st.orders.push(o); siparisMaili(o); }
     // kasada ham parçaya bile para yoksa müşteri malzemesini getirir: oyun kilitlenmez
-    if (!st.orders.some(o => yeter(o.cost))) st.orders[0] = genOrder(true);
+    if (!bekleyen().some(o => yeter(o.cost))) { const o = genOrder(true); st.orders.push(o); siparisMaili(o); }
+    for (const o of st.orders) if (!o.mailId) siparisMaili(o);  // eski kayıttan kalan siparişler
   }
 
   /* -- Arayüz -- */
@@ -344,12 +444,14 @@ const CR = (() => {
       $('crDone').textContent = st.done;
       $('starTotal').textContent = `${st.done} teslim`;
       const L = $('orderList'); L.innerHTML = '';
-      st.orders.forEach(o => {
+      const akt = st.orders.filter(o => o.kabul);
+      if (!akt.length) L.innerHTML = `<div class="dro-note">Aktif iş yok. Yeni işler bilgisayardaki maillerde (${bekleyen().length} bekliyor).</div>`;
+      akt.forEach(o => {
         const b = document.createElement('button');
         const act = S.job && S.job.order && S.job.order.id === o.id && !S.job.done;
         b.classList.toggle('active', !!(sel && sel.id === o.id));
         const ct = o.cond ? ` <b class="cond ${o.cond}">${COND[o.cond].tag}${o.qty ? ' ' + (o.doneQty || 0) + '/' + o.qty : ''}</b>` : '';
-        b.innerHTML = `<span class="jn">#${o.id}</span><span class="jt">${o.J.title} · ${o.cust}${ct}${act ? ' <em>işleniyor</em>' : ''}</span><span class="js">${payTxt(o)}<i> · ${MATS[o.mat].short} · ${o.free ? 'malzeme müşteriden' : 'ham ' + tl(o.cost)}</i></span>`;
+        b.innerHTML = `<span class="jn">#${o.id}</span><span class="jt">${o.J.title} · ${o.cust}${ct}${act ? ' <em>işleniyor</em>' : ''}</span><span class="js">${payTxt(o)}<i> · termin ${o.termin ? anTxt(o.termin) : '—'}</i></span>`;
         b.addEventListener('click', () => select(o));
         L.append(b);
       });
@@ -384,7 +486,7 @@ const CR = (() => {
     sel = o; setSelJob(-2);
     if (o.J.blank && !o.J._P) Object.defineProperty(o.J, '_P', { value:genBlank(o.J.blank.id, o.J.blank.seed), enumerable:false, writable:true, configurable:true });                                         // iş emri listesindeki seçim kalkar
     $('jcNo').textContent = 'SİPARİŞ #' + o.id; $('jcTitle').textContent = `${o.J.title} · ${o.cust}`; $('jcBrief').textContent = o.J.brief;
-    $('jcMeta').innerHTML = `<span>Ödeme <b>${payTxt(o)}</b></span><span>Hedef süre <b>${mmss(o.J.target)}</b></span><span>Ham parça <b>${o.free ? 'müşteriden' : tl(o.cost)}</b></span>${o.J.big ? '<span>Bağlama <b>pabuç / vakum</b></span>' : o.J.arcs && o.J.arcs.length ? '<span>Bağlama <b>döner tabla</b></span>' : ''}${o.cond ? `<span>Koşul <b>${COND[o.cond].tag}${o.qty ? ` · ${o.doneQty || 0}/${o.qty} teslim` : ''}</b></span>` : ''}`;
+    $('jcMeta').innerHTML = `<span>Ödeme <b>${payTxt(o)}</b></span><span>Hedef süre <b>${mmss(o.J.target)}</b></span><span>Ham parça <b>${o.free ? 'müşteriden' : tl(o.cost)}</b></span>${o.J.big ? '<span>Bağlama <b>pabuç / vakum</b></span>' : o.J.arcs && o.J.arcs.length ? '<span>Bağlama <b>döner tabla</b></span>' : ''}${o.cond ? `<span>Koşul <b>${COND[o.cond].tag}${o.qty ? ` · ${o.doneQty || 0}/${o.qty} teslim` : ''}</b></span>` : ''}${o.termin ? `<span>Termin <b>${anTxt(o.termin)}</b></span>` : o.son ? `<span>Cevap <b>${anTxt(o.son)}</b>'e kadar</span>` : ''}`;
     $('jcBtns').hidden = false; $('vDraw').hidden = false; $('jobDemo').hidden = true; teklifKart(o);
     $('dwTitle').textContent = `TEKNİK RESİM · SİPARİŞ #${o.id} · ${o.J.title.toLocaleUpperCase('tr')}`;
     $('dwSvg').innerHTML = drawingSVG(o.J); $('dwTable').innerHTML = drawingTable(o.J);
@@ -397,7 +499,8 @@ const CR = (() => {
   function start() {
     if (!sel) { log('Önce panodan bir sipariş seçin.', 'warn'); return; }
     const o = sel;
-    if (o.teklif === 'bekliyor' || o.teklif === 'karsi') { log('Bu müşteri önce fiyat teklifi bekliyor: kartın altından teklifinizi verin.', 'warn'); return; }
+    if (o.teklif === 'bekliyor' || o.teklif === 'karsi') { log('Bu müşteri önce fiyat teklifi bekliyor: maildeki teklif düğmelerini kullanın.', 'warn'); return; }
+    if (!o.kabul) { if (!kabul(o)) return; return; }   // işe başlamak işi kabul etmek demek (termin başlar)
     if (!yeter(o.cost)) { log(`Kasada ham parça için yeterli para yok (${tl(o.cost)}). Malzemesi müşteriden gelen bir iş seçin ya da panoyu yenileyin.`, 'warn'); return; }
     // bağlama: büyük plaka mengeneye sığmaz; kurulu bağlama parçayı almıyorsa uygun olana geçilir
     if (o.J.arcs && o.J.arcs.length) {                              // yay kanal: döner tabla şart
@@ -440,6 +543,7 @@ const CR = (() => {
       if (o.cond === 'hassas') tags.push(['Hassas iş: ×1.5', 'ok']);
       if (o.hizli && !onTime) { pay = Math.round(pay * 0.7 / 10) * 10; tags.push(['Hızlı termin kaçtı: −%30', 'warn']); }
       if (o.teklif === 'kabul') tags.push(['Teklifinizle çalışıldı', 'ok']);
+      if (o.termin && simdi() > o.termin) { pay = Math.round(pay * 0.8 / 10) * 10; rep = Math.max(0, rep - 1); tags.push([`Termin kaçtı (${anTxt(o.termin)}): −%20`, 'warn']); }
       if (o.ayni) { rep += o.ayniRep; tags.push([`${o.ayni[0].toLocaleUpperCase('tr')}${o.ayni.slice(1)} geldi: itibar +${o.ayniRep}`, 'gold']); }
       if (o.qty && (o.doneQty || 0) + 1 >= o.qty) { pay = Math.round(pay * 1.1 / 10) * 10; tags.push(['Seri tamamlandı +%10', 'ok']); }
       const clean = chipsOnPart() === 0;
@@ -458,6 +562,8 @@ const CR = (() => {
     if (run.montaj && r.allOk) tags.unshift(['Kule bağlandı, sensör yandı', 'gold']);
     const lv0 = level();
     st.money += pay; st.earned += pay; st.rep = Math.max(0, st.rep + rep);
+    if (pay > 0) st.bugun.gelir += pay; else st.bugun.gider -= pay;
+    st.bugun.rep += rep; st.bugun.teslim++;
     if (st.money < 0) {                                            // eksi hesap: süre dolunca her teslimde faiz
       st.eksi = (st.eksi || 0) + 1;
       if (st.eksi > KREDI_SURE) { const f = Math.round(-st.money * FAIZ / 10) * 10; st.money -= f; tags.push([`Eksi hesap faizi: −${tl(f)}`, 'warn']); }
@@ -465,6 +571,7 @@ const CR = (() => {
     } else { if (st.eksi) tags.push(['Kasa artıya döndü', 'ok']); st.eksi = 0; }
     if (pay > 0 && o.qty && (o.doneQty = (o.doneQty || 0) + 1) < o.qty) { st.done++; tags.push([`Seri: ${o.doneQty}/${o.qty} teslim edildi, sıradaki adet için "Sıradaki adet"`, 'ok']); }   // seri: sipariş panoda kalır
     else if (pay > 0 || o.own) { if (pay > 0) st.done++; st.orders = st.orders.filter(q => q.id !== o.id); sel = null; fillBoard(); }   // müşteri parçası tek: hurdada da sipariş gider
+    if (!o.qty || (o.doneQty || 0) >= o.qty || pay <= 0) sonucMaili(o, r, pay);
     save();
     if (pay) cash(pay);
     if (level() > lv0) { txt += ` · YENİ SEVİYE: ${LEVELS[level()][1]}!`; tags.unshift([`Yeni seviye: ${LEVELS[level()][1]}`, 'gold']); log(`Atölye büyüdü: ${LEVELS[level()][1]}. Daha büyük ve daha iyi ödeyen işler gelecek.`, 'ok'); }
@@ -488,7 +595,7 @@ const CR = (() => {
   function bilet(i) {                                             // kırık takımı biletme / alın frezesinde uç değişimi
     const T = TOOLS[i], c = bileme(T);
     if (st.money - c < -kredi() - 1500) { log(`${T.no} biletmek için kredi limiti yetmiyor (${tl(c)}).`, 'warn'); return false; }   // bileme veresiye: limitin 1.500 ₺ ötesine kadar (takımsız kalıp kilitlenmesin)
-    harca(c); delete st.kirik[T.no]; S.wear[i] = 0; save(); cash(-c);
+    harca(c); delete st.kirik[T.no]; S.wear[i] = 0; st.bugun.olay.push(`${T.no} biletildi`); save(); cash(-c);
     log(`${T.no} ${T.type === 'face' ? 'uçları değiştirildi' : 'biletildi'}: −${tl(c)}. Takım kullanıma hazır.`, 'ok');
     render(); return true;
   }
@@ -516,7 +623,7 @@ const CR = (() => {
       log(`Yedek stylus takıldı: −${tl(c)}. Taster sağlam.`, 'warn'); render(); return;
     }
     if (!on || !st.owned[TOOLS[i].no]) return;
-    st.kirik[TOOLS[i].no] = 1; save();
+    st.kirik[TOOLS[i].no] = 1; st.bugun.olay.push(`${TOOLS[i].no} kırıldı`); save();
     log(`${TOOLS[i].no} kırıldı, dolapta duruyor. ${TOOLS[i].type === 'face' ? 'Uç değişimi' : 'Biletme'} ${tl(bileme(TOOLS[i]))} (yenisi ${tl(priceOf(TOOLS[i]))}): takım kartına iki kez tıklayın.`, 'warn');
     render();
   }
@@ -531,7 +638,7 @@ const CR = (() => {
     if (S.job && !S.job.done) log('Süren iş bırakıldı.', 'warn');
     on = c; S.job = null; sel = null; save();
     selectJob(-1);
-    if (on) { fillBoard(); save(); PM.preset('kariyer'); log(`Kariyer modu: kasada ${tl(st.money)}, itibar ${st.rep}. Panodan bir sipariş seçin.`, 'ok'); }
+    if (on) { fillBoard(); save(); PM.preset('kariyer'); log(`Kariyer modu: kasada ${tl(st.money)}, itibar ${st.rep}. Siparişler bilgisayara mail olarak gelir (üst çubuktaki saat).`, 'ok'); }
     else log('Serbest atölye: her şey açık ve ücretsiz.', 'ok');
     render();
   }
@@ -542,17 +649,21 @@ const CR = (() => {
   load();
   setRackTag(i => on ? { own:owns(i), price:st.kirik[TOOLS[i].no] && st.owned[TOOLS[i].no] ? tl(bileme(TOOLS[i])) : tl(priceOf(TOOLS[i])), kirik:!!(st.kirik[TOOLS[i].no] && st.owned[TOOLS[i].no]) } : null);
   $('modeSw').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode === 'career'); });
-  $('crRefresh').addEventListener('click', () => {
-    if (S.job && S.job.order && !S.job.done) { log('İş sürerken pano yenilenmez.', 'warn'); return; }
-    st.orders = []; sel = null; fillBoard(); save(); selectJob(-1); render(); log('Sipariş panosu yenilendi.');
-  });
+  $('crPc').addEventListener('click', () => app.PC && app.PC.ac('posta'));
   let resetArm = 0;
   $('crReset').addEventListener('click', () => {
     if (performance.now() - resetArm > 3000) { resetArm = performance.now(); $('crReset').textContent = 'Emin misiniz? Tekrar tıklayın'; setTimeout(() => $('crReset').textContent = 'Kariyeri sıfırla', 3000); return; }
     st = fresh(); S.job = null; sel = null; fillBoard(); save(); selectJob(-1); render(); log('Kariyer sıfırlandı: 1.500 ₺ ve üç takımla yeniden başlıyorsunuz.', 'ok');
   });
   if (on) fillBoard();
-  return { get on() { return on; }, hasEq, openShop, render, start, settle, allowTool, lost, charge, forget, priceOf, get sel() { return sel; } };
+  return { get on() { return on; }, hasEq, openShop, render, start, settle, allowTool, lost, charge, forget, priceOf, get sel() { return sel; },
+    // bilgisayar (24-bilgisayar) için
+    get st() { return st; }, saat:() => ({ gun:st.gun, gunAd:GUNLER[(st.gun - 1) % 7], dk:st.dk, txt:saatTxt(Math.min(st.dk, MESAI + 359)), mesai:MESAI }),
+    siparis:id => st.orders.find(o => o.id === id), mailOku:id => { const m = st.mail.find(q => q.id === id); if (m && !m.okundu) { m.okundu = true; save(); } return m; },
+    okunmamis:() => st.mail.filter(m => !m.okundu).length, kabul:id => kabul(st.orders.find(o => o.id === id)), reddet:id => reddet(st.orders.find(o => o.id === id)),
+    teklif:(id, f) => teklifVer(st.orders.find(o => o.id === id), f), karsiKabul:id => { const o = st.orders.find(q => q.id === id); teklifKabul(o, o.karsi, o.hizliT); save(); log(`Anlaştınız: ${tl(o.karsi)}.`, 'ok'); },
+    onizle:id => select(st.orders.find(o => o.id === id)), TEKLIF, bekler, payTxt, tl, anTxt, kira, kredi, level:() => LEVELS[level()][1], KREDI_SURE,
+    ilerle, kontrol, gunuBitir, ertesiGun, get raporBekliyor() { return raporBekliyor; } };
 })();
 
 
