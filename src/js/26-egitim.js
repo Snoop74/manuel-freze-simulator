@@ -36,7 +36,9 @@ const EG = (() => {
       kur:() => { setRpm(1500); setFeed(400); }, ok:() => S.spindle },
     { s:'Takımı parçanın üstüne götürelim. Kumandada sırayla bas: [X] 30 [Y] 25 [GİT].', h:['#cpKeys'], p:['console'],
       git:{ x:30, y:25 }, ok:() => yakin(d().x, 30) && yakin(d().y, 25) },
-    { s:'Şimdi Z− tuşuna basılı tutup in. Yaklaşınca el çarkıyla yavaşça indir; takım parçaya değdiği an dur.', h:['#cpJog'], p:['console'],
+    { s:'Takım çok yukarıda. [HIZLI]\'yı aç, [Z−]\'yi basılı tutup parçaya bir parmak (10–15 mm) kalana kadar in, sonra [HIZLI]\'yı kapat.', h:['#cpRapid', '#cpJog'], p:['console'],
+      ok:() => tip() < PH + 16 && !S.rapidBtn },
+    { s:'Şimdi yavaş: [Z−]\'ye kısa kısa bas, yaklaşınca el çarkıyla in; takım parçaya değdiği an dur.', h:['#cpJog'], p:['console'], yavas:true,
       ok:() => { if (tip() > PH + 0.05) return false; stopMotion(); return true; } },
     { s:'Değdi! Burası parçanın üstü: Z0 tuşuyla Z\'yi sıfırla.', h:['#cpSoft [data-sk="2"]'], p:['console'],
       kur:() => { ref = S.zn; }, ok:() => S.zn !== ref && yakin(d().z, 0, 0.05) },
@@ -100,8 +102,10 @@ const EG = (() => {
   function ipucu(A) {
     const bos = !S.changing && !S.autoX && !S.tap && !['x', 'y', 'z'].some(a => Math.abs(S.pend[a]) > 1e-6 || Math.abs(S.wheel[a]) > 1e-6);
     bosT = bos ? bosT + 0.2 : 0;
+    if (S.rapidBtn && A.yavas) bosT = 9;                             // hızlı açıkken beklemeden uyar
     let t = '';
-    if (S.alarm) t = 'Alarm yanıyor; ACİL STOP\'a mı bastın? Kumandadaki alarmı sıfırla, sonra devam et.';
+    if (S.rapidBtn && (A.yavas || tip() < PH + 16)) t = 'HIZLI hâlâ açık! Kapat, yoksa takım parçaya hızla dalar ve kırılır.';
+    else if (S.alarm) t = 'Alarm yanıyor; ACİL STOP\'a mı bastın? Kumandadaki alarmı sıfırla, sonra devam et.';
     else if (A.git && bosT > 1.5) {
       const v = d(), f = n => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(2), ax = Object.keys(A.git);
       const yanlis = ax.filter(a => Math.abs(v[a] - A.git[a]) > 0.5);

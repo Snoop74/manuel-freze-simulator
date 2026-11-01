@@ -167,27 +167,28 @@ const SENARYO = {
     takim(t => t.no === 'T1'); await adim(3);
     U.spindle(true); await adim(4);
     git('x', 30 - d().x); git('y', 25 - d().y); await adim(5);
-    ucGit(PH); await adim(6);
-    document.querySelector('#cpSoft [data-sk="2"]').click(); await adim(7);
-    git('x', -40 - d().x); git('z', -1 - d().z); await adim(8);
-    xKadar(() => d().x > 176, 1); await adim(9);
-    git('y', 75 - d().y); xKadar(() => d().x < -26, -1); await adim(10);
-    takim(t => t.no === 'T6'); await adim(11);
-    U.spindle(true); ucGit(PH + 4); git('x', 75 - d().x); git('y', 50 - d().y); ucGit(PH - 3); ucGit(PH + 3); await adim(12);
-    takim(t => t.no === 'T7'); await adim(13);
-    U.spindle(true); ucGit(-3); ucGit(PH + 3); await adim(14);
-    takim(t => t.no === 'T11'); await adim(15);
+    document.getElementById('cpRapid').click(); ucGit(PH + 12); document.getElementById('cpRapid').click(); await adim(6);
+    ucGit(PH); await adim(7);
+    document.querySelector('#cpSoft [data-sk="2"]').click(); await adim(8);
+    git('x', -40 - d().x); git('z', -1 - d().z); await adim(9);
+    xKadar(() => d().x > 176, 1); await adim(10);
+    git('y', 75 - d().y); xKadar(() => d().x < -26, -1); await adim(11);
+    takim(t => t.no === 'T6'); await adim(12);
+    U.spindle(true); ucGit(PH + 4); git('x', 75 - d().x); git('y', 50 - d().y); ucGit(PH - 3); ucGit(PH + 3); await adim(13);
+    takim(t => t.no === 'T7'); await adim(14);
+    U.spindle(true); ucGit(-3); ucGit(PH + 3); await adim(15);
+    takim(t => t.no === 'T11'); await adim(16);
     U.spindle(true); ucGit(PH - 0.5);
     for (let k = 0; k < 400 && !S.tap && !S.alarm; k++) { S.pend.z = -0.2; sur(1); }
     for (let k = 0; k < 20000 && S.tap && !S.alarm && window.__d.tip() > -3; k++) sur(1);
     document.getElementById('spDir').click();
     for (let k = 0; k < 20000 && S.tap && !S.alarm; k++) sur(1);
-    await adim(16);
-    document.getElementById('spDir').click(); U.spindle(false); document.getElementById('jobSubmit').click(); await adim(17);
+    await adim(17);
+    document.getElementById('spDir').click(); U.spindle(false); document.getElementById('jobSubmit').click(); await adim(18);
     const ozet = document.getElementById('rpTitle').textContent;
     document.getElementById('egKariyer').click();
     if (!app.CR.on || !EG.bitti) throw new Error('eğitim bitince kariyere geçilmedi');
-    return `18 adım, teslim: ${ozet}`;
+    return `19 adım, teslim: ${ozet}`;
   },
   async kariyer() {
     const { app, S, son } = window.__d;
