@@ -75,7 +75,7 @@ let last = performance.now(), uiT = 0;
 const vA = new THREE.Vector3(), vB = new THREE.Vector3();
 function frame(now) {
   if (S.duraklat) {                                                // menü açık: simülasyon durur, sahne çizilmeye devam eder
-    last = now; controls.update(); odadaKal(); renderer.render(scene, camera); requestAnimationFrame(frame); return;
+    last = now; flushMesh(); controls.update(); odadaKal(); renderer.render(scene, camera); requestAnimationFrame(frame); return;   // parça yüzeyi menü açıkken de çizilir (açılışta kararmasın)
   }
   S.realDt = Math.max(0.001, (now - last) / 1000);
   const dt = Math.min(0.05, S.realDt); last = now;
@@ -253,7 +253,7 @@ const TBICON = {
 const PM = (() => {
   const TOP = 46, BAR = 58, KEY = 'freze-panels-v2';
   const CFG = [
-    { id:'console', title:'Kumanda paneli',   col:'B', w:760 },
+    { id:'console', title:'Kumanda paneli',   col:'B', w:540, sizes:[420, 540, 760] },   // içerik genişlikle ölçeklenir (cqw); başlıkta boyut düğmesi
     { id:'hud',     title:'Durum',            col:'L', w:290 },
     { id:'jobs',    title:'İş emirleri',      col:'L', w:340 },
     { id:'part',    title:'Parça',            col:'L', w:320 },
@@ -304,7 +304,7 @@ const PM = (() => {
     let body = document.querySelector(`[data-panel="${cfg.id}"]`);
     if (!body) return;
     const el = document.createElement('section'); el.className = 'panel'; el.hidden = true;
-    el.innerHTML = `<div class="ph"><span class="lamp"></span><b>${cfg.title}</b><span class="pstat"></span><button class="pcol" title="Küçült" aria-label="Paneli küçült">–</button><button class="pclose" title="Kapat" aria-label="Paneli kapat">×</button></div><div class="pb"></div><div class="grip" title="Boyutlandır"></div>`;
+    el.innerHTML = `<div class="ph"><span class="lamp"></span><b>${cfg.title}</b><span class="pstat"></span>${cfg.sizes ? '<button class="psize" title="Boyut: küçük / orta / büyük" aria-label="Panel boyutu">⤡</button>' : ''}<button class="pcol" title="Küçült" aria-label="Paneli küçült">–</button><button class="pclose" title="Kapat" aria-label="Paneli kapat">×</button></div><div class="pb"></div><div class="grip" title="Boyutlandır"></div>`;
     el.querySelector('.pb').append(body);
     $('panelLayer').append(el);
     // başlıktaki durum yazısı: bölümün başlığındaki ikinci alanı (ör. mil durumu) başlığa taşı
@@ -333,18 +333,27 @@ const PM = (() => {
       grip.addEventListener('pointermove', mv); grip.addEventListener('pointerup', up); grip.addEventListener('pointercancel', up);
     });
     el.querySelector('.pcol').addEventListener('click', () => toggleCollapse(p));
+    // boyut düğmesi: sıradaki boy; sağ alt köşe sabit kalır (panel köşeye yaslıysa orada kalsın)
+    const ps = el.querySelector('.psize');
+    if (ps) ps.addEventListener('click', () => {
+      const sz = cfg.sizes, k = sz.findIndex(w => w > p.w + 1), w = k < 0 ? sz[0] : sz[k];
+      const r = p.x + p.w, b = p.y + el.offsetHeight;
+      p.w = Math.min(w, window.innerWidth - 20); p.h = 0; p.y = 0; place(p);   // önce tepeye: yükseklik sınırı ölçümü kısmasın
+      p.x = r - p.w; p.y = b - el.offsetHeight; place(p); save();
+    });
     el.querySelector('.pclose').addEventListener('click', () => { if (cfg.id === 'drawing') $('drawing').hidden = true; else setVis(cfg.id, false); });
   }
   function toggleCollapse(p) { p.collapsed = !p.collapsed; p.el.classList.toggle('collapsed', p.collapsed); p.el.querySelector('.pcol').textContent = p.collapsed ? '+' : '–'; save(); }
+  // (ölçmeden önce panel tepeye alınır: place eski konuma göre yükseklik sınırı koyar, doğal yükseklik kısılmasın)
   // Görünür panelleri sütunlara diz: sağda mil/DRO/takımlar, solda durum/iş, altta çarklar ve hareket
   function autoLayout() {
     const W = window.innerWidth, H = vh();
     // önce alttaki çark ve hareket panelleri; sütunlar onların üstünde biter
     const wh = P.wheels, jg = P.jog, cs = P.console, low = [];
     let wx = W / 2;
-    if (cs && cs.vis) { cs.w = Math.min(cs.cfg.w, W - 40); cs.h = 0; place(cs); cs.x = (W - cs.w) / 2; cs.y = Math.max(10, H - cs.el.offsetHeight - 10); place(cs); wx = cs.x; low.push(cs); }
-    if (wh && wh.vis) { wh.w = Math.min(wh.cfg.w, W - 40); wh.h = 0; place(wh); wh.x = cs && cs.vis ? Math.max(10, wx - wh.w - 10) : (W - wh.w) / 2; wh.y = H - wh.el.offsetHeight - 10; place(wh); wx = wh.x; low.push(wh); }
-    if (jg && jg.vis) { jg.w = jg.cfg.w; jg.h = 0; place(jg); jg.x = Math.max(10, wx - jg.w - 10); jg.y = H - jg.el.offsetHeight - 10; place(jg); low.push(jg); }
+    if (cs && cs.vis) { cs.w = Math.min(cs.cfg.w, W - 40); cs.h = 0; cs.y = 0; place(cs); cs.x = W - cs.w - 10; cs.y = Math.max(10, H - cs.el.offsetHeight - 10); place(cs); wx = cs.x; low.push(cs); }   // sağ alt köşe: tezgâhın ortası açık kalır
+    if (wh && wh.vis) { wh.w = Math.min(wh.cfg.w, W - 40); wh.h = 0; wh.y = 0; place(wh); wh.x = cs && cs.vis ? Math.max(10, wx - wh.w - 10) : (W - wh.w) / 2; wh.y = H - wh.el.offsetHeight - 10; place(wh); wx = wh.x; low.push(wh); }
+    if (jg && jg.vis) { jg.w = jg.cfg.w; jg.h = 0; jg.y = 0; place(jg); jg.x = Math.max(10, wx - jg.w - 10); jg.y = H - jg.el.offsetHeight - 10; place(jg); low.push(jg); }
     const floor = (x0, x1) => low.reduce((f, q) => (x1 > q.x && x0 < q.x + q.w) ? Math.min(f, q.y - 10) : f, H - 10);
     const cols = { L:{ x:10, y:10, dir:1, wm:0 }, R:{ x:W - 10, y:10, dir:-1, wm:0 } };
     for (const cfg of CFG) {
