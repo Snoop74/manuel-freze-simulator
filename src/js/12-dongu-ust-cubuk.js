@@ -202,7 +202,7 @@ function updateHud(T, tip) {
   $('hFeed').textContent = S.changing ? 'takım değişimi' : S.feedNow > 0 && (performance.now() - S.lastMove < 200) ? `${Math.round(S.curFeed)} mm/dk` : rapid() ? `HIZLI ${RAPID} mm/dk` : `${S.feed} mm/dk`;
   $('hJobRow').hidden = $('hTimeRow').hidden = !S.job;
   if (S.job) {
-    $('hJob').textContent = `${S.job.order ? '#' + S.job.order.id : S.job.idx + 1} · ${S.job.J.title}${S.job.done ? ' (teslim edildi)' : ''}`;
+    $('hJob').textContent = `${S.job.order ? '#' + S.job.order.id + ' · ' : S.job.idx >= 0 ? S.job.idx + 1 + ' · ' : ''}${S.job.J.title}${S.job.done ? ' (teslim edildi)' : ''}`;
     $('hTime').textContent = `${mmss(S.job.time)} / ${mmss(S.job.J.target)}`;
     $('hTime').style.color = S.job.time > S.job.J.target ? 'var(--warn)' : 'var(--fg)';
   }

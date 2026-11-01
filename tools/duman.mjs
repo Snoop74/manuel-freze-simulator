@@ -79,7 +79,8 @@ const YARDIMCI = async () => {
   const yeni = () => { U.spindle(false); if (S.alarm) document.getElementById('alarmReset').click(); U.resetPart(); B.setKay(0); };
   const son = () => [...document.querySelectorAll('#log > *')].slice(0, 3).map(e => e.textContent.replace(/^\d\d:\d\d:\d\d/, '')).join(' | ');
   const minH = () => { let m = Infinity; for (const v of T.H) if (v < m) m = v; return m; };
-  window.__d = { T, K, U, B, S, TOOLS, PW, PD, PH, app, tip, sur, git, ucGit, konum, takim, yeni, son, minH };
+  const { camera } = await import('/src/js/02-sahne-tezgah.js');
+  window.__d = { T, K, U, B, S, TOOLS, PW, PD, PH, app, tip, sur, git, ucGit, konum, takim, yeni, son, minH, camera };
 };
 
 // ---- senaryolar: her biri sayfada çalışır; hata fırlatırsa düşer, dönen metin rapora yazılır ----
@@ -150,6 +151,43 @@ const SENARYO = {
     if (!B.threads.length) throw new Error('diş oluşmadı');
     if (Math.abs(git('x', 5)) > 1e-6) throw new Error('kılavuzdan sonra tabla hareket etmiyor');
     return `M6 boydan boya, ${B.threads.length} diş yüzeyi`;
+  },
+  async egitim() {
+    const { S, U, K, T, app, takim, git, ucGit, sur, son } = window.__d;
+    const bekle = ms => new Promise(r => setTimeout(r, ms)), EG = app.EG, d = () => U.droVals();
+    const adim = async n => {
+      for (let k = 0; k < 15 && EG.adim < n; k++) await bekle(100);
+      if (EG.adim !== n) throw new Error(`adım ${EG.adim + 1}'de takıldı ("${EG.ADIM[EG.adim]?.s.slice(0, 50)}…"): ${son()} · uç ${window.__d.tip().toFixed(2)} PH ${T.PH} X${d().x.toFixed(2)} Y${d().y.toFixed(2)} Z${d().z.toFixed(2)}`);
+    };
+    const xKadar = (sart, yon) => { U.setAuto(yon); for (let k = 0; k < 60000 && !sart(); k++) K.motion(1 / 60); };
+    EG.baslat(); if (EG.adim !== 0) throw new Error('eğitim başlamadı');
+    const PH = T.PH;                                                 // eğitim parçası 20 mm (canlı değer)
+    window.__d.camera.position.x += 300; await adim(1);
+    app.MG.git(99); sur(60); await bekle(250); app.MG.git(0); sur(60); await adim(2);
+    takim(t => t.no === 'T1'); await adim(3);
+    U.spindle(true); await adim(4);
+    git('x', 30 - d().x); git('y', 25 - d().y); await adim(5);
+    ucGit(PH); await adim(6);
+    document.querySelector('#cpSoft [data-sk="2"]').click(); await adim(7);
+    git('x', -40 - d().x); git('z', -1 - d().z); await adim(8);
+    xKadar(() => d().x > 176, 1); await adim(9);
+    git('y', 75 - d().y); xKadar(() => d().x < -26, -1); await adim(10);
+    takim(t => t.no === 'T6'); await adim(11);
+    U.spindle(true); ucGit(PH + 4); git('x', 75 - d().x); git('y', 50 - d().y); ucGit(PH - 3); ucGit(PH + 3); await adim(12);
+    takim(t => t.no === 'T7'); await adim(13);
+    U.spindle(true); ucGit(-3); ucGit(PH + 3); await adim(14);
+    takim(t => t.no === 'T11'); await adim(15);
+    U.spindle(true); ucGit(PH - 0.5);
+    for (let k = 0; k < 400 && !S.tap && !S.alarm; k++) { S.pend.z = -0.2; sur(1); }
+    for (let k = 0; k < 20000 && S.tap && !S.alarm && window.__d.tip() > -3; k++) sur(1);
+    document.getElementById('spDir').click();
+    for (let k = 0; k < 20000 && S.tap && !S.alarm; k++) sur(1);
+    await adim(16);
+    document.getElementById('spDir').click(); U.spindle(false); document.getElementById('jobSubmit').click(); await adim(17);
+    const ozet = document.getElementById('rpTitle').textContent;
+    document.getElementById('egKariyer').click();
+    if (!app.CR.on || !EG.bitti) throw new Error('eğitim bitince kariyere geçilmedi');
+    return `18 adım, teslim: ${ozet}`;
   },
   async kariyer() {
     const { app, S, son } = window.__d;

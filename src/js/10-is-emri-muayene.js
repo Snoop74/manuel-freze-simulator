@@ -502,7 +502,7 @@ function deliver(run, items) {
 }
 const STAR = '<svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6 6.5.8-4.8 4.5 1.2 6.5L12 17.3l-5.8 3.1 1.2-6.5L2.6 9.4l6.5-.8z" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 function showReport(run, items, r, newBest) {
-  $('rpJob').textContent = `${run.order ? 'SİPARİŞ #' + run.order.id : 'İŞ ' + (run.idx + 1)} · ${run.J.title.toLocaleUpperCase('tr')} · MAKİNE SÜRESİ ${mmss(run.time)}`;
+  $('rpJob').textContent = `${run.order ? 'SİPARİŞ #' + run.order.id + ' · ' : run.idx >= 0 ? 'İŞ ' + (run.idx + 1) + ' · ' : ''}${run.J.title.toLocaleUpperCase('tr')} · MAKİNE SÜRESİ ${mmss(run.time)}`;
   $('rpTitle').textContent = r.stars === 3 ? 'Kusursuz parça' : r.allOk ? 'Parça kabul edildi' : r.stars ? 'Şartlı kabul: tolerans dışı ölçü var' : 'Parça hurdaya ayrıldı';
   $('rpStars').innerHTML = [0, 1, 2].map(i => STAR.replace('<svg', `<svg class="${i < r.stars ? 'on' : 'off'}"`)).join('');
   $('rpTotal').textContent = r.total;

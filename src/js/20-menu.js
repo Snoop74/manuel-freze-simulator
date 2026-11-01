@@ -94,10 +94,13 @@ const modTik = mod => { const b = document.querySelector(`#modeSw [data-mode="${
 MENU.ekran('ana', (k, M) => {
   M.baslik('SNOOP3000', 'Manuel freze tezgâhı');
   const kariyer = app.CR && app.CR.on;
-  M.dugme('Devam et', () => MENU.kapat(), { ana:true, alt:kariyer ? 'kariyer' : 'serbest atölye' });
+  const egitim = () => app.EG.baslat();
+  if (!app.EG.bitti) M.dugme('Eğitim', egitim, { ana:true, alt:'Otto Usta ile ilk parça · 10 dk · önerilir' });
+  M.dugme('Devam et', () => MENU.kapat(), { ana:app.EG.bitti, alt:kariyer ? 'kariyer' : 'serbest atölye' });
   M.dugme('Kariyer', () => { modTik('career'); MENU.kapat(); }, { alt:'siparişler, kasa, itibar, dükkân', secili:kariyer });
   M.dugme('Serbest atölye', () => { modTik('free'); MENU.kapat(); }, { alt:'her şey açık ve ücretsiz', secili:!kariyer });
   M.dugme('Ayarlar', () => MENU.ac('ayarlar'), { alt:'grafik, ses, oyun' });
+  if (app.EG.bitti) M.dugme('Eğitim', egitim, { alt:'Otto Usta ile ilk parçayı yeniden yap' });
   M.dugme('Nasıl oynanır', () => { MENU.kapat(); const h = document.querySelector('[data-menu="help"]'); if (h) h.click(); }, { alt:'ilk adımlar ve kısayollar' });
   M.el('div', 'menu-not', 'Menü: üst çubukta ☰ · tezgâhta Esc her zaman ACİL STOP');
 });
@@ -123,6 +126,6 @@ MENU.ekran('ayarlar', (k, M) => {
 
 Object.assign(app, { MENU });
 // açılışta ana menü (ayarlardan kapatılabilir)
-if (AYAR.acilisMenu) MENU.ac('ana');
+if (AYAR.acilisMenu) setTimeout(() => MENU.ac('ana'), 0);   // sonraki modüller (eğitim) yüklensin
 
 export { MENU };

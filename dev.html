@@ -816,6 +816,20 @@ body.montaj-on .tc{display:none}
 @media (max-width:700px){.pc-govde{grid-template-columns:1fr}.pc-kutu{max-height:180px}.pc-rsat{grid-template-columns:repeat(2,1fr)}}
 .pc-islem > span:empty{flex:1}
 .yh-row[hidden]{display:none}
+/* eğitim: Otto Usta balonu ve parlayan hedef */
+.eg{position:fixed;left:16px;bottom:78px;z-index:58;display:flex;gap:12px;align-items:flex-start;width:min(380px,calc(100% - 32px));background:rgba(16,20,22,.96);border:1px solid var(--line);border-left:4px solid var(--safety);border-radius:10px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.eg.yeni{animation:egGel .35s ease-out}
+@keyframes egGel{from{transform:translateY(8px);opacity:.3}to{transform:none;opacity:1}}
+.eg-av{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--safety);color:#111;font:700 22px var(--fd, inherit)}
+.eg-govde{flex:1;min-width:0}
+.eg-bas{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px}
+.eg-bas b{color:var(--safety)}
+.eg-bas span{color:var(--mut, #8a9499);font-size:11.5px}
+.eg p{margin:6px 0 10px;font-size:14px;line-height:1.45;color:var(--fg)}
+.eg-alt{display:flex;justify-content:flex-end;gap:8px}
+.eg-isik{outline:2px solid var(--safety)!important;outline-offset:2px;animation:egIsik 1.1s ease-in-out infinite}
+@keyframes egIsik{50%{outline-color:transparent;box-shadow:0 0 14px var(--safety)}}
+body.montaj-on .eg{display:none}
 </style>
 
 <div class="app">

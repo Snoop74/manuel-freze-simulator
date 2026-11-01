@@ -28,3 +28,4 @@ import './22-gelistirici.js';
 import './23-takim-cubugu.js';
 import './24-bilgisayar.js';
 import './25-mengene.js';
+import './26-egitim.js';
