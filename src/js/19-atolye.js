@@ -34,7 +34,7 @@ const add = (m, x, y, z) => { m.position.set(x, y, z); scene.add(m); return m; }
    fromY: ışının başladığı yükseklik (rafın alt katı için üst katın hemen altı); topY: üstü bu yüksekliğe asılır (tavan).
    Aynı model bir kez indirilir, sonraki kullanımlar kopyadır (geometri ve doku paylaşılır). */
 const gltf = new THREE.GLTFLoader(), ray = new THREE.Raycaster(), gltfCache = {};
-function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on, fromY = F + 5000, topY }) {
+function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on, fromY = F + 5000, topY, foot }) {   // foot: oturma yüksekliğini veren parçanın adı (altından sarkan parça sayılmaz)
   if (!gltfCache[id]) gltfCache[id] = new Promise(res => gltf.load(`assets/model/${id}/${id}.gltf`, g => res(g.scene), undefined, () => res(null)));
   const load = gltfCache[id].then(s => s && (s.parent || s.userData.used ? s.clone(true) : (s.userData.used = true, s)));
   return Promise.all([load, on]).then(([o, base]) => {
@@ -47,8 +47,8 @@ function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on, fromY = F + 5000
       const hit = ray.intersectObject(base, true)[0];
       if (hit) y = hit.point.y;
     }
-    const bb = new THREE.Box3().setFromObject(o);
-    const py = topY != null ? topY - bb.max.y : y - bb.min.y;
+    const bb = new THREE.Box3().setFromObject(o), fo = foot && o.getObjectByName(foot);
+    const py = topY != null ? topY - bb.max.y : y - (fo ? new THREE.Box3().setFromObject(fo).min.y : bb.min.y);
     o.position.set(x - (bb.min.x + bb.max.x) / 2, py, wallZ != null ? wallZ - bb.min.z : z - (bb.min.z + bb.max.z) / 2);
     scene.add(o); o.updateMatrixWorld(true);
     return o;
@@ -57,7 +57,7 @@ function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on, fromY = F + 5000
 // sol arka: takım arabası ve üstünde takım sandığı; sağ arka: çalışma tezgâhında tezgâh mengenesi (sol yarısı montaj yeri, 21-montaj), önünde tabure
 const cart = model('tool_cart', { x:-1250, z:-1200 });
 model('metal_tool_chest', { x:-1400, z:-1230, on:cart });
-model('bench_vice_01', { x:2420, z:-1180, y:F + 880, ry:0 });
+model('bench_vice_01', { x:2420, z:-1180, y:F + 880, ry:0, foot:'bench_vice_frame' });   // sap tezgâhın ön kenarından aşağı sarkar
 model('metal_stool_01', { x:1850, z:-750 });
 
 // oksijen-asetilen arabası (tezgâhın solunda), kompresör (sağ ön), el arabası, ıslak zemin levhası (soğutma sıvısı)
