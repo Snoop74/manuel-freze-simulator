@@ -1,0 +1,216 @@
+// Duman testi: sayfayı başsız (headless) Edge/Chrome'da açar ve oyunun temel akışlarını kodla sürer.
+// Ek paket yok: statik sunucu node:http, tarayıcı Chrome DevTools protokolüyle (Node'un yerleşik WebSocket'i) sürülür.
+// Kullanım: npm test (önce derler) ya da node tools/duman.mjs [senaryo adı...]. Bir senaryo düşerse çıkış kodu 1.
+import { spawn } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
+import { extname, join, normalize, resolve } from 'node:path';
+
+const KOK = resolve(import.meta.dirname, '..');
+const TUR = { '.html':'text/html; charset=utf-8', '.js':'text/javascript', '.mjs':'text/javascript', '.css':'text/css', '.json':'application/json',
+  '.png':'image/png', '.jpg':'image/jpeg', '.webp':'image/webp', '.hdr':'application/octet-stream', '.exr':'application/octet-stream',
+  '.glb':'model/gltf-binary', '.woff2':'font/woff2', '.svg':'image/svg+xml' };
+const TARAYICI = [process.env.DUMAN_TARAYICI, 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Google/Chrome/Application/chrome.exe',
+  '/usr/bin/google-chrome', '/usr/bin/chromium', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'].filter(Boolean);
+const bekle = ms => new Promise(r => setTimeout(r, ms));
+
+// ---- statik sunucu (file:// modüllerde çalışmaz) ----
+function sunucu() {
+  const s = createServer((q, r) => {
+    const yol = normalize(join(KOK, decodeURIComponent(q.url.split('?')[0])));
+    if (!yol.startsWith(KOK) || !existsSync(yol)) { r.writeHead(404); r.end(); return; }
+    try { r.writeHead(200, { 'Content-Type':TUR[extname(yol)] || 'application/octet-stream', 'Cache-Control':'no-store' }); r.end(readFileSync(yol)); }
+    catch { r.writeHead(404); r.end(); }
+  });
+  return new Promise(ok => s.listen(0, '127.0.0.1', () => ok(s)));
+}
+
+// ---- tarayıcı ve en küçük CDP istemcisi ----
+async function tarayici() {
+  const exe = TARAYICI.find(p => existsSync(p));
+  if (!exe) throw new Error('Edge ya da Chrome bulunamadı (DUMAN_TARAYICI ile yol verilebilir).');
+  const prof = mkdtempSync(join(tmpdir(), 'freze-duman-'));
+  const p = spawn(exe, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${prof}`, '--no-first-run', '--no-default-browser-check',
+    '--window-size=1280,800', '--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--mute-audio', '--autoplay-policy=no-user-gesture-required', 'about:blank'],
+    { stdio:'ignore' });
+  let port = 0;
+  for (let i = 0; i < 100 && !port; i++) {
+    await bekle(100);
+    const f = join(prof, 'DevToolsActivePort');
+    if (existsSync(f)) port = +readFileSync(f, 'utf8').split('\n')[0];
+  }
+  if (!port) { p.kill(); throw new Error('Tarayıcı hata ayıklama kapısını açmadı.'); }
+  const hedef = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find(t => t.type === 'page');
+  const ws = new WebSocket(hedef.webSocketDebuggerUrl);
+  await new Promise((ok, no) => { ws.onopen = ok; ws.onerror = no; });
+  let sira = 0; const bekleyen = new Map(), dinle = [];
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.id && bekleyen.has(m.id)) { const [ok, no] = bekleyen.get(m.id); bekleyen.delete(m.id); m.error ? no(new Error(m.error.message)) : ok(m.result); }
+    else if (m.method) dinle.forEach(f => f(m.method, m.params));
+  };
+  const gonder = (method, params = {}) => new Promise((ok, no) => { const id = ++sira; bekleyen.set(id, [ok, no]); ws.send(JSON.stringify({ id, method, params })); });
+  const kapat = async () => { try { ws.close(); } catch {} p.kill(); await bekle(300); try { rmSync(prof, { recursive:true, force:true }); } catch {} };
+  return { gonder, dinle, kapat };
+}
+
+// ---- sayfa içinde ortak yardımcılar: modüller, hareket sürme, takım değiştirme ----
+const YARDIMCI = async () => {
+  const T = await import('/src/js/00-temel.js'), K = await import('/src/js/08-kesme.js'), U = await import('/src/js/09-kumanda.js'), B = await import('/src/js/05-baglama.js');
+  const { S, TOOLS, PW, PD, PH, app } = T, dt = 1 / 60;
+  const tip = () => S.nose - TOOLS[S.tool].len;
+  const sur = n => { for (let i = 0; i < n; i++) { K.motion(dt); app.MG.update(dt); } };
+  // bir ekseni d mm sür (ilerleme hızıyla); kalan yol döner (0 değilse hareket engellendi)
+  const git = (ax, d, sinir = 60000) => {
+    S.pend[ax] = d;
+    for (let i = 0; i < sinir && Math.abs(S.pend[ax]) > 1e-6 && !S.alarm; i++) K.motion(dt);
+    const k = S.pend[ax]; S.pend[ax] = 0; return k;
+  };
+  const ucGit = z => git('z', z - tip());                           // takım ucunu parça Z'sine indir/kaldır
+  const konum = (x, y) => { ucGit(PH + 5); git('x', x - S.px); git('y', y - S.py); };
+  const takim = f => {
+    const i = TOOLS.findIndex(f); if (i < 0) throw new Error('takım yok');
+    U.spindle(false); if (S.alarm) document.getElementById('alarmReset').click();
+    if (i !== S.tool || S.broken) U.requestToolChange(i);
+    for (let k = 0; k < 3000 && S.changing; k++) K.motion(dt);
+    return TOOLS[i];
+  };
+  const yeni = () => { U.spindle(false); if (S.alarm) document.getElementById('alarmReset').click(); U.resetPart(); B.setKay(0); };
+  const son = () => [...document.querySelectorAll('#log > *')].slice(0, 3).map(e => e.textContent.replace(/^\d\d:\d\d:\d\d/, '')).join(' | ');
+  const minH = () => { let m = Infinity; for (const v of T.H) if (v < m) m = v; return m; };
+  window.__d = { T, K, U, B, S, TOOLS, PW, PD, PH, app, tip, sur, git, ucGit, konum, takim, yeni, son, minH };
+};
+
+// ---- senaryolar: her biri sayfada çalışır; hata fırlatırsa düşer, dönen metin rapora yazılır ----
+const SENARYO = {
+  async yukleme() {
+    const { app } = window.__d;
+    for (const k of ['MG', 'CR', 'MENU', 'TC', 'IA']) if (!app[k]) throw new Error(`app.${k} yok`);
+    app.MENU.kapat();
+    return 'modüller yüklendi';
+  },
+  async mengene() {
+    const { S, B, U, app, yeni, sur, son } = window.__d;
+    yeni();
+    app.MG.git(99); sur(60);
+    if (S.mAcik < 10) throw new Error(`mengene açılmadı (${S.mAcik}): ${son()}`);
+    if (app.FIXTURES[0].b[3] > -10) throw new Error('ön çene çarpışma kutusu kaymadı');
+    U.spindle(true); if (S.spindle) throw new Error('açık mengenede mil çalıştı');
+    const px = S.px; B.setKay(20);
+    if (Math.abs(S.px - (px - 20)) > 1e-6) throw new Error('KAY makine konumunu tutmadı');
+    app.MG.git(0); sur(60);
+    if (S.mAcik !== 0 || app.FIXTURES[0].b[3] !== 0) throw new Error(`mengene sıkılmadı (${S.mAcik}, ön çene ${app.FIXTURES[0].b[3]})`);
+    if (app.FIXTURES[0].b[0] !== -55) throw new Error(`çene kutusu KAY ile kaymadı (${app.FIXTURES[0].b[0]})`);
+    U.spindle(true); if (!S.spindle) throw new Error(`sıkılı mengenede mil çalışmadı: ${son()}`);
+    app.MG.git(99); sur(5); if (S.mAcik > 0) throw new Error('mil dönerken mengene açıldı');
+    U.spindle(false); app.MG.git(99); sur(60); yeni();
+    if (S.mAcik !== 0) throw new Error('yeni parça açık mengeneyle geldi');
+    return 'aç, kaydır, sık; mil kilidi';
+  },
+  async yuzey() {
+    const { S, U, PW, PH, takim, yeni, konum, ucGit, git, minH, son } = window.__d;
+    yeni(); const T = takim(t => t.type === 'end' && t.d === 10);
+    U.setRpm(4000); U.setFeed(400); konum(-10, 20); U.spindle(true);
+    ucGit(PH - 0.5); git('x', PW + 20);
+    U.spindle(false);
+    if (S.broken || S.alarm) throw new Error(`yüzey almada kırıldı: ${son()}`);
+    if (minH() > PH - 0.4) throw new Error(`talaş kalkmadı (en düşük ${minH().toFixed(2)})`);
+    return `${T.no} Ø10, 0.5 mm paso, zorlanma %${Math.round(S.damage * 100)}`;
+  },
+  async gagalama() {
+    const { S, U, PH, takim, yeni, konum, ucGit, son } = window.__d;
+    yeni(); takim(t => t.type === 'drill' && t.d === 5);
+    U.setRpm(1800); U.setFeed(120); konum(40, 40); U.spindle(true);
+    ucGit(PH - 30);
+    if (!S.broken) throw new Error(`tek dalışta 30 mm delen Ø5 kırılmadı: ${son()}`);
+    yeni(); takim(t => t.type === 'drill' && t.d === 5);
+    U.setRpm(1800); U.setFeed(120); konum(40, 40); U.spindle(true);
+    for (const z of [PH - 15, PH - 30, -4]) { ucGit(z); if (S.broken) break; ucGit(PH + 3); }
+    U.spindle(false);
+    if (S.broken) throw new Error(`gagalayarak delen matkap kırıldı: ${son()}`);
+    return 'tek dalış kırılır, gagalama boydan boya deler';
+  },
+  async kilavuz() {
+    const { S, B, U, PH, takim, konum, ucGit, git, sur, son } = window.__d;   // gagalama senaryosunun deliğine (40, 40)
+    const T = takim(t => t.type === 'tap' && t.d === 6);
+    U.setRpm(T.rpm); konum(40, 40); S.dir = 1; U.spindle(true);
+    ucGit(PH + 0.5);
+    for (let i = 0; i < 400 && !S.tap && !S.alarm; i++) { S.pend.z = -0.2; sur(1); }
+    if (!S.tap) {
+      const { H, C, NX } = window.__d.T, j = Math.round(40 / C), sat = [];
+      for (let i = Math.round(35 / C); i <= Math.round(45 / C); i++) sat.push(H[j * NX + i].toFixed(1));
+      throw new Error(`kılavuz kavramadı: ${son()} · C=${C} satır ${sat.join(' ')} · px ${S.px.toFixed(2)} py ${S.py.toFixed(2)}`);
+    }
+    for (let i = 0; i < 20000 && S.tap && !S.alarm && window.__d.tip() > -3; i++) sur(1);
+    S.dir = -1;
+    for (let i = 0; i < 20000 && S.tap && !S.alarm; i++) sur(1);
+    U.spindle(false); S.dir = 1;
+    if (S.broken || S.alarm) throw new Error(`kılavuz kırıldı: ${son()}`);
+    if (!B.threads.length) throw new Error('diş oluşmadı');
+    if (Math.abs(git('x', 5)) > 1e-6) throw new Error('kılavuzdan sonra tabla hareket etmiyor');
+    return `M6 boydan boya, ${B.threads.length} diş yüzeyi`;
+  },
+  async kariyer() {
+    const { app, S, son } = window.__d;
+    document.querySelector('#modeSw [data-mode=career]').click();
+    if (!app.CR.on) throw new Error(`kariyere geçilmedi: ${son()}`);
+    const st = app.CR.st, gun = st.gun;
+    if (!st.orders.length) throw new Error('siparişler gelmedi');
+    if (!st.mail.length) throw new Error('mail kutusu boş');
+    const o = st.orders.find(q => !app.CR.bekler(q));
+    if (o && !app.CR.kabul(o.id)) throw new Error(`sipariş kabul edilmedi: ${son()}`);
+    const para = st.money;                                          // kabulde ham parça parası düşebilir
+    S.spindle = false; app.CR.gunuBitir();
+    if (!app.CR.raporBekliyor) throw new Error('gün sonu raporu açılmadı');
+    if (st.money !== para - app.CR.kira()) throw new Error(`kira düşmedi (${para} → ${st.money})`);
+    app.CR.ertesiGun();
+    if (st.gun !== gun + 1) throw new Error('ertesi güne geçilmedi');
+    return `gün ${gun} → ${st.gun}, kira ${app.CR.kira()} ₺${o ? ', iş kabul' : ''}`;
+  },
+};
+
+async function calistir() {
+  const sec = process.argv.slice(2), adlar = sec.length ? sec : Object.keys(SENARYO);
+  const srv = await sunucu(), url = `http://127.0.0.1:${srv.address().port}`;
+  const br = await tarayici(), hatalar = [];
+  br.dinle.push((m, p) => {
+    if (m === 'Runtime.exceptionThrown') hatalar.push(p.exceptionDetails.exception?.description || p.exceptionDetails.text);
+    if (m === 'Runtime.consoleAPICalled' && p.type === 'error') hatalar.push(p.args.map(a => a.value ?? a.description).join(' '));
+  });
+  await br.gonder('Runtime.enable');
+  const deger = async (ifade, ad) => {
+    const r = await br.gonder('Runtime.evaluate', { expression:ifade, awaitPromise:true, returnByValue:true });
+    if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description?.split('\n')[0] || r.exceptionDetails.text || ad);
+    return r.result.value;
+  };
+  const ac = async (sayfa, hazir) => {
+    await br.gonder('Page.navigate', { url:`${url}/${sayfa}` });
+    for (let i = 0; i < 200; i++) { await bekle(100); try { if (await deger(hazir)) return; } catch {} }
+    throw new Error(`${sayfa} açılmadı`);
+  };
+  let dus = 0;
+  const yaz = (ok, ad, msg) => { if (!ok) dus++; console.log(`${ok ? '  ✓' : '  ✗'} ${ad.padEnd(10)} ${msg}`); };
+  try {
+    // paketlenmiş sayfa: açılıyor mu, hata var mı
+    await ac('freze.html', `!!document.querySelector('canvas') && !!document.querySelector('#log > *')`);
+    await bekle(1500);
+    yaz(!hatalar.length, 'freze.html', hatalar.length ? hatalar.splice(0).join(' / ') : 'açıldı, konsolda hata yok');
+    // senaryolar dev.html'de: modüllere doğrudan erişilir
+    await ac('dev.html', `!!document.querySelector('#log > *')`);
+    await deger(`(${YARDIMCI})()`, 'yardımcı');
+    for (const ad of adlar) {
+      if (!SENARYO[ad]) { yaz(false, ad, 'böyle bir senaryo yok'); continue; }
+      const t0 = Date.now();
+      try {
+        const kod = String(SENARYO[ad]), msg = await deger(`(async function${kod.slice(kod.indexOf('('))})()`, ad);   // yöntem kısaltması ifade değil
+        if (hatalar.length) throw new Error('konsol: ' + hatalar.splice(0).join(' / '));
+        yaz(true, ad, `${msg} (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
+      } catch (e) { hatalar.length = 0; yaz(false, ad, e.message); }
+    }
+  } catch (e) { yaz(false, 'kurulum', e.message); }
+  finally { await br.kapat(); srv.close(); }
+  console.log(dus ? `\n${dus} senaryo düştü.` : '\nDuman testi temiz.');
+  process.exit(dus ? 1 : 0);
+}
+calistir();

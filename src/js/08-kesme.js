@@ -289,7 +289,8 @@ function holeRadius(x, y, tip) {           // merkezden dışa doğru tarama: il
     }
     best = Math.min(best, r);
   }
-  return best;
+  // r ilk dolu hücre; gerçek kenar son boş hücreyle onun arasında. r'yi döndürmek ızgaraya denk gelen Ø5 deliği Ø6 ölçüyordu (M6 kavramıyordu)
+  return best > 0 && best < 99 ? best - C * 0.75 : best;
 }
 function tapStep(nx, ny, nn, T, it, horiz) {
   const tip = nn - T.len, down = nn < S.nose;

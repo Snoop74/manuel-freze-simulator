@@ -6,6 +6,7 @@
   "scripts": {
     "build": "node tools/analiz.mjs && node build.mjs",
     "check": "node tools/analiz.mjs",
+    "test": "npm run build && node tools/duman.mjs",
     "watch": "node build.mjs --watch",
     "serve": "python -m http.server 8790"
   },
