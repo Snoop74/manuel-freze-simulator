@@ -35,6 +35,18 @@ const add = (m, x, y, z) => { m.position.set(x, y, z); scene.add(m); return m; }
    Aynı model bir kez indirilir, sonraki kullanımlar kopyadır (geometri ve doku paylaşılır). */
 const gltf = new THREE.GLTFLoader(), ray = new THREE.Raycaster(), gltfCache = {};
 const PROPS = [];                                                 // yerleşen hazır modeller (geliştirici modu yerleşimi: ad 'kimlik#sıra')
+// Blender'da yeniden yerleştirilenler (2026-11-01, tools/blender-yerlesim.py): kökün konumu (mm) ve dikey dönüşü; model() çağrısındaki
+// x/z/ry'nin yerine geçer. Yağ varilleri zemine indi (damlama tavası kaldırıldı), biri sol duvardan 10 cm içeri alındı; mengene tezgâhta yan döndü.
+const YER = {
+  'WetFloorSign_01#1':[794.8, -762.2, -1229.1, 0.173],
+  'barrel_03#1':[-2906.4, -760, 2305.1, -0.952],
+  'barrel_03#2':[-2360.6, -760, 1552.7, 0.648],
+  'Barrel_01#1':[-3018.2, -753.4, 1685.2, -1.552],
+  'portable_welding_cart#1':[3076.6, -758.1, 246, -1.546],
+  'old_military_compressor#1':[2678.7, -758.4, -2280.1, -3.142],
+  'bench_vice_01#1':[2568.8, 120, -1338.9, 1.571],
+  'hand_truck#1':[3290.4, -760, -1106.9, -0.6],
+};
 function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on, fromY = F + 5000, topY, foot }) {   // foot: oturma yüksekliğini veren parçanın adı (altından sarkan parça sayılmaz)
   if (!gltfCache[id]) gltfCache[id] = new Promise(res => gltf.load(`assets/model/${id}/${id}.gltf`, g => res(g.scene), undefined, () => res(null)));
   const load = gltfCache[id].then(s => s && (s.parent || s.userData.used ? s.clone(true) : (s.userData.used = true, s)));
@@ -52,6 +64,7 @@ function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on, fromY = F + 5000
     const py = topY != null ? topY - bb.max.y : y - (fo ? new THREE.Box3().setFromObject(fo).min.y : bb.min.y);
     o.position.set(x - (bb.min.x + bb.max.x) / 2, py, wallZ != null ? wallZ - bb.min.z : z - (bb.min.z + bb.max.z) / 2);
     o.name = `${id}#${PROPS.filter(p => p.id === id).length + 1}`; PROPS.push({ id, o });
+    const Y = YER[o.name]; if (Y) { o.position.set(Y[0], Y[1], Y[2]); o.rotation.y = Y[3]; }
     scene.add(o); o.updateMatrixWorld(true);
     return o;
   });
@@ -78,9 +91,8 @@ model('wooden_crate_01', { x:-2250, z:-750, ry:0.1 });
 // tavan lambaları (eski floresan şeritlerin yerinde)
 for (const lx of [-1200, 300, 1800]) for (const lz of [-700, 700]) model('hanging_industrial_lamp', { x:lx, z:lz, topY:2480 });
 
-/* ---- Variller (sağda, damlama tavasında): hazır modeller ---- */
+/* ---- Variller (sol önde, zeminde; yerleri YER'de): hazır modeller ---- */
 {
-  rbox(2300, 3580, F, F + 60, -400, 200, 8, smat(0x31363a, 0.6, 0.5, 0.3));
   model('Barrel_01', { x:2620, z:-100, y:F + 60 });
   model('barrel_03', { x:3240, z:-100, y:F + 60, ry:0.6 });
   model('barrel_03', { x:2500, z:-760, ry:2.2 });                                    // talaş varili
