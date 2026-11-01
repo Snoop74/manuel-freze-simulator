@@ -717,6 +717,7 @@ body.montaj-on .tc{display:none}
 .eg-bas span{color:var(--mut, #8a9499);font-size:11.5px}
 .eg p{margin:6px 0 10px;font-size:14px;line-height:1.45;color:var(--fg)}
 .eg p.eg-ip{margin-top:-4px;font-size:12.5px;color:var(--warn);border-left:2px solid var(--warn);padding-left:8px}
+.eg kbd{display:inline-block;min-width:1.6em;padding:0 5px;margin:0 1px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;background:#2a3236;color:var(--fg);font:600 12px/1.5 var(--fm, monospace);text-align:center}
 .eg-alt{display:flex;justify-content:flex-end;gap:8px}
 .eg-isik{outline:2px solid var(--safety)!important;outline-offset:2px;animation:egIsik 1.1s ease-in-out infinite}
 @keyframes egIsik{50%{outline-color:transparent;box-shadow:0 0 14px var(--safety)}}
