@@ -836,6 +836,39 @@ body.montaj-on .eg{display:none}
 /* derleme numarası: sol alt köşe, tıklanmaz */
 .surum{position:fixed;left:6px;bottom:3px;z-index:5;pointer-events:none;font:10.5px var(--fm, monospace);color:var(--muted);opacity:.55;user-select:none}
 .surum-not{font-size:11px;opacity:.7;margin-top:2px}
+/* G-kod programı: renkli yazım (textarea'nın arkasında aynı yazı tipiyle pre), önizleme, düğmeler */
+.gk{display:grid;gap:8px}
+.gk-ust{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.gk-ust select{max-width:200px}
+.gk-gov{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:8px}
+.gk-ed{position:relative;height:300px;border:1px solid var(--line);border-radius:6px;background:#0f1416;overflow:hidden}
+.gk-ed pre,.gk-ed textarea{position:absolute;inset:0;margin:0;padding:6px 8px 6px 0;font:13px/1.6 var(--fm, monospace);white-space:pre;overflow:auto;tab-size:2;box-sizing:border-box}
+.gk-ed pre{pointer-events:none;color:var(--fg);scrollbar-width:none}
+.gk-ed pre::-webkit-scrollbar{display:none}
+.gk-ed textarea{padding-left:calc(3.2em + 8px);background:transparent;color:transparent;caret-color:var(--safety);border:0;outline:0;resize:none}
+.gk-ed textarea::selection{background:rgba(244,180,40,.25);color:transparent}
+.gk-l{display:inline-block;min-width:100%}
+.gk-l i{display:inline-block;width:3.2em;padding-right:8px;text-align:right;color:#5d6a70;font-style:normal;box-sizing:border-box}
+.gk-l.on{background:rgba(80,150,255,.18)}
+.gk-l.er{background:rgba(230,70,60,.22)}
+.gk-l.uy{background:rgba(240,170,40,.16)}
+.gk-ed .g{color:#7fb6ff}.gk-ed .m{color:var(--safety)}.gk-ed .c{color:#6f7d83;font-style:italic}.gk-ed .a{color:#cfd8dc;font-weight:600}
+#gkOniz{width:100%;height:300px;border:1px solid var(--line);border-radius:6px;background:#121a1d}
+.gk-parca{fill:#2b3439;stroke:#8a979c;stroke-width:.6}
+.gk-sifir{fill:var(--safety)}.gk-sifir-t{fill:var(--safety);font-size:6px}
+.gk-hiz{stroke:#8fa0a6;stroke-width:.6;stroke-dasharray:2.5 2}
+.gk-kes{stroke:var(--safety);stroke-width:1}
+.gk-delik{fill:none;stroke:#cfd8dc;stroke-width:.7}
+.gk-hiz.ok,.gk-kes.ok{stroke:#4caf6e}.gk-delik.ok{fill:#4caf6e;stroke:#4caf6e}
+.gk-hiz.on,.gk-kes.on,.gk-delik.on{stroke:#7fb6ff;stroke-width:1.4}
+.gk-hiz.er,.gk-kes.er,.gk-delik.er{stroke:var(--bad)}
+.gk-ipucu{display:grid;gap:3px;font-size:12.5px;min-height:1.4em;color:var(--muted)}
+.gk-ipucu .er{color:var(--bad)}
+.gk-dug{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.gk-oran{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.gk-oran input{width:90px}
+.gk-durum{font-size:12.5px;color:var(--fg);background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:5px;padding:5px 9px}
+@media (max-width:900px){.gk-gov{grid-template-columns:1fr}}
 </style>
 
 <div class="app">
@@ -846,7 +879,7 @@ body.montaj-on .eg{display:none}
       <span class="tb-sep"></span>
       <div class="tb-grp" data-g="İş"><button class="tbi" data-p="tools" data-ic="tools" data-tip="Takımlar" aria-label="Takımlar"></button><button class="tbi" data-p="part" data-ic="part" data-tip="Parça ve bağlama" aria-label="Parça ve bağlama"></button><button class="tbi" data-p="jobs" data-ic="jobs" data-tip="İş emirleri ve kariyer" aria-label="İş emirleri ve kariyer"></button><button class="tbi act" data-act="drawing" id="tbDraw" data-ic="drawing" data-tip="Teknik resim" aria-label="Teknik resim"></button></div>
       <span class="tb-sep"></span>
-      <div class="tb-grp" data-g="Aletler"><button class="tbi act" data-act="air" id="tbAir" data-ic="air" data-tip="Hava tabancası (B)" aria-label="Hava tabancası (B)"></button><button class="tbi act" data-act="fd" id="tbFd" data-ic="fd" data-tip="Fareyle sür (G)" aria-label="Fareyle sür (G)"></button><button class="tbi act" data-act="bench" data-ic="bench" data-tip="Parça masası: ölç, kesit al" aria-label="Parça masası: ölç, kesit al"></button><button class="tbi act" data-act="editor" data-ic="editor" data-tip="Takım editörü" aria-label="Takım editörü"></button><button class="tbi act" data-act="shop" id="tbShop" hidden data-ic="shop" data-tip="Dükkân" aria-label="Dükkân"></button><button class="tbi act" data-act="blanks" data-ic="blank" data-tip="Hazır parça galerisi (geçici)" aria-label="Hazır parça galerisi"></button></div>
+      <div class="tb-grp" data-g="Aletler"><button class="tbi act" data-act="air" id="tbAir" data-ic="air" data-tip="Hava tabancası (B)" aria-label="Hava tabancası (B)"></button><button class="tbi act" data-act="fd" id="tbFd" data-ic="fd" data-tip="Fareyle sür (G)" aria-label="Fareyle sür (G)"></button><button class="tbi act" data-act="bench" data-ic="bench" data-tip="Parça masası: ölç, kesit al" aria-label="Parça masası: ölç, kesit al"></button><button class="tbi" data-p="gkod" data-ic="gkod" data-tip="Program (G-kod)" aria-label="Program (G-kod)"></button><button class="tbi act" data-act="editor" data-ic="editor" data-tip="Takım editörü" aria-label="Takım editörü"></button><button class="tbi act" data-act="shop" id="tbShop" hidden data-ic="shop" data-tip="Dükkân" aria-label="Dükkân"></button><button class="tbi act" data-act="blanks" data-ic="blank" data-tip="Hazır parça galerisi (geçici)" aria-label="Hazır parça galerisi"></button></div>
       <span class="tb-sep"></span>
       <div class="tb-grp" data-g="Bilgi"><button class="tbi" data-p="hud" data-ic="hud" data-tip="Durum" aria-label="Durum"></button><button class="tbi" data-p="log" data-ic="log" data-tip="Olay kaydı" aria-label="Olay kaydı"></button></div>
       <span class="tb-sep"></span>
@@ -1241,6 +1274,18 @@ body.montaj-on .eg{display:none}
       <button class="btn start" id="benchOpen" style="width:100%;margin-top:6px" hidden>Parça masası: incele, ölç, kesit al</button>
       <div style="display:none">
       </div>
+    </div>
+
+    <div data-panel="gkod" class="gk">
+      <div class="gk-ust"><select id="gkOrnek" aria-label="Örnek program"><option value="">Örnek program…</option></select><span class="gk-not">Koordinatlar iş sıfırına göre (DRO) · Esc ACİL STOP</span></div>
+      <div class="gk-gov">
+        <div class="gk-ed"><pre id="gkRenk" aria-hidden="true"></pre><textarea id="gkMetin" spellcheck="false" wrap="off" autocomplete="off" aria-label="G-kod programı"></textarea></div>
+        <svg id="gkOniz" role="img" aria-label="Takım yolu önizlemesi, parçanın üstten görünüşü"></svg>
+      </div>
+      <div class="gk-ipucu" id="gkIpucu"></div>
+      <div class="gk-dug"><button class="btn sm start" id="gkCalis">▶ Çalıştır</button><button class="btn sm" id="gkTek">Tek satır</button><button class="btn sm" id="gkDur">Durdur</button><button class="btn sm" id="gkSifirla">Sıfırla</button>
+        <label class="gk-oran">İlerleme <input type="range" id="gkOran" min="10" max="120" step="10" value="100"><b id="gkOranV">100%</b></label></div>
+      <div class="gk-durum" id="gkDurum"></div>
     </div>
 
     <details open data-panel="keys">

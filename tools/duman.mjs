@@ -190,6 +190,40 @@ const SENARYO = {
     if (!app.CR.on || !EG.bitti) throw new Error('eğitim bitince kariyere geçilmedi');
     return `19 adım, teslim: ${ozet}`;
   },
+  async gkod() {
+    const { S, U, K, T, app, takim, yeni, son } = window.__d;
+    const G = await import('/src/js/27-gkod.js'), c = G.cozumle, GK = app.GK;
+    // ayrıştırıcı: yaygın yazım hataları anlaşılır iletiyle yakalanır
+    const tek = (m, beklenen) => { const r = c(m); const h = r.hatalar.map(q => q.msg).join(' '); if (!h.includes(beklenen)) throw new Error(`"${m}" için "${beklenen}" beklenirdi, gelen: ${h || 'hata yok'}`); };
+    tek('G0 X20 Y8O', 'Y8O'); tek('GO X10', 'G0'); tek('G0 X=10', 'eşittir'); tek('G1 X10', 'F'); tek('G83 X1 Y1 Z-5 R2 F100', 'Q'); tek('G2 X1', 'G2');
+    if (c('G0 X=10, Y=20'.replace(/=/g, '')).hatalar.length) throw new Error('virgüllü satır okunmadı');
+    const r = c(GK.ORNEK.delik[1]);
+    if (r.hatalar.length || r.uyari.length) throw new Error('örnek programda hata/uyarı: ' + [...r.hatalar, ...r.uyari].map(q => q.msg).join(' '));
+    // yürütme: standart parça, T7 Ø5, Z sıfırı üst yüzeyde; 4 delik boydan boya
+    // kariyerde kit yoksa çalışmaz; serbest atölyede açık
+    document.querySelector('#modeSw [data-mode="career"]').click();
+    if (!app.CR.hasEq('cnc')) { GK.baslat(false); if (GK.calisiyor) throw new Error('kariyerde kitsiz program çalıştı'); document.getElementById('shop').hidden = true; }
+    document.querySelector('#modeSw [data-mode="free"]').click();
+    app.setStock(150, 100, 40, true); yeni(); takim(t => t.no === 'T7');
+    S.zx = 0; S.zy = 0; S.zn = S.nose - (S.nose - T.TOOLS[S.tool].len - T.PH);   // Z0 = parça üstü (bu takımla)
+    GK.yukle(GK.ORNEK.delik[1]); GK.baslat(false);
+    if (!GK.calisiyor) throw new Error(`program başlamadı: ${son()}`);
+    for (let k = 0; k < 200000 && GK.calisiyor; k++) { GK.update(1 / 60); K.motion(1 / 60); }
+    if (GK.calisiyor) throw new Error(`program bitmedi: ${GK.ys && GK.ys.op && GK.ys.op.not}`);
+    if (S.broken || S.alarm) throw new Error(`programda takım kırıldı: ${son()}`);
+    const { H, C, NX } = T, dip = [[20, 20], [130, 20], [130, 80], [20, 80]].map(([x, y]) => H[Math.round(y / C) * NX + Math.round(x / C)]);
+    if (dip.some(v => v > 0.05)) throw new Error(`delikler boydan boya değil: ${dip.map(v => v.toFixed(1)).join(', ')}`);
+    if (S.spindle) throw new Error('M30 sonrası mil dönüyor');
+    // cep örneği: T3 Ø10, iki pasoda 5 mm
+    yeni(); takim(t => t.no === 'T3');
+    S.zx = 0; S.zy = 0; S.zn = T.TOOLS[S.tool].len + T.PH;
+    GK.yukle(GK.ORNEK.cep[1]); GK.baslat(false);
+    for (let k = 0; k < 400000 && GK.calisiyor; k++) { GK.update(1 / 60); K.motion(1 / 60); }
+    if (GK.calisiyor || S.broken || S.alarm) throw new Error(`cep programı bitmedi ya da kırıldı: ${son()}`);
+    const cep = [[62, 42], [75, 50], [88, 58]].map(([x, y]) => T.PH - H[Math.round(y / C) * NX + Math.round(x / C)]);
+    if (cep.some(v => Math.abs(v - 5) > 0.15)) throw new Error(`cep derinliği 5 değil: ${cep.map(v => v.toFixed(2)).join(', ')}`);
+    return `ayrıştırıcı 7 denetim, G83 ile 4 delik boydan boya, cep 5 mm (${r.ops.length} adım)`;
+  },
   async kariyer() {
     const { app, S, son } = window.__d;
     document.querySelector('#modeSw [data-mode=career]').click();

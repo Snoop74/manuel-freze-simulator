@@ -16,7 +16,7 @@
       <span class="tb-sep"></span>
       <div class="tb-grp" data-g="İş"><button class="tbi" data-p="tools" data-ic="tools" data-tip="Takımlar" aria-label="Takımlar"></button><button class="tbi" data-p="part" data-ic="part" data-tip="Parça ve bağlama" aria-label="Parça ve bağlama"></button><button class="tbi" data-p="jobs" data-ic="jobs" data-tip="İş emirleri ve kariyer" aria-label="İş emirleri ve kariyer"></button><button class="tbi act" data-act="drawing" id="tbDraw" data-ic="drawing" data-tip="Teknik resim" aria-label="Teknik resim"></button></div>
       <span class="tb-sep"></span>
-      <div class="tb-grp" data-g="Aletler"><button class="tbi act" data-act="air" id="tbAir" data-ic="air" data-tip="Hava tabancası (B)" aria-label="Hava tabancası (B)"></button><button class="tbi act" data-act="fd" id="tbFd" data-ic="fd" data-tip="Fareyle sür (G)" aria-label="Fareyle sür (G)"></button><button class="tbi act" data-act="bench" data-ic="bench" data-tip="Parça masası: ölç, kesit al" aria-label="Parça masası: ölç, kesit al"></button><button class="tbi act" data-act="editor" data-ic="editor" data-tip="Takım editörü" aria-label="Takım editörü"></button><button class="tbi act" data-act="shop" id="tbShop" hidden data-ic="shop" data-tip="Dükkân" aria-label="Dükkân"></button><button class="tbi act" data-act="blanks" data-ic="blank" data-tip="Hazır parça galerisi (geçici)" aria-label="Hazır parça galerisi"></button></div>
+      <div class="tb-grp" data-g="Aletler"><button class="tbi act" data-act="air" id="tbAir" data-ic="air" data-tip="Hava tabancası (B)" aria-label="Hava tabancası (B)"></button><button class="tbi act" data-act="fd" id="tbFd" data-ic="fd" data-tip="Fareyle sür (G)" aria-label="Fareyle sür (G)"></button><button class="tbi act" data-act="bench" data-ic="bench" data-tip="Parça masası: ölç, kesit al" aria-label="Parça masası: ölç, kesit al"></button><button class="tbi" data-p="gkod" data-ic="gkod" data-tip="Program (G-kod)" aria-label="Program (G-kod)"></button><button class="tbi act" data-act="editor" data-ic="editor" data-tip="Takım editörü" aria-label="Takım editörü"></button><button class="tbi act" data-act="shop" id="tbShop" hidden data-ic="shop" data-tip="Dükkân" aria-label="Dükkân"></button><button class="tbi act" data-act="blanks" data-ic="blank" data-tip="Hazır parça galerisi (geçici)" aria-label="Hazır parça galerisi"></button></div>
       <span class="tb-sep"></span>
       <div class="tb-grp" data-g="Bilgi"><button class="tbi" data-p="hud" data-ic="hud" data-tip="Durum" aria-label="Durum"></button><button class="tbi" data-p="log" data-ic="log" data-tip="Olay kaydı" aria-label="Olay kaydı"></button></div>
       <span class="tb-sep"></span>
@@ -411,6 +411,18 @@
       <button class="btn start" id="benchOpen" style="width:100%;margin-top:6px" hidden>Parça masası: incele, ölç, kesit al</button>
       <div style="display:none">
       </div>
+    </div>
+
+    <div data-panel="gkod" class="gk">
+      <div class="gk-ust"><select id="gkOrnek" aria-label="Örnek program"><option value="">Örnek program…</option></select><span class="gk-not">Koordinatlar iş sıfırına göre (DRO) · Esc ACİL STOP</span></div>
+      <div class="gk-gov">
+        <div class="gk-ed"><pre id="gkRenk" aria-hidden="true"></pre><textarea id="gkMetin" spellcheck="false" wrap="off" autocomplete="off" aria-label="G-kod programı"></textarea></div>
+        <svg id="gkOniz" role="img" aria-label="Takım yolu önizlemesi, parçanın üstten görünüşü"></svg>
+      </div>
+      <div class="gk-ipucu" id="gkIpucu"></div>
+      <div class="gk-dug"><button class="btn sm start" id="gkCalis">▶ Çalıştır</button><button class="btn sm" id="gkTek">Tek satır</button><button class="btn sm" id="gkDur">Durdur</button><button class="btn sm" id="gkSifirla">Sıfırla</button>
+        <label class="gk-oran">İlerleme <input type="range" id="gkOran" min="10" max="120" step="10" value="100"><b id="gkOranV">100%</b></label></div>
+      <div class="gk-durum" id="gkDurum"></div>
     </div>
 
     <details open data-panel="keys">

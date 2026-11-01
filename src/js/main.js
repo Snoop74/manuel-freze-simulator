@@ -31,3 +31,4 @@ import './23-takim-cubugu.js';
 import './24-bilgisayar.js';
 import './25-mengene.js';
 import './26-egitim.js';
+import './27-gkod.js';

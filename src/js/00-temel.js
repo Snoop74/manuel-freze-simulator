@@ -97,7 +97,7 @@ S.zn = PH + TOOLS[S.tool].len;
 const tool = () => TOOLS[S.tool];
 const tipZ = () => S.nose - tool().len;
 function unslip(T) { if (T.slipped) { T.len -= T.slipped; T.stick -= T.slipped; T.slipped = 0; } }
-const rapid = () => S.rapidKey || S.rapidBtn;
+const rapid = () => S.rapidKey || S.rapidBtn || !!S.gHizli;   // gHizli: G-kod programında G0
 
 /* ---------------- Mesaj / kayıt ---------------- */
 const logEl = $('log'), toastEl = $('toast');

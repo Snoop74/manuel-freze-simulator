@@ -45,6 +45,7 @@ const TBICON = {
   mute:'<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/>',
   blank:'<path d="M4 8.5l8-4.5 8 4.5v7.5l-8 4.5-8-4.5z"/><path d="M4 8.5l8 4.5 8-4.5M12 13v7.5"/><path d="M8 6.3l8 4.5"/>',
   menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+  gkod:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/>',
   help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7v.5"/><circle cx="12" cy="17" r=".7"/>'
 };
 /* ---------------- Paneller: taşınabilir, ölçeklenebilir kumanda pencereleri ---------------- */
@@ -63,6 +64,7 @@ const PM = (() => {
     { id:'jog',     title:'Hareket',          col:'BL', w:330 },
     { id:'drawing', title:'Teknik resim',     col:'C', w:340 },
     { id:'keys',    title:'Kısayollar',       col:'C', w:300 },
+    { id:'gkod',    title:'Program (G-kod)',  col:'C', w:640 },
   ];
   const PRESETS = {
     kumanda: ['console', 'hud'],                                    // takımlar alttaki takım çubuğunda (23-takim-cubugu)

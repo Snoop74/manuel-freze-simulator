@@ -30,6 +30,7 @@ const CR = (() => {
     { id:'clamp', n:'Pabuç takımı', t:'Mengeneye sığmayan plakaları tablaya bağla (Y 140 mm’ye kadar)', p:900, ready:true },
     { id:'vac', n:'Vakum tabla', t:'Parçanın her yeri açık; ince ve büyük plakalar. Ağır pasoda parça kopar', p:6500, ready:true },
     { id:'rot', n:'Döner tabla', t:'Q/E ile çevir: cıvata daireleri, yay kanallar', p:8000, ready:true },
+    { id:'cnc', n:'CNC dönüşüm kiti', t:'Step motor ve kumanda: tezgâh G-kod programıyla çalışır (G0/G1, G81/G83 delme). Seri işler hızlanır', p:30000, ready:true },
     { id:'div', n:'Divizör', t:'Yuvarlak parçaya altıgen, kare, kama kanalı', p:12000 },
   ];
   let st = null, on = false, sel = null, arm = { i:-1, t:0 };
