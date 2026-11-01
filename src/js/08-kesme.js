@@ -91,6 +91,7 @@ function crash(msg) {
   burst('smoke', 10, 0, ct + 4, 0, 40, 60, 1.8);
   if (S.job && !S.job.done) S.job.stats.breaks++;
   S.alarm = true; S.spindle = false; S.broken = true;
+  S.tap = null; S.peck.active = false;                            // kırılan kılavuz tablayı kilitli bırakmasın
   app.CR.lost(S.tool);
   stopMotion();
   buildToolVisual();
@@ -130,6 +131,10 @@ function tryStep(nx, ny, nn, dtStep) {
   if (T.type === 'dial') return app.DT.step(nx, ny, nn, T);
   const it = interfere(nx, ny, tip, T);
   if (S.loose && it.any) { warnOnce('loose', 'Parça bağlı değil, tabladan kopmuş. Yeni ham parça bağlayın.', 'bad'); return false; }
+  if (S.broken && it.any) {                                       // kırık takım parçanın içinde: yalnızca Z ile yukarı çekilebilir (kilitlenmesin)
+    if (nn > S.nose && horiz < 1e-6) return true;
+    warnOnce('broken', 'Takım kırık ve parçanın içinde: önce Z ile yukarı çekin, sonra takımı değiştirin.', 'bad'); return false;
+  }
   if (T.type === 'tap') return tapStep(nx, ny, nn, T, it, horiz);
   if (isDrill(T) && S.peck.active && !it.any && tip > S.peck.top + 0.3) S.peck.active = false;
   if (!it.any) {
@@ -271,12 +276,13 @@ function tryStep(nx, ny, nn, dtStep) {
 function holeRadius(x, y, tip) {           // merkezden dışa doğru tarama: ilk dolu hücreye kadar olan yarıçap
   if (ROT.on) { toLv(x, y); x = LX; y = LY; }
   let best = 99;
+  const z = Math.max(tip, 0.01);                                  // ucu parçanın altına çıkmışsa boydan boya delik boş sayılır (taban 0)
   for (const [ux, uy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
     let r = 0;
     for (; r < 20; r += C) {
       const i = Math.round((x + ux * r) / C), j = Math.round((y + uy * r) / C);
       if (i < 0 || j < 0 || i >= NX || j >= NY) break;
-      if (H[j * NX + i] > tip) break;
+      if (H[j * NX + i] > z) break;
     }
     best = Math.min(best, r);
   }
