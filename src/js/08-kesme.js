@@ -136,7 +136,7 @@ function tryStep(nx, ny, nn, dtStep) {
     warnOnce('broken', 'Takım kırık ve parçanın içinde: önce Z ile yukarı çekin, sonra takımı değiştirin.', 'bad'); return false;
   }
   if (T.type === 'tap') return tapStep(nx, ny, nn, T, it, horiz);
-  if (isDrill(T) && S.peck.active && !it.any && tip > S.peck.top + 0.3) S.peck.active = false;
+  if (isDrill(T) && S.peck.active && !it.any && tip > S.peck.top + 0.3) { S.peck.active = false; S.talas = 0; }   // delikten çıktı: talaş boşaldı
   if (!it.any) {
     // Izgara hücresine girmeyen küçük adımlar da kesme yolunun parçası; ancak ~1 mm temassız ilerleyince pencere sıfırlanır
     const W = S.win;
@@ -175,21 +175,23 @@ function tryStep(nx, ny, nn, dtStep) {
   if (isDrill(T) && horiz > 0.0005 && it.over > 0.3) { crash('Matkap yanal yüke dayanamadı ve kırıldı. Matkapla yalnızca Z ekseninde ilerleyin.'); return false; }
   if (T.type === 'face' && !horiz && down && it.over > 1.5) { crash('Alın frezesiyle dalma yapılmaz; kesici uçlar kırıldı. Yandan girerek kesin.'); return false; }
 
-  if (isDrill(T) && it.over > 0.04) {
+  if (isDrill(T) && it.any) {                                    // temas: talaş takibi her ilerlemede (yavaş ilerlemede adım küçük olsa da)
     {
       const lim = S.coolant ? 2.0 : 1.5;
       if (S.rpm > recRpm(T) * lim && it.over > 0.3) { crash(`Devir çok yüksek: HSS matkabın ucu yandı. Önerilen ${recRpm(T)} dev/dk.`); return false; }
-      if (!S.peck.active) {
-        S.peck.active = true; S.peck.top = it.maxH;
+      if (!S.peck.active) {                                      // yeni dalış: talaş boş, sayaç bu dalışın başladığı derinlikten
+        S.peck.active = true; S.peck.top = it.maxH; S.peck.start = tip;
         if (ROT.on) toLv(nx, ny);
         const ci = Math.round((ROT.on ? LX : nx) / C), cj = Math.round((ROT.on ? LY : ny) / C);
         if (T.type === 'drill' && ci >= 0 && ci < NX && cj >= 0 && cj < NY && !CUT[cj * NX + ci] && Math.abs(H[cj*NX+ci] - PH) < 0.01)
           warnOnce('spot', 'Matkap düz yüzeyde kayabilir; önce T6 punta matkabıyla merkez açın.', 'warn', 8000);
       }
-      const depth = S.peck.top - tip;
+      // talaş, son boşaltmadan (matkap delikten tamamen çıkınca) beri delinen boy kadar kanallarda birikir: bir dalışta ~5×D (soğutmayla 6.5×D)
       if (T.type === 'drill') {
-        if (depth > 7 * T.d) { crash('Talaş kanallara sıkıştı ve matkap kırıldı. Derin delikte gagalayarak (geri çekip talaş boşaltarak) delin.'); return false; }
-        if (depth > 4.5 * T.d) warnOnce('peck', `Delik derinliği ${depth.toFixed(1)} mm (${(depth / T.d).toFixed(1)}×D). Matkabı geri çekip talaşı boşaltın.`);
+        const dalis = S.peck.start - tip, lim = 5 * T.d * (S.coolant && !mat.dry ? 1.3 : 1);
+        S.talas = clamp(dalis / lim, 0, 1.2); S.talasT = performance.now();
+        if (dalis > lim) { crash('Talaş kanallara sıkıştı ve matkap kırıldı. Talaş çubuğu dolunca matkabı delikten tamamen çıkarın (gagalama); her dalışta talaş boşalır.'); return false; }
+        if (S.talas > 0.7) warnOnce('peck', `Talaş doluyor (%${Math.round(S.talas * 100)}): matkabı delikten tamamen çıkarıp talaşı boşaltın, sonra kaldığınız yerden devam edin.`);
       }
     }
   }

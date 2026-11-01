@@ -191,7 +191,12 @@ function updateHud(T, tip) {
     $('yhDmg').style.width = Math.min(100, S.damage * 100) + '%';
     $('yhLoadV').textContent = cuttingNow ? stress.toFixed(1) + '×' : '—';
     $('yhDmgV').textContent = Math.round(S.damage * 100) + '%';
-    yh.classList.toggle('tehlike', S.damage > 0.6);
+    const tal = isDrill(T) && performance.now() - (S.talasT || 0) < 1500 ? S.talas || 0 : 0;   // matkap: kanallardaki talaş
+    $('yhTalasRow').hidden = !isDrill(T);
+    $('yhTalas').style.width = Math.min(100, tal * 100) + '%'; $('yhTalas').style.background = tal > 0.7 ? 'var(--bad)' : tal > 0.45 ? 'var(--warn)' : 'var(--ok)';
+    $('yhTalasV').textContent = Math.round(tal * 100) + '%';
+    if (tal > 0.7 && cuttingNow && performance.now() - (S.talasBip || 0) > 800) { S.talasBip = performance.now(); beep(1200, 0.05, 0.05); }
+    yh.classList.toggle('tehlike', S.damage > 0.6 || tal > 0.85);
     if (S.damage > 0.6 && cuttingNow && performance.now() - (S.yukBip || 0) > 650) { S.yukBip = performance.now(); beep(1500, 0.05, 0.05); }
   }
   $('hFeed').textContent = S.changing ? 'takım değişimi' : S.feedNow > 0 && (performance.now() - S.lastMove < 200) ? `${Math.round(S.curFeed)} mm/dk` : rapid() ? `HIZLI ${RAPID} mm/dk` : `${S.feed} mm/dk`;
