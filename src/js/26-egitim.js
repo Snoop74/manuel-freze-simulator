@@ -35,13 +35,13 @@ const EG = (() => {
     { s:'Devri ve ilerlemeyi ben ayarladım. Mili çalıştır: START.', h:['#cpStart', '#spStart'],
       kur:() => { setRpm(1500); setFeed(400); }, ok:() => S.spindle },
     { s:'Takımı parçanın üstüne götürelim. Kumandada X, 3, 0, sonra Y, 2, 5 yaz ve GİT\'e bas.', h:['#cpKeys'], p:['console'],
-      ok:() => yakin(d().x, 30) && yakin(d().y, 25) },
+      git:{ x:30, y:25 }, ok:() => yakin(d().x, 30) && yakin(d().y, 25) },
     { s:'Şimdi Z− tuşuna basılı tutup in. Yaklaşınca el çarkıyla yavaşça indir; takım parçaya değdiği an dur.', h:['#cpJog'], p:['console'],
       ok:() => { if (tip() > PH + 0.05) return false; stopMotion(); return true; } },
     { s:'Değdi! Burası parçanın üstü: Z0 tuşuyla Z\'yi sıfırla.', h:['#cpSoft [data-sk="2"]'], p:['console'],
       kur:() => { ref = S.zn; }, ok:() => S.zn !== ref && yakin(d().z, 0, 0.05) },
     { s:'Takımı parçanın soluna çıkar: X −40 GİT. Sonra Z −1 GİT; bu 1 mm\'lik paso.', h:['#cpKeys'], p:['console'],
-      ok:() => d().x < -30 && yakin(d().z, -1, 0.05) },
+      git:{ x:-40, z:-1 }, ok:() => d().x < -30 && yakin(d().z, -1, 0.05) },
     { s:'Otomatik ilerlemeyi SAĞA aç; tabla kendi gider. Parçanın öbür tarafına çıkınca ben durdururum.', h:['#autoBtns'], p:['spindle'],
       ok:() => { if (d().x < PW + 25) return false; setAuto(0); return true; } },
     { s:'Yarısı bitti. Z\'ye dokunma: Y 75 GİT, sonra otomatik ilerlemeyi SOLA aç.', h:['#cpKeys', '#autoBtns'], p:['console', 'spindle'],
@@ -66,7 +66,7 @@ const EG = (() => {
   /* ---- balon ---- */
   const el = document.createElement('div'); el.className = 'eg'; el.id = 'egBalon'; el.hidden = true;
   el.innerHTML = `<div class="eg-av" aria-hidden="true">O</div>
-    <div class="eg-govde"><div class="eg-bas"><b>Otto Usta</b><span id="egSay"></span></div><p id="egSoz"></p>
+    <div class="eg-govde"><div class="eg-bas"><b>Otto Usta</b><span id="egSay"></span></div><p id="egSoz"></p><p class="eg-ip" id="egIp" hidden></p>
     <div class="eg-alt"><button class="btn sm" id="egAtla">Eğitimi bitir</button><button class="btn sm start" id="egKariyer" hidden>Kariyere başla</button></div></div>`;
   document.body.append(el);
   let i = -1, timer = 0, kirikDedi = false, isikli = [];
@@ -77,7 +77,7 @@ const EG = (() => {
     if (A.p) A.p.forEach(id => { if (PM.P[id] && !PM.P[id].vis) PM.setVis(id, true); });
     if (A.kur) A.kur();
     (A.h || []).forEach(q => document.querySelectorAll(q).forEach(e => { e.classList.add('eg-isik'); isikli.push(e); }));
-    $('egSoz').textContent = A.s; $('egSay').textContent = A.son ? '' : `${i + 1} / ${ADIM.length - 1}`;
+    $('egSoz').textContent = A.s; $('egIp').hidden = true; bosT = 0; $('egSay').textContent = A.son ? '' : `${i + 1} / ${ADIM.length - 1}`;
     $('egAtla').hidden = !!A.son; $('egKariyer').hidden = !A.son;
     el.classList.remove('yeni'); void el.offsetWidth; el.classList.add('yeni');
   }
@@ -86,9 +86,26 @@ const EG = (() => {
     const A = ADIM[i];
     if (S.broken && !kirikDedi) { kirikDedi = true; $('egSoz').textContent = 'Kırıldı mı? Olur öyle, benim ilk gün iki tane gitmişti. Takımı yukarı çek, alttaki şeritten aynısını yeniden tak; burada para yok.'; return; }
     if (!S.broken && kirikDedi) { kirikDedi = false; $('egSoz').textContent = A.s; }
-    if (A.son || !A.ok()) return;
+    if (A.son) return;
+    let ok = false;
+    try { ok = A.ok(); } catch (e) { console.error('eğitim adımı', i + 1, e); return; }
+    if (!ok) { ipucu(A); return; }
     beep(880, 0.05, 0.05); setTimeout(() => beep(1320, 0.06, 0.05), 90);
     i++; goster();
+  }
+  // takılınca: makine bir süredir boşta ve adım geçmediyse usta neyin eksik olduğunu söyler (alarm, GİT hedefi)
+  let bosT = 0;
+  function ipucu(A) {
+    const bos = !S.changing && !S.autoX && !S.tap && !['x', 'y', 'z'].some(a => Math.abs(S.pend[a]) > 1e-6 || Math.abs(S.wheel[a]) > 1e-6);
+    bosT = bos ? bosT + 0.2 : 0;
+    let t = '';
+    if (S.alarm) t = 'Alarm yanıyor; ACİL STOP\'a mı bastın? Kumandadaki alarmı sıfırla, sonra devam et.';
+    else if (A.git && bosT > 1.5) {
+      const v = d(), f = n => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(2), ax = Object.keys(A.git);
+      const yanlis = ax.filter(a => Math.abs(v[a] - A.git[a]) > 0.5);
+      if (yanlis.length) t = `Ekranda ${yanlis.map(a => a.toUpperCase() + ' ' + f(v[a])).join(', ')} görüyorum; ${yanlis.map(a => a.toUpperCase() + ' ' + f(A.git[a])).join(', ')} olmalı. Eksen tuşuna bas, sayıyı yaz (eksi için ±), sonra GİT. ENT konumu değiştirmez, ekrandaki değeri değiştirir.`;
+    }
+    $('egIp').textContent = t; $('egIp').hidden = !t;
   }
   function baslat() {
     initAudio(); app.MENU.kapat();
