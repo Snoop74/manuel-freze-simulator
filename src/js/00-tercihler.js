@@ -17,6 +17,7 @@ const GRAFIK = Object.keys(KALITE.yuksek);
 const VARSAYILAN = Object.assign({ kalite:'yuksek' }, KALITE.yuksek, {
   sesAna:0.9, sesMakine:1, sesArayuz:0.8,      // 0..1
   acilisMenu:true,                               // açılışta ana menü
+  gelistirici:false,                             // geliştirici paneli (Ctrl+Shift+D)
 });
 
 const AYAR = Object.assign({}, VARSAYILAN);

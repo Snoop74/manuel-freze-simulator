@@ -1,6 +1,7 @@
 // ── İş emirleri: görevler, teknik resim, markalama, muayene ve puan, teslim raporu
 import { kayit } from './00-kayit.js';
 import { $, C, CUT, EDGE, H, INSP, NX, NY, PD, PH, PW, S, TOOLS, app, clamp, isDrill, log } from './00-temel.js';
+import { AYAR } from './00-tercihler.js';
 import { beep, initAudio } from './01-ses.js';
 import { rotIn } from './03-tabla-parca.js';
 import { FIX, PAR, markDirty, parAxis, parBands, straps, threads, warnParallels } from './05-baglama.js';
@@ -431,7 +432,7 @@ function selectJob(i) {
   const J = JOBS[i];
   if (S.job && S.job.idx !== i) S.job = null;
   renderJobs();
-  $('jcBtns').hidden = !J; $('vDraw').hidden = !J; $('jcTeklif').hidden = true; $('jobDemo').hidden = !(J && J.montaj);
+  $('jcBtns').hidden = !J; $('vDraw').hidden = !J; $('jcTeklif').hidden = true; $('jobDemo').hidden = !(J && J.montaj && AYAR.gelistirici);   // deneme plakası yalnızca geliştirici modunda
   if (!J) {
     $('jcNo').textContent = app.CR.on ? 'KARİYER' : 'SERBEST'; $('jcTitle').textContent = app.CR.on ? 'Sipariş seçin' : 'Serbest çalışma';
     $('jcBrief').textContent = app.CR.on ? 'Panodan bir sipariş seçin: teknik resim açılır, "İşe başla" ile ham parça kasadan alınır ve mengeneye bağlanır. Teslimde parça ölçülür, müşteri ödemeyi yapar.'

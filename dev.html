@@ -714,6 +714,18 @@ body.montaj-on .topbar{pointer-events:none;opacity:.45}
 #jobDemo{width:100%;margin-top:6px}
 .mt-num{position:fixed;z-index:25;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:rgba(10,14,16,.85);border:1px solid #6b767a;color:#e8ecea;font:600 12px/18px var(--f-dro);text-align:center;pointer-events:none}
 .mt-num.ok{border-color:#3fd47a;color:#9dffc4}.mt-num.bad{border-color:#e5484d;color:#ff9a9d}
+/* geliştirici modu paneli: sol alt, katlanır */
+.gl-panel{position:fixed;left:12px;bottom:12px;z-index:64;width:270px;background:rgba(18,22,24,.94);border:1px solid #b8860b;border-radius:8px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.gl-panel[hidden]{display:none}
+.gl-head{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;color:#f0b429;font-family:var(--f-display);letter-spacing:.1em}
+.gl-head span{flex:1;text-align:right;color:var(--muted);font-family:var(--f-dro);letter-spacing:0}
+.gl-head[aria-expanded="false"] i{transform:rotate(-90deg)}
+.gl-body{display:grid;gap:5px;padding:0 10px 10px}
+.gl-body[hidden]{display:none}
+.gl-row{font-family:var(--f-dro);color:#cfd5d1;word-break:break-all}
+.gl-body .btn{width:100%;font-size:12px;padding:5px 8px;text-align:center}
+.gl-file{display:block;cursor:pointer}
+.gl-note{color:var(--muted);font-size:11px}
 </style>
 
 <div class="app">

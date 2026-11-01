@@ -116,6 +116,7 @@ MENU.ekran('ayarlar', (k, M) => {
     M.kaydir('sesArayuz', 'Arayüz bildirimleri', 0, 1, 0.05);
   } else {
     M.onay('acilisMenu', 'Açılışta ana menü', 'Kapalıysa oyun doğrudan tezgâhta açılır');
+    M.onay('gelistirici', 'Geliştirici modu', 'Sahne dışa aktarma, yerleşim, konum bilgisi · kısayol Ctrl+Shift+D');
   }
   M.alt(M.dugme('Varsayılanlara dön', () => { ayarSifirla(); MENU.yenile(); }), M.dugme('Geri', () => MENU.geri(), { ana:true }));
 });

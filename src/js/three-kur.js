@@ -5,5 +5,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';   // geliştirici modu: sahneyi .glb aktarma
 
-window.THREE = { ...T, OrbitControls, RoomEnvironment, RGBELoader, GLTFLoader };
+window.THREE = { ...T, OrbitControls, RoomEnvironment, RGBELoader, GLTFLoader, GLTFExporter };

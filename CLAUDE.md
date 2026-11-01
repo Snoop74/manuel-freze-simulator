@@ -9,6 +9,7 @@
 - `assets/`: oyunla birlikte dağıtılan dosyalar (paketlenmez, sayfa çalışırken yükler): `hdri/` ortam yansıması, `doku/` dokular. Kaynak ve lisanslar `assets/LISANS.md` (yalnızca CC0 ya da açıkça izinli dosyalar). Dosya yüklenemezse (örn. freze.html tek başına file:// ile açılırsa) oyun dokusuz çalışır.
 - Dokular `02-sahne-tezgah.js` içinde `addSurface(malzeme, 'set_adı', {...})` ile üç düzlemli (triplanar) kaplanır; tezgâhın UV'si yok. `alb` 0 ise dokunun yalnızca açık-koyu detayı alınır, renk malzemeden gelir.
 - `src/sayfa.html`: sayfa şablonu (paneller, düğmeler). `/*@CSS@*/` yerine `src/stil.css`, `//@JS@` yerine paket girer.
+- **Geliştirici modu** (`22-gelistirici.js`): Ayarlar → Oyun → Geliştirici modu ya da Ctrl+Shift+D. Sahneyi .glb aktarır (mm → metre), hazır modellerin yerleşimini JSON indirir/yükler (adlar `kimlik#sıra`, 19-atolye PROPS), kamera konumu, imlecin altındaki nesne. Blender'dan yerleşim: `tools/blender-yerlesim.py`.
 - `src/js/NN-ad.js`: gerçek ES modülleri (`import`/`export`). Her modülün ilk satırı ne içerdiğini söyler. `main.js` hepsini sırayla yükler.
 
 ## Modül kuralları (tools/analiz.mjs denetler)

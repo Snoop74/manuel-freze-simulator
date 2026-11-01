@@ -34,6 +34,7 @@ const add = (m, x, y, z) => { m.position.set(x, y, z); scene.add(m); return m; }
    fromY: ışının başladığı yükseklik (rafın alt katı için üst katın hemen altı); topY: üstü bu yüksekliğe asılır (tavan).
    Aynı model bir kez indirilir, sonraki kullanımlar kopyadır (geometri ve doku paylaşılır). */
 const gltf = new THREE.GLTFLoader(), ray = new THREE.Raycaster(), gltfCache = {};
+const PROPS = [];                                                 // yerleşen hazır modeller (geliştirici modu yerleşimi: ad 'kimlik#sıra')
 function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on, fromY = F + 5000, topY, foot }) {   // foot: oturma yüksekliğini veren parçanın adı (altından sarkan parça sayılmaz)
   if (!gltfCache[id]) gltfCache[id] = new Promise(res => gltf.load(`assets/model/${id}/${id}.gltf`, g => res(g.scene), undefined, () => res(null)));
   const load = gltfCache[id].then(s => s && (s.parent || s.userData.used ? s.clone(true) : (s.userData.used = true, s)));
@@ -50,6 +51,7 @@ function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on, fromY = F + 5000
     const bb = new THREE.Box3().setFromObject(o), fo = foot && o.getObjectByName(foot);
     const py = topY != null ? topY - bb.max.y : y - (fo ? new THREE.Box3().setFromObject(fo).min.y : bb.min.y);
     o.position.set(x - (bb.min.x + bb.max.x) / 2, py, wallZ != null ? wallZ - bb.min.z : z - (bb.min.z + bb.max.z) / 2);
+    o.name = `${id}#${PROPS.filter(p => p.id === id).length + 1}`; PROPS.push({ id, o });
     scene.add(o); o.updateMatrixWorld(true);
     return o;
   });
@@ -341,3 +343,5 @@ for (const [x, z, s] of [[-300, -40, 120], [470, 20, 90]]) {
 }
 const nip = smat(0xb3261e, 0.4, 0.3, 0.4);
 for (const x of [-360, 520]) { const n = cyl(4, 4, 8, nip, 10); n.rotation.x = Math.PI / 2; n.position.set(x, -75, 58); table.add(n); }
+
+export { PROPS };
