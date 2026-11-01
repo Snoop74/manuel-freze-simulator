@@ -11,7 +11,7 @@ buildToolVisual(); updateToolUI(); updateRec(); updateSpindleUI();
 setRpm(4200); setFeed(500);
 renderJobs(); selectJob(-1); CR.render();
 log('Tezgâh hazır. T3 Ø10 parmak freze takılı. Sıfır noktası parçanın sol-ön-üst köşesinde.', 'ok');
-for (const id of ['alarm', 'report', 'toast', 'bench', 'montaj', 'tedit', 'shop']) document.body.append($(id));
+for (const id of ['alarm', 'report', 'toast', 'bench', 'montaj', 'mtHint', 'tedit', 'shop']) document.body.append($(id));
 setMaterial('al');
 PM.init();
 requestAnimationFrame(frame);

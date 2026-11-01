@@ -31,6 +31,7 @@ const IA = (() => {
   const tip = document.createElement('div'); tip.className = 'ia-tip'; tip.hidden = true; stage.append(tip);
   let hover = null, drag = null;
   function pick(e) {
+    if (S.montaj) return null;                                     // montajda kamera çalışma tezgâhında: kollar ve hortum tıklanmaz
     const r = canvas.getBoundingClientRect();
     ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
     ray.setFromCamera(ndc, camera);
@@ -120,7 +121,7 @@ const FD = (() => {
   }
   $('drawMode').addEventListener('click', () => setOn(!on));
   canvas.addEventListener('pointerdown', e => {
-    if (!on || e.button !== 0 || S.tap) return;
+    if (!on || e.button !== 0 || S.tap || S.montaj) return;
     const p = hit(e); if (!p || !overPart(p)) return;
     e.preventDefault(); e.stopImmediatePropagation(); controls.enabled = false; initAudio();
     try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
@@ -201,7 +202,7 @@ const AG = (() => {
     if (on) log('Hava tabancası elinizde: talaşın üstünde sol tuşu basılı tutun. Talaşsız teslim kariyerde prim getirir.', 'ok');
   }
   window.addEventListener('pointerdown', e => {                 // pencere düzeyinde: tezgâh kollarından önce yakalar
-    if (!on || e.button !== 0 || e.target !== canvas) return;
+    if (!on || e.button !== 0 || e.target !== canvas || S.montaj) return;
     e.preventDefault(); e.stopImmediatePropagation(); controls.enabled = false; initAudio();
     try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
     aim = pick(e) || aim; blowing = true; place(); sound(true);

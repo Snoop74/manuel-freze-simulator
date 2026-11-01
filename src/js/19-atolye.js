@@ -54,10 +54,9 @@ function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on, fromY = F + 5000
     return o;
   });
 }
-// sol arka: takım arabası ve üstünde takım sandığı; sağ arka: çalışma tezgâhında masa matkabı ve tezgâh mengenesi, önünde tabure
+// sol arka: takım arabası ve üstünde takım sandığı; sağ arka: çalışma tezgâhında tezgâh mengenesi (sol yarısı montaj yeri, 21-montaj), önünde tabure
 const cart = model('tool_cart', { x:-1250, z:-1200 });
 model('metal_tool_chest', { x:-1400, z:-1230, on:cart });
-model('drill_press_01', { x:1600, z:-1420, y:F + 880, ry:0 });
 model('bench_vice_01', { x:2420, z:-1180, y:F + 880, ry:0 });
 model('metal_stool_01', { x:1850, z:-750 });
 

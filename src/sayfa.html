@@ -130,29 +130,24 @@
         </div>
       </div>
     </div>
-    <div class="bench" id="montaj" hidden>
-      <div class="bench-box" role="dialog" aria-label="Montaj masası">
-        <div class="bench-head"><b>MONTAJ MASASI</b><span id="mtInfo"></span><button class="btn" id="mtBack">Tezgâha dön</button></div>
-        <div class="bench-body">
-          <div class="bench-view" id="mtView"><canvas id="mtC" aria-label="Montajın 3B görünümü"></canvas><div class="bench-hint" id="mtHint"></div></div>
-          <div class="bench-side">
-            <div class="sub">Adımlar</div>
-            <ol class="mt-steps" id="mtSteps"></ol>
-            <button class="btn start" id="mtPlace">Kuleyi yerleştir</button>
-            <div class="sub">Tork anahtarı</div>
-            <div class="mt-gauge" id="mtGauge"></div>
-            <div class="mt-tq" id="mtTq">0.0 Nm</div>
-            <div class="sub">Cıvatalar</div>
-            <ul class="mt-list" id="mtList"></ul>
-            <div class="dro-note" id="mtOrder"></div>
-            <button class="btn" id="mtCoil" hidden>Yay diş tak</button>
-            <button class="btn" id="mtUndo">Cıvataları sök</button>
-            <button class="btn start" id="mtDone">Montajı bitir ve teslim et</button>
-            <div class="dro-note">Deliğe tıkla: cıvata elle girer. Cıvatanın üstünde basılı tut: tork anahtarı. Takılan cıvataya tıkla: söker. Boşlukta sürükle: döndür, tekerlek: yakınlaştır.</div>
-          </div>
-        </div>
-      </div>
+    <div class="mt-panel" id="montaj" hidden role="dialog" aria-label="Montaj">
+      <div class="mt-head"><b>MONTAJ</b><span id="mtInfo"></span></div>
+      <div class="sub">Adımlar</div>
+      <ol class="mt-steps" id="mtSteps"></ol>
+      <button class="btn start" id="mtPlace">Kuleyi yerleştir</button>
+      <div class="sub">Tork anahtarı</div>
+      <div class="mt-gauge" id="mtGauge"></div>
+      <div class="mt-tq" id="mtTq">0.0 Nm</div>
+      <div class="sub">Cıvatalar</div>
+      <ul class="mt-list" id="mtList"></ul>
+      <div class="dro-note" id="mtOrder"></div>
+      <button class="btn" id="mtCoil" hidden>Yay diş tak</button>
+      <button class="btn" id="mtUndo">Cıvataları sök</button>
+      <button class="btn start" id="mtDone">Montajı bitir ve teslim et</button>
+      <button class="btn" id="mtBack">Tezgâha dön</button>
+      <div class="dro-note">Deliğe tıkla: cıvata ağzına konur. Cıvatanın üstünde tekerlek: aşağı sıkar, yukarı gevşetir (ya da basılı tut). Takılıp kalan cıvataya tıkla: çıkar. Boşlukta sürükle: döndür.</div>
     </div>
+    <div class="mt-hint" id="mtHint" hidden></div>
     <div class="report" id="report" hidden>
       <div class="box" role="dialog" aria-labelledby="rpTitle">
         <div class="rp-head"><span id="rpJob">İŞ 1</span><h2 id="rpTitle">Muayene raporu</h2></div>
