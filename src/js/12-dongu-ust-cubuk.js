@@ -251,7 +251,7 @@ const TBICON = {
 };
 /* ---------------- Paneller: taşınabilir, ölçeklenebilir kumanda pencereleri ---------------- */
 const PM = (() => {
-  const TOP = 46, KEY = 'freze-panels-v2';
+  const TOP = 46, BAR = 58, KEY = 'freze-panels-v2';
   const CFG = [
     { id:'console', title:'Kumanda paneli',   col:'B', w:760 },
     { id:'hud',     title:'Durum',            col:'L', w:290 },
@@ -267,11 +267,11 @@ const PM = (() => {
     { id:'keys',    title:'Kısayollar',       col:'C', w:300 },
   ];
   const PRESETS = {
-    kumanda: ['console', 'tools', 'hud'],
+    kumanda: ['console', 'hud'],                                    // takımlar alttaki takım çubuğunda (23-takim-cubugu)
     temel: ['hud', 'spindle', 'dro', 'tools', 'wheels', 'jog'],
     tam:   ['hud', 'jobs', 'log', 'spindle', 'dro', 'tools', 'wheels', 'jog'],
     is:    ['hud', 'jobs', 'spindle', 'dro', 'tools', 'wheels'],
-    kariyer: ['console', 'jobs', 'tools'],
+    kariyer: ['console', 'jobs'],
   };
   const P = {};
   let z = 30, store = {}, leftEdge = 310;
@@ -282,7 +282,7 @@ const PM = (() => {
     kayit.yaz(KEY, o);
   };
   const narrow = () => window.innerWidth <= 900;
-  const vh = () => window.innerHeight - TOP;
+  const vh = () => window.innerHeight - TOP - BAR;                  // alttaki takım çubuğunun yeri boş kalır
 
   function place(p) {
     if (narrow()) return;

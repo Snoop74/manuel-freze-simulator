@@ -629,3 +629,30 @@ body.montaj-on .topbar{pointer-events:none;opacity:.45}
 .yuk-hud.tehlike{border-color:var(--bad);animation:yhPulse .6s ease-in-out infinite alternate}
 .yuk-hud.tehlike #yhDmg{background:var(--bad)}
 @keyframes yhPulse{to{box-shadow:0 0 0 3px rgba(229,72,77,.35)}}
+/* alttaki takım çubuğu: takılı takım, tıklayınca yatay takım şeridi, sepet ve ayrıntılar */
+.tc{position:fixed;left:50%;bottom:8px;transform:translateX(-50%);z-index:57;display:grid;justify-items:center;gap:6px;max-width:calc(100% - 16px)}
+.tc-bar{display:flex;gap:6px;align-items:stretch;background:rgba(18,22,24,.96);border:1px solid var(--line);border-radius:10px;padding:5px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.tc-cur{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:9px;padding:4px 10px;border-radius:7px;min-width:250px}
+.tc-cur:hover,.tc.acik .tc-cur{background:#232a2d}
+.tc-cur .ico{width:30px;height:30px;display:grid;place-items:center}.tc-cur .ico svg{width:30px;height:30px}
+.tc-txt{display:grid;line-height:1.15;flex:1}.tc-txt b{color:var(--safety);font-family:var(--f-display)}.tc-txt span{font-size:12px;color:#cfd5d1}
+.tc-st{font-size:11px;font-family:var(--f-dro)}.tc-st.bad{color:var(--bad)}.tc-st.warn{color:var(--warn)}.tc-st.buy{color:var(--muted)}
+.tc-cur i{font-style:normal;color:var(--muted);transition:transform .15s}.tc.acik .tc-cur i{transform:rotate(180deg)}
+.tc-btn{all:unset;box-sizing:border-box;cursor:pointer;width:42px;display:grid;place-items:center;border-radius:7px;color:#cfd5d1}
+.tc-btn:hover{background:#232a2d}.tc-btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tc-btn[hidden]{display:none}
+.tc-tray{max-width:min(1100px,calc(100vw - 16px));background:rgba(18,22,24,.97);border:1px solid var(--line);border-radius:10px;padding:8px;box-shadow:0 12px 32px rgba(0,0,0,.5)}
+.tc-tray[hidden]{display:none}
+.tc-list{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.tc-card{all:unset;box-sizing:border-box;cursor:pointer;flex:0 0 92px;display:grid;justify-items:center;gap:1px;padding:7px 5px 6px;border:1px solid var(--line);border-radius:8px;background:#1b2023;text-align:center;font-size:11px;color:#cfd5d1}
+.tc-card:hover{border-color:#6b767a;background:#222a2d}
+.tc-card .ico{width:34px;height:34px;display:grid;place-items:center}.tc-card .ico svg{width:34px;height:34px}
+.tc-card b{color:var(--safety);font-family:var(--f-display);font-size:12px}
+.tc-card .nm{max-width:84px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tc-card .dm{color:var(--muted);font-family:var(--f-dro)}
+.tc-card em{font-style:normal;font-size:10px;font-family:var(--f-dro);margin-top:2px}
+.tc-card.on{border-color:var(--safety);box-shadow:inset 0 0 0 1px var(--safety)}
+.tc-card.bad em{color:var(--bad)}.tc-card.warn em{color:var(--warn)}.tc-card.buy{opacity:.6}.tc-card.buy em{color:var(--muted)}
+.tc-card.add .ico{font-size:24px;color:var(--muted)}
+body.montaj-on .tc{display:none}
+.yuk-hud{bottom:76px}
+@media (max-width:900px){.tc-cur{min-width:0}.tc-txt span{display:none}}

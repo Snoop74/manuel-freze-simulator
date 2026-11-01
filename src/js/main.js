@@ -25,3 +25,4 @@ import './19-atolye.js';
 import './20-menu.js';
 import './21-montaj.js';
 import './22-gelistirici.js';
+import './23-takim-cubugu.js';

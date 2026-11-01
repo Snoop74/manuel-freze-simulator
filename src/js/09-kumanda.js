@@ -41,7 +41,8 @@ function setFeed(v) { S.feed = v; $('feed').value = v; $('feedOut').textContent 
 
 // Takım dolabı
 let spinAng = 0; const addSpin = d => { spinAng += d; };   // mil görsel dönüş açısı
-let rackTag = null; const setRackTag = f => { rackTag = f; };                        // kariyer: (i) => { own, price }
+let rackTag = null; const setRackTag = f => { rackTag = f; };                        // kariyer: (i) => { own, price, kirik }
+const rackTagOf = i => rackTag && rackTag(i);
 function renderRack() {
   const rk = $('rack'); rk.innerHTML = '';
   TOOLS.forEach((T, i) => {
@@ -298,6 +299,6 @@ function resetPart(k) {
 /* ---------------- İş emirleri, muayene ve puanlama ---------------- */
 Object.assign(app, { fmt, updateAutoUI, updateRec, updateSpindleUI, updateToolUI });   // önceki modüllerin geç başvuruları
 
-export { COL, TICK, addSpin, drawWheels, droVals, fmt, renderRack, requestToolChange, resetPart, setAuto,
+export { COL, TICK, addSpin, drawWheels, droVals, fmt, rackTagOf, renderRack, requestToolChange, resetPart, setAuto,
   setAxis, setFeed, setMaterial, setRackTag, setRpm, setStep, spinAng, spindle, toggleCoolant, tok, updateRec,
   updateSpindleUI, updateToolUI, wheelTicks };
