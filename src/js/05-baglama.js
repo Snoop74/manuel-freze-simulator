@@ -173,7 +173,7 @@ let FIX = 'vise', clampLay = 'fb', straps = [];
 const setFIX = k => { FIX = k; }, setClampLay = v => { clampLay = v; };
 const viseG = new THREE.Group(); rotIn.add(viseG);
 /* Mengenede parçanın X kayıklığı (KAY): her yeni parça çeneler arasında biraz farklı yere bağlanır, eski X sıfırı tutmaz.
-   Parça koordinatları değişmez; mengene ve tabla parçaya göre −KAY kayar (tabla görünümü 12'de, çene ve paraleller viseG'de,
+   Parça koordinatları değişmez; mengene ve tabla parçaya göre −KAY kayar (tabla 12'de −(px + KAY), parça grubu rotG +KAY, çene ve paraleller viseG'de −KAY,
    çarpışma kutuları syncFixtures'ta). Makine yerinde durduğu için DRO okuması değişmez: S.px ve S.zx birlikte kayar. */
 let KAY = 0;
 function setKay(v) {
@@ -181,6 +181,7 @@ function setKay(v) {
   const d = v - KAY; KAY = v;
   S.px -= d; S.zx -= d;
   viseG.position.x = -KAY;
+  rotG.position.x = ROT.cx + KAY;                                 // parça tablada KAY kadar kayık (tabla 12'de −(px + KAY))
   if (stockReady) syncFixtures();
 }
 const rotBase = new THREE.Group(); table.add(rotBase);   // döner tablanın sabit gövdesi
@@ -230,7 +231,7 @@ function buildVise() {
   if (FIX === 'div') { buildDivBody(); buildDivJaws(PD / 2); }
   ROT.on = FIX === 'rot'; ROT.a = ROT.a0 = ROT.pend = ROT.hold = ROT.z0 = 0; ROT.cx = PW / 2; ROT.cy = PD / 2;
   if (FIX !== 'vise' && KAY) setKay(0);
-  rotG.position.set(ROT.cx, 0, -ROT.cy); rotIn.position.set(-ROT.cx, 0, ROT.cy); rotG.rotation.y = 0;
+  rotG.position.set(ROT.cx + KAY, 0, -ROT.cy); rotIn.position.set(-ROT.cx, 0, ROT.cy); rotG.rotation.y = 0;
   if (FIX === 'rot') {
     const cx = ROT.cx, cz = -ROT.cy;
     // sabit gövde: tablaya cıvatalı kutu, önde kırmızı gösterge ve sonsuz vida krankı (90:1)
