@@ -145,9 +145,10 @@
       <button class="btn" id="mtUndo">Cıvataları sök</button>
       <button class="btn start" id="mtDone">Montajı bitir ve teslim et</button>
       <button class="btn" id="mtBack">Tezgâha dön</button>
-      <div class="dro-note">Deliğe tıkla: cıvata ağzına konur. Cıvatanın üstünde tekerlek: aşağı sıkar, yukarı gevşetir (ya da basılı tut). Takılıp kalan cıvataya tıkla: çıkar. Boşlukta sürükle: döndür.</div>
+      <div class="dro-note">Deliğe tıkla: cıvata ağzına konur. Cıvatanın üstünde <b>fare tekerleği</b>: aşağı sıkar, yukarı gevşetir. Takılıp kalan cıvataya tıkla: çıkar. Boşlukta sürükle: döndür, tekerlek: yakınlaştır.</div>
     </div>
     <div class="mt-hint" id="mtHint" hidden></div>
+    <div class="mt-tip" id="mtTip" hidden></div>
     <div class="report" id="report" hidden>
       <div class="box" role="dialog" aria-labelledby="rpTitle">
         <div class="rp-head"><span id="rpJob">İŞ 1</span><h2 id="rpTitle">Muayene raporu</h2></div>
@@ -274,6 +275,7 @@
           <button class="btn" id="jobStart">İşe başla</button>
           <button class="btn start" id="jobSubmit">Parçayı teslim et</button>
         </div>
+        <button class="btn" id="jobDemo" hidden title="Delikler delinmiş ve diş çekilmiş plakayla başlar; doğrudan montajı denemek için">Hazır plakayla dene (delinmiş, diş çekilmiş)</button>
       </div>
     </div>
 
