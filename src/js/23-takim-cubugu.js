@@ -3,7 +3,7 @@
 import { $, S, TOOLS, app, isTaster, tool } from './00-temel.js';
 import { initAudio } from './01-ses.js';
 import { rackTagOf, requestToolChange } from './09-kumanda.js';
-import { PM, toolIcon } from './12-dongu-ust-cubuk.js';
+import { PM, toolIcon } from './11-paneller.js';
 
 const TC = (() => {
   const el = document.createElement('div'); el.className = 'tc'; el.id = 'tcBar';

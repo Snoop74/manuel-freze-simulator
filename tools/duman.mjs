@@ -205,7 +205,14 @@ const SENARYO = {
     if (st.money !== para - app.CR.kira()) throw new Error(`kira düşmedi (${para} → ${st.money})`);
     app.CR.ertesiGun();
     if (st.gun !== gun + 1) throw new Error('ertesi güne geçilmedi');
-    return `gün ${gun} → ${st.gun}, kira ${app.CR.kira()} ₺${o ? ', iş kabul' : ''}`;
+    // sipariş üretici (16-siparis): her seviyede 100'er sipariş, bozuk alan yok
+    const { genOrder } = await import('/src/js/16-siparis.js');
+    let n = 0;
+    for (let lv = 0; lv < 4; lv++) for (let k = 0; k < 100; k++) {
+      const q = genOrder(k % 3 === 0, lv, () => ++n);
+      if (!q.J || !q.J.title || !(q.pay > 0 || q.ayni) || !isFinite(q.J.target) || !q.cust) throw new Error(`bozuk sipariş (seviye ${lv}): ${JSON.stringify(q).slice(0, 160)}`);
+    }
+    return `gün ${gun} → ${st.gun}, kira ${app.CR.kira()} ₺${o ? ', iş kabul' : ''}, ${n} sipariş üretildi`;
   },
 };
 

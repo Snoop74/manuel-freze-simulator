@@ -9,7 +9,7 @@ import { setKay } from './05-baglama.js';
 import { stopMotion } from './08-kesme.js';
 import { droVals, resetPart, setAuto, setFeed, setRpm } from './09-kumanda.js';
 import { buildScribe, drawingSVG, drawingTable, threadAt } from './10-is-emri-muayene.js';
-import { PM } from './12-dongu-ust-cubuk.js';
+import { PM } from './11-paneller.js';
 
 const EG = (() => {
   const KEY = 'freze-egitim';

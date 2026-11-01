@@ -3,7 +3,8 @@ import { $, app, log } from './00-temel.js';
 import { buildToolVisual } from './07-takim-gorsel.js';
 import { setFeed, setMaterial, setRpm, updateRec, updateSpindleUI, updateToolUI } from './09-kumanda.js';
 import { renderJobs, selectJob } from './10-is-emri-muayene.js';
-import { PM, frame } from './12-dongu-ust-cubuk.js';
+import { PM } from './11-paneller.js';
+import { frame } from './12-dongu-ust-cubuk.js';
 import { CR } from './17-kariyer.js';
 
 // Başlangıç
