@@ -79,7 +79,7 @@ function frame(now) {
   }
   S.realDt = Math.max(0.001, (now - last) / 1000);
   const dt = Math.min(0.05, S.realDt); last = now;
-  app.GK.update(dt);                                               // G-kod programı hareketi S.pend'e verir
+  app.GK.update(dt); app.EG.kare();                                               // G-kod programı hareketi S.pend'e verir
   motion(dt);
   if (now - S.lastCut > 500) S.damage = Math.max(0, S.damage - 0.06 * dt);   // kesme bitince takım soğur
   if (!S.spindle || now - S.lastCut > 400) { S.power = 0; S.chatNow = 0; }
