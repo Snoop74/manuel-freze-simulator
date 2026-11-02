@@ -161,7 +161,7 @@ const SENARYO = {
     const tuslar = k => k.forEach(t => tik(`#cpKeys [data-k="${t}"]`));
     const PH = () => T.PH, kare = n => { for (let k = 0; k < n; k++) { app.EG.kare(); K.motion(1 / 60); app.MG.update(1 / 60); } };
     const kadar = (sart, n = 60000) => { for (let k = 0; k < n && !sart(); k++) K.motion(1 / 60); };
-    const merkez = () => T.H[Math.round(50 / T.C) * T.NX + Math.round(75 / T.C)];
+    const merkez = () => T.H[Math.round(45 / T.C) * T.NX + Math.round(75 / T.C)];
     const IS = {
       merhaba:() => tik('#egIleri'), acil:() => tik('#egIleri'), ekran:() => tik('#egIleri'),
       don:() => { const v = camera.position.clone().sub(controls.target); v.applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.8); camera.position.copy(controls.target).add(v); },
@@ -171,18 +171,18 @@ const SENARYO = {
       tepsi:() => app.TC.ac(), t1:() => takim(t => t.no === 'T1'),
       start:() => U.spindle(true), start2:() => U.spindle(true), start3:() => U.spindle(true), start4:() => U.spindle(true),
       cark:() => { U.wheelTicks('x', 15); kare(120); },
-      tusX:() => tuslar(['x']), tus30:() => tuslar(['3', '0']), tusY:() => tuslar(['y', '2', '5']),
-      git:() => { tuslar(['git']); kadar(() => Math.abs(d().x - 30) < 0.01 && Math.abs(d().y - 25) < 0.01); },
+      tusX:() => tuslar(['x']), tus30:() => tuslar(['3', '0']), tusY:() => tuslar(['y', '2', '0']),
+      git:() => { tuslar(['git']); kadar(() => Math.abs(d().x - 30) < 0.01 && Math.abs(d().y - 20) < 0.01); },
       hizliAc:() => tik('#cpRapid'), zin:() => ucGit(PH() + 15), hizliKapa:() => tik('#cpRapid'),
       deg:() => ucGit(PH()), z0:() => tik('#cpSoft [data-sk="2"]'),
       sola:() => { tuslar(['x', '4', '0', '±', 'git']); kadar(() => d().x < -39.99); },
       paso:() => { tuslar(['z', '1', '±', 'git']); kadar(() => Math.abs(d().z + 1) < 0.01); },
       sag:() => { U.setAuto(1); kadar(() => d().x > T.PW + 26); },
-      y75:() => { tuslar(['y', '7', '5', 'git']); kadar(() => Math.abs(d().y - 75) < 0.01); },
+      y75:() => { tuslar(['y', '6', '5', 'git']); kadar(() => Math.abs(d().y - 65) < 0.01); },
       solaGel:() => { U.setAuto(-1); kadar(() => d().x < -26); },
       stop1:() => U.spindle(false), stop2:() => U.spindle(false), stop3:() => U.spindle(false),
       t6:() => takim(t => t.no === 'T6'), t7:() => takim(t => t.no === 'T7'), t11:() => takim(t => t.no === 'T11'),
-      merkez:() => { tuslar(['x', '7', '5', 'y', '5', '0', 'git']); kadar(() => Math.abs(d().x - 75) < 0.01 && Math.abs(d().y - 50) < 0.01); },
+      merkez:() => { tuslar(['x', '7', '5', 'y', '4', '5', 'git']); kadar(() => Math.abs(d().x - 75) < 0.01 && Math.abs(d().y - 45) < 0.01); },
       punta:async () => { await bekle(300); kare(400); ucGit(PH() - 1 - 2); ucGit(PH() + 3); },
       del:async () => { await bekle(300); kare(400); ucGit(-3); ucGit(PH() + 3); },
       kavra:async () => { await bekle(300); kare(400); for (let k = 0; k < 600 && !S.tap && !S.alarm; k++) { S.pend.z = -0.2; sur(1); } },
@@ -199,6 +199,8 @@ const SENARYO = {
       if (EG.adim === n) throw new Error(`"${id}" adımında takıldı (${EG.ADIM[n].s.slice(0, 50)}…): ${son()} · uç ${window.__d.tip().toFixed(2)} PH ${PH()} X${d().x.toFixed(2)} Y${d().y.toFixed(2)} Z${d().z.toFixed(2)}`);
       if (S.broken) throw new Error(`"${id}" adımında takım kırıldı: ${son()}`);
     }
+    let set = 0; for (let y = 35; y <= 55; y += 0.5) for (let x = 10; x <= 140; x += 2) set = Math.max(set, T.H[Math.round(y / T.C) * T.NX + Math.round(x / T.C)]);
+    if (set > PH() - 1 + 0.05) throw new Error(`yüzeyde iki paso arasında set kaldı: ${(set - (PH() - 1)).toFixed(2)} mm`);
     const ozet = document.getElementById('rpTitle').textContent;
     document.getElementById('egKariyer').click();
     if (!app.CR.on || !EG.bitti) throw new Error('eğitim bitince kariyere geçilmedi');

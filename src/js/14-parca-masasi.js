@@ -22,7 +22,7 @@ const CP = (() => {
       const l = document.createElementNS(SVG, 'line');
       l.setAttribute('x1', Math.sin(a) * r0); l.setAttribute('y1', -Math.cos(a) * r0); l.setAttribute('x2', Math.sin(a) * r1); l.setAttribute('y2', -Math.cos(a) * r1);
       l.setAttribute('stroke', '#cfd5d1'); l.setAttribute('stroke-width', o.steps || k % 5 === 0 ? 2.4 : 1.4); svg.append(l);
-      if (o.steps) { const t = document.createElementNS(SVG, 'text'); t.textContent = o.labels[k]; t.setAttribute('x', Math.sin(a) * 58); t.setAttribute('y', -Math.cos(a) * 58 + 4); t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', '11'); t.setAttribute('fill', '#cfd5d1'); t.setAttribute('font-family', 'Chakra Petch, sans-serif'); svg.append(t); }
+      if (o.steps) { const t = document.createElementNS(SVG, 'text'); t.textContent = o.labels[k]; t.setAttribute('x', Math.sin(a) * 58); t.setAttribute('y', -Math.cos(a) * 58 + 4); t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', '15'); t.setAttribute('font-weight', '700'); t.setAttribute('fill', '#e3e6e2'); t.setAttribute('font-family', 'Chakra Petch, sans-serif'); svg.append(t); }
     }
     svg.insertAdjacentHTML('beforeend', `<defs><radialGradient id="kg${el.id}" cx="40%" cy="35%"><stop offset="0" stop-color="#5e666a"/><stop offset=".7" stop-color="#1c1f21"/></radialGradient></defs>
       <circle r="38" fill="#0f1112"/><g class="kr"><circle r="34" fill="url(#kg${el.id})" stroke="#0a0b0c" stroke-width="2"/>
@@ -146,6 +146,7 @@ const CP = (() => {
     $('lpSpin').classList.toggle('on', S.spindle); $('lpAlarm').classList.toggle('on', S.alarm);
     $('cpRapid').classList.toggle('on', S.rapidBtn);
     $('kRpmV').textContent = S.rpm; $('kFeedV').textContent = S.feed;
+    $('kAxisV').textContent = st.axis.toUpperCase(); $('kMulV').textContent = '×' + Math.round(S.wheelMul * 100);   // topuz değeri adın altında, okunur boyda
     $('cpMpgL').textContent = `${st.axis.toUpperCase()} ×${Math.round(S.wheelMul * 100)}`;
     kRpm.draw(); kFeed.draw(); kMul.draw();
   }

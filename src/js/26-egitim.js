@@ -19,14 +19,14 @@ const EG = (() => {
   const KEY = 'freze-egitim';
   const J = { title:'Eğitim: ilk parça', target:900,
     brief:'Otto Usta\'nın ilk işi: üst yüzeyden 1 mm alın, ortaya Ø5 boydan boya delik açıp M6 diş çekin.',
-    face:{ depth:1, tol:0.2 }, holes:[{ x:75, y:50, d:5, tap:'M6', tapLen:8.5 }], pockets:[], arcs:[] };
+    face:{ depth:1, tol:0.2 }, holes:[{ x:75, y:45, d:5, tap:'M6', tapLen:8.5 }], pockets:[], arcs:[] };
   const ti = no => TOOLS.findIndex(t => t.no === no);
   const takili = no => S.tool === ti(no) && !S.changing && !S.broken;
   const d = () => droVals();
   const yakin = (a, b, t = 0.5) => Math.abs(a - b) < t;
   const tip = () => S.nose - TOOLS[S.tool].len;
   const ust = () => PH - 1;                                        // yüzey alındıktan sonraki üst
-  const merkez = () => H[Math.round(50 / C) * NX + Math.round(75 / C)];   // deliğin yerindeki yüzey yüksekliği
+  const merkez = () => H[Math.round(45 / C) * NX + Math.round(75 / C)];   // deliğin yerindeki yüzey yüksekliği
   const kart = no => `#tcList .tc-card[data-i="${ti(no)}"]`;
   let ref = null, tus = [], ileri = false;                         // ref: adıma girerken alınan değer · tus: kumandada basılan tuşlar · ileri: "Anladım"
   const yazildi = s => tus.join('').includes(s);
@@ -63,10 +63,10 @@ const EG = (() => {
       kur:() => { tus = []; }, ok:() => yazildi('x') },
     { b:3, id:'tus30', h:['#cpKeys [data-k="3"]', '#cpKeys [data-k="0"]'], p:['console'], s:'Şimdi sırayla [3] ve [0] tuşlarına tıkla: 30 yazdın. Ekranın altında görünür.',
       ok:() => yazildi('x30') },
-    { b:3, id:'tusY', h:['#cpKeys [data-k="y"]', '#cpKeys [data-k="2"]', '#cpKeys [data-k="5"]'], p:['console'], s:'Aynısını Y için yap: [Y] tuşuna, sonra [2] ve [5]\'e tıkla.',
-      ok:() => yazildi('x30y25') },
-    { b:3, id:'git', h:['#cpKeys [data-k="git"]'], p:['console'], git:{ x:30, y:25 }, s:'Şimdi yeşil [GİT] tuşuna tıkla: tabla kendi gider. Takım parçanın üstüne gelecek.',
-      ok:() => yakin(d().x, 30) && yakin(d().y, 25) },
+    { b:3, id:'tusY', h:['#cpKeys [data-k="y"]', '#cpKeys [data-k="2"]', '#cpKeys [data-k="0"]'], p:['console'], s:'Aynısını Y için yap: [Y] tuşuna, sonra [2] ve [0]\'a tıkla.',
+      ok:() => yazildi('x30y20') },
+    { b:3, id:'git', h:['#cpKeys [data-k="git"]'], p:['console'], git:{ x:30, y:20 }, s:'Şimdi yeşil [GİT] tuşuna tıkla: tabla kendi gider. Takım parçanın üstüne gelecek.',
+      ok:() => yakin(d().x, 30) && yakin(d().y, 20) },
 
     { b:4, id:'hizliAc', h:['#cpRapid'], p:['console'], s:'Takım parçadan çok yukarıda. Hızlı inelim: kumandadaki [HIZLI] tuşuna bir kez tıkla, sarı yanar.', ok:() => S.rapidBtn },
     { b:4, id:'zin', h:['#cpJog [data-j="z-1"]'], p:['console'], s:'Şimdi [Z−] tuşuna basılı tut. Takım parçaya iki parmak (1–2 cm) kalınca bırak.',
@@ -83,15 +83,15 @@ const EG = (() => {
       ok:() => d().x < -30 && yakin(d().z, -1, 0.05) },
     { b:5, id:'sag', h:['#autoBtns [data-af="1"]'], p:['spindle'], s:'Otomatik ilerlemeyi aç: İş mili panelinde "Sağa →" düğmesine tıkla. Tabla kendi gider, sen izle. Parça bitince ben durdururum.',
       ok:() => { if (d().x < PW + 25) return false; setAuto(0); return true; } },
-    { b:5, id:'y75', h:['#cpKeys'], p:['console'], git:{ y:75 }, s:'Yarısı bitti. Z\'ye dokunma, sadece Y: [Y] [7] [5] [GİT].', ok:() => yakin(d().y, 75) },
+    { b:5, id:'y75', h:['#cpKeys'], p:['console'], git:{ y:65 }, s:'Yarısı bitti. Z\'ye dokunma, sadece Y: [Y] [6] [5] [GİT]. İkinci paso birincinin üstüne 5 mm biner; ortada set kalmaz.', ok:() => yakin(d().y, 65) },
     { b:5, id:'solaGel', h:['#autoBtns [data-af="-1"]'], p:['spindle'], s:'Şimdi "← Sola" düğmesine tıkla, tabla geri gelsin.',
-      ok:() => { if (!(yakin(d().y, 75) && d().x < -25)) return false; setAuto(0); return true; } },
+      ok:() => { if (!(yakin(d().y, 65) && d().x < -25)) return false; setAuto(0); return true; } },
 
     { b:6, id:'stop1', h:['#cpStop'], p:['console'], s:'Yüzey cilalı gibi! Sırada delik var, önce takım değişecek. Kırmızı STOP\'a tıkla, mil dursun.', ok:() => !S.spindle },
     { b:6, id:'t6', h:['#tcCur', kart('T6')], s:'Alttaki takım düğmesinden T6 Punta matkabını tak. Punta, matkabın kaymaması için küçük bir çukur açar.', ok:() => takili('T6') },
     { b:6, id:'start2', h:['#cpStart'], p:['console'], s:'START\'a tıkla.', kur:() => { setRpm(1500); setFeed(100); }, ok:() => S.spindle },
-    { b:6, id:'merkez', h:['#cpKeys'], p:['console'], git:{ x:75, y:50 }, s:'Deliğin yeri parçanın ortası: [X] [7] [5] [Y] [5] [0] [GİT].',
-      ok:() => yakin(d().x, 75) && yakin(d().y, 50) },
+    { b:6, id:'merkez', h:['#cpKeys'], p:['console'], git:{ x:75, y:45 }, s:'Deliğin yeri parçanın ortası: [X] [7] [5] [Y] [4] [5] [GİT].',
+      ok:() => yakin(d().x, 75) && yakin(d().y, 45) },
     { b:6, id:'punta', h:['#cpJog [data-j="z-1"]'], p:['console'], s:'Takımı parçanın biraz üstüne ben indirdim. [Z−] tuşuna basılı tut; uç parçaya 2 mm kadar girince bırak.',
       kur:() => yaklas(ust() + 6), ok:() => merkez() < ust() - 1.2 },
     { b:6, id:'stop2', h:['#cpStop'], p:['console'], s:'Güzel bir punta. STOP\'a tıkla.', ok:() => !S.spindle },
@@ -106,7 +106,7 @@ const EG = (() => {
     { b:6, id:'kavra', h:['#cpJog [data-j="z-1"]'], p:['console'], s:'[Z−] tuşuna kısa kısa bas: kılavuz deliğe girince kendi kendini çeker. O an bırak, izle.',
       kur:() => yaklas(ust() + 2), ok:() => !!S.tap },
     { b:6, id:'geri', h:['#cpDir', '#spDir'], p:['console'], kilavuz:true, s:'Kılavuz iniyor. Parçanın ALTINDAN çıkınca mil yönü düğmesine (İLERİ yazan) tıkla: GERİ döner ve kendini çıkarır.',
-      ok:() => { const t = threadAt(75, 50, 1); return !S.tap && !!t && t.ok; } },
+      ok:() => { const t = threadAt(75, 45, 1); return !S.tap && !!t && t.ok; } },
     { b:6, id:'bitir', h:['#cpStop', '#cpDir'], p:['console'], s:'Diş tamam! STOP\'a tıkla ve mil yönünü yeniden İLERİ\'ye al.', ok:() => !S.spindle && S.dir > 0 },
     { b:6, id:'teslim', h:['#jobSubmit'], p:['jobs'], s:'Son iş: İş emirleri panelindeki "Parçayı teslim et" düğmesine tıkla; ölçüleri bakalım.', ok:() => !$('report').hidden },
     { b:6, id:'son', son:true, s:'Fena değil, hiç fena değil! Benden bu kadar: dükkân senin. Müşteriler mail atar, üstteki saatten bilgisayara bak. Kolay gelsin!' },
@@ -237,7 +237,7 @@ const EG = (() => {
     initAudio(); app.MENU.kapat();
     if (app.CR.on) document.querySelector('#modeSw [data-mode="free"]').click();
     PM.preset('kumanda'); if (PM.P.hud && PM.P.hud.vis) PM.setVis('hud', false);   // eğitimde ekran sade
-    app.setStock(150, 100, 20, true); resetPart('al'); app.MG.kapat(true); setKay(0);
+    app.setStock(150, 90, 20, true);   // 90 derin: Ø50 ile iki paso bindirmeli resetPart('al'); app.MG.kapat(true); setKay(0);
     S.zx = 0; S.zy = 0; S.zn = PH + TOOLS[S.tool].len;                 // sıfır parçanın sol-ön-üst köşesinde
     S.job = { idx:-1, J, time:0, done:false, stats:{ breaks:0, load:0, spot:0, peck:0, rub:0 } };
     $('jcNo').textContent = 'EĞİTİM'; $('jcTitle').textContent = J.title; $('jcBrief').textContent = J.brief; $('jcBtns').hidden = false;
