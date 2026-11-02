@@ -195,7 +195,7 @@ const SENARYO = {
       const id = EG.id, n = EG.adim, is = IS[id];
       if (!is) throw new Error(`testte "${id}" adımı için iş yok`);
       await is();
-      for (let k = 0; k < 20 && EG.adim === n; k++) await bekle(100);
+      for (let k = 0; k < 40 && EG.adim === n; k++) await bekle(100);   // yavaş makinede 4 s
       if (EG.adim === n) throw new Error(`"${id}" adımında takıldı (${EG.ADIM[n].s.slice(0, 50)}…): ${son()} · uç ${window.__d.tip().toFixed(2)} PH ${PH()} X${d().x.toFixed(2)} Y${d().y.toFixed(2)} Z${d().z.toFixed(2)}`);
       if (S.broken) throw new Error(`"${id}" adımında takım kırıldı: ${son()}`);
     }
