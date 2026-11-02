@@ -7,7 +7,7 @@
 import { kayit } from './00-kayit.js';
 import { $, C, H, NX, PH, PW, S, TOOLS, app, log } from './00-temel.js';
 import { beep, initAudio } from './01-ses.js';
-import { camera, canvas, controls, zFine } from './02-sahne-tezgah.js';
+import { camera, canvas, controls, spindleG, zFine } from './02-sahne-tezgah.js';
 import { viseKol, wheels } from './03-tabla-parca.js';
 import { setKay } from './05-baglama.js';
 import { stopMotion } from './08-kesme.js';
@@ -56,7 +56,7 @@ const EG = (() => {
     { b:2, id:'start', h:['#cpStart'], p:['console'], s:'Takım takıldı. Mili çalıştır: kumanda panelindeki yeşil START düğmesine tıkla. Devri ben ayarladım.',
       kur:() => { setRpm(1500); setFeed(400); }, ok:() => S.spindle },
 
-    { b:3, id:'cark', o:() => wheels[0], bak:() => wheels[0], s:'Tablayı elle oynatalım. Fareyi sarı okun gösterdiği tabla ÇARKININ üstüne getir ve {teker} TEKERLEĞİ çevir. Sürükleme yok, sadece tekerlek. Her çentik 1 mm.',
+    { b:3, id:'cark', o:() => wheels[0].children[0], yuz:true, s:'Tablayı elle oynatalım. Fareyi sarı okun gösterdiği tabla ÇARKININ üstüne getir ve {teker} TEKERLEĞİ çevir. Sürükleme yok, sadece tekerlek. Her çentik 1 mm.',
       kur:() => { S.wheelMul = 1; ref = S.px; }, ok:() => Math.abs(S.px - ref) > 8 },
     { b:3, id:'ekran', tamam:true, h:['#cpScreen'], p:['console'], s:'Gördün mü? Kumanda ekranındaki X sayısı değişti. Bu sayılar takımın yeri: X sağ-sol, Y ileri-geri, Z yukarı-aşağı.' },
     { b:3, id:'tusX', h:['#cpKeys [data-k="x"]'], p:['console'], s:'Elle uzun sürer; gideceğin yeri kumandaya yazabilirsin. Kumandadaki [X] tuşuna tıkla.',
@@ -69,10 +69,10 @@ const EG = (() => {
       ok:() => yakin(d().x, 30) && yakin(d().y, 25) },
 
     { b:4, id:'hizliAc', h:['#cpRapid'], p:['console'], s:'Takım parçadan çok yukarıda. Hızlı inelim: kumandadaki [HIZLI] tuşuna bir kez tıkla, sarı yanar.', ok:() => S.rapidBtn },
-    { b:4, id:'zin', h:['#cpJog [data-j="z-1"]'], p:['console'], bak:() => zFine, s:'Şimdi [Z−] tuşuna basılı tut. Takım parçaya iki parmak (1–2 cm) kalınca bırak.',
+    { b:4, id:'zin', h:['#cpJog [data-j="z-1"]'], p:['console'], s:'Şimdi [Z−] tuşuna basılı tut. Takım parçaya iki parmak (1–2 cm) kalınca bırak.',
       ok:() => tip() < PH + 22 },
     { b:4, id:'hizliKapa', h:['#cpRapid'], p:['console'], yavas:true, s:'[HIZLI]\'ya tekrar tıkla, sönsün. Bundan sonrası yavaş ve dikkatli.', ok:() => !S.rapidBtn },
-    { b:4, id:'deg', o:() => zFine, yavas:true, s:'Sarı okun gösterdiği kovan ÇARKININ üstüne gel ve {teker} tekerleği çevir: takım iner. Yaklaşınca çarkı inceltirim. Takım parçaya DEĞDİĞİ an dur; ses değişir, ince talaş çıkar.',
+    { b:4, id:'deg', o:() => zFine, yuz:true, ara:true, yavas:true, s:'Sarı okun gösterdiği kovan ÇARKININ üstüne gel ve {teker} tekerleği çevir: takım iner. Yaklaşınca çarkı inceltirim; takım parçaya değdiği an tezgâhı ben durdururum.',
       kur:() => { S.wheelMul = 1; }, ok:() => { if (tip() < PH + 3) S.wheelMul = 0.1; if (tip() > PH + 0.05) return false; stopMotion(); S.wheel.z = 0; return true; } },
     { b:4, id:'z0', h:['#cpSoft [data-sk="2"]'], p:['console'], s:'Değdi! Burası parçanın üstü. Ekranın altındaki Z0 düğmesine tıkla: Z artık 0.',
       kur:() => { ref = S.zn; }, ok:() => S.zn !== ref && yakin(d().z, 0, 0.05) },
@@ -132,10 +132,11 @@ const EG = (() => {
   function goster() {
     const A = ADIM[i];
     isikSil(); ileri = false;
-    if (A.o) ['console', 'hud', 'spindle', 'jobs'].forEach(id => { if (PM.P[id] && PM.P[id].vis) PM.setVis(id, false); });   // 3B hedef panelin arkasında kalmasın
+    if (A.o) ['hud', 'spindle', 'jobs'].forEach(id => { if (PM.P[id] && PM.P[id].vis) PM.setVis(id, false); });   // 3B hedef sol paneller arkasında kalmasın (kumanda sağda kalır; kamera hedefi sola alır)
+    if (A.o && !A.bak) A.bak = A.o;                                   // 3B hedefli her adımda kamera oraya gider
     if (A.p) A.p.forEach(id => { if (PM.P[id] && !PM.P[id].vis) PM.setVis(id, true); });
     if (A.kur) A.kur();
-    if (A.bak) odak(A.bak());
+    if (A.bak) odak(A.bak(), A.yuz, A.ara);
     if (A.h && A.h.some(q => q.startsWith('#tcList'))) app.TC.ac();          // takım kartı parlayacaksa şerit açık olsun
     (A.h || []).forEach(q => document.querySelectorAll(q).forEach(e => { e.classList.add('eg-isik'); isikli.push(e); }));
     soz(A.s); $('egIp').hidden = true; bosT = 0;
@@ -178,19 +179,35 @@ const EG = (() => {
   /* ---- sarı ok ve kamera: her karede (eğitim sürerken) ---- */
   const v3 = new THREE.Vector3();
   let anim = null;
-  function odak(o) {                                                // kamera hedefe yumuşakça döner ve yaklaşır (bakış yönü korunur, biraz yukarıdan)
+  function odak(o, yuz, ara) {                                     // ara: hedefle mil ucunun ortasına, daha uzaktan (ikisi birden görünsün)                                           // kamera hedefe yumuşakça döner ve yaklaşır (bakış yönü korunur, biraz yukarıdan)
     o.getWorldPosition(v3);
-    const yon = camera.position.clone().sub(controls.target).normalize();
+    let yon = camera.position.clone().sub(controls.target).normalize();
+    if (yuz) {                                                      // çark: yüzüne bakan yönden (ekseni, tezgâhın dışına doğru)
+      o.updateMatrixWorld();
+      const n = new THREE.Vector3(0, 0, 1).transformDirection(o.matrixWorld), mil = new THREE.Vector3();
+      spindleG.getWorldPosition(mil); mil.y = v3.y;
+      if (n.dot(v3.clone().sub(mil)) < 0) n.negate();
+      yon = n.multiplyScalar(0.8).add(yon.multiplyScalar(0.2));
+    }
     yon.y = Math.max(yon.y, 0.45); yon.normalize();
-    anim = { t:0, c0:camera.position.clone(), t0:controls.target.clone(), c1:v3.clone().add(yon.multiplyScalar(560)), t1:v3.clone() };
+    // hedef ekranın solunda (yatayda %32) dursun: sağ alttaki kumanda paneli onu örtmesin
+    let uz = 560;
+    if (ara) { const m = new THREE.Vector3(); spindleG.getWorldPosition(m); v3.add(m).multiplyScalar(0.5); uz = 900; }
+    const sag = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), yon).normalize();   // kameranın sağı
+    const kay = sag.multiplyScalar(uz * Math.tan(camera.fov * Math.PI / 360) * camera.aspect * 0.36);
+    const t1 = v3.clone().add(kay);
+    anim = { t:0, c0:camera.position.clone(), t0:controls.target.clone(), c1:t1.clone().add(yon.multiplyScalar(uz)), t1 };
+    disari = 0;
   }
+  let disari = 0;                                                   // hedef ekran dışında geçen süre (kare)
   function okYeri() {
     const A = ADIM[i]; if (!A) { ok3.hidden = true; return; }
     let x = null, y = null, ust = false;
     if (A.o) {
       A.o().getWorldPosition(v3); v3.project(camera);
       const r = canvas.getBoundingClientRect();
-      if (v3.z < 1 && Math.abs(v3.x) < 1 && Math.abs(v3.y) < 1) { x = r.left + (v3.x + 1) / 2 * r.width; y = r.top + (1 - v3.y) / 2 * r.height - 14; }
+      if (v3.z < 1 && Math.abs(v3.x) < 0.95 && Math.abs(v3.y) < 0.9) { x = r.left + (v3.x + 1) / 2 * r.width; y = r.top + (1 - v3.y) / 2 * r.height - 14; disari = 0; }
+      else if (!anim && ++disari > 60) odak(A.o(), A.yuz, A.ara);                  // oyuncu kamerayı çevirip hedefi kaybettiyse ~1 s sonra geri döner
     } else {
       const e = isikli.find(q => q.offsetParent && q.getBoundingClientRect().width);
       if (e) { const r = e.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top - 4; if (r.top < 120) { ust = true; y = r.bottom + 4; } }
@@ -201,7 +218,8 @@ const EG = (() => {
   function dongu(now) {
     if (i < 0) { ok3.hidden = true; return; }
     if (anim) {
-      anim.t = Math.min(1, anim.t + 0.022); const k = anim.t * anim.t * (3 - 2 * anim.t);
+      if (anim.s == null) anim.s = now;                               // süreye göre (kare hızından bağımsız) ~1.2 s
+      anim.t = Math.min(1, (now - anim.s) / 1200); const k = anim.t * anim.t * (3 - 2 * anim.t);
       camera.position.lerpVectors(anim.c0, anim.c1, k); controls.target.lerpVectors(anim.t0, anim.t1, k); controls.update();
       if (anim.t >= 1) anim = null;
     }
