@@ -76,7 +76,9 @@ for (const k in CHIP_SHAPES) {
     m.frustumCulled = false; m.castShadow = true; m.receiveShadow = true; table.add(m);
     dummy.scale.set(0, 0, 0); dummy.updateMatrix();
     for (let i = 0; i < CAP[k]; i++) { m.setMatrixAt(i, dummy.matrix); m.setColorAt(i, new THREE.Color(0xd5dbe0)); }
-    chipPools[k].push({ m, rest:sh.rest, head:0, owner:new Array(CAP[k]).fill(null), dirty:false });
+    // yalnızca kullanılmış yuvalar çizilir (used): boş havuz da tam sayıyla çizilince talaşsız sahnede ~800 bin üçgen gidiyordu
+    m.count = 0; m.visible = false;
+    chipPools[k].push({ m, rest:sh.rest, head:0, used:0, owner:new Array(CAP[k]).fill(null), dirty:false });
   }
 }
 let liveChips = [];
@@ -209,6 +211,7 @@ const _q = new THREE.Quaternion(), _ax = new THREE.Vector3(), _e3 = new THREE.Eu
 function spawnChip(x, y, z, r, drill, kind, s, col, fly = 1) {
   const pool = chipPools[kind] || chipPools.comma, V = pool[Math.random() * pool.length | 0];
   const slot = V.head; V.head = (V.head + 1) % V.owner.length;
+  if (slot >= V.used) { V.used = slot + 1; V.m.count = V.used; V.m.visible = true; }
   const old = V.owner[slot]; if (old) old.alive = false;
   const lum = 0.9 + Math.random() * 0.2;
   if (col) { _cc.setRGB(col[0] * lum, col[1] * lum, col[2] * lum).convertSRGBToLinear(); V.m.setColorAt(slot, _cc); V.m.instanceColor.needsUpdate = true; }
@@ -308,6 +311,7 @@ function clearChips() {
   for (const k in chipPools) for (const V of chipPools[k]) {
     for (let i = 0; i < V.owner.length; i++) { V.m.setMatrixAt(i, dummy.matrix); V.owner[i] = null; }
     V.m.instanceMatrix.needsUpdate = true;
+    V.head = 0; V.used = 0; V.m.count = 0; V.m.visible = false;
   }
   liveChips = []; pile.clear();
 }

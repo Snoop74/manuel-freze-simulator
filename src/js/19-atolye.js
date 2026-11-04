@@ -1,5 +1,6 @@
 // ── Atölye donanımı: arka plandaki makineler ve eşyalar (sütunlu matkap, taş motoru, kompresör, malzeme rafı, paletler, variller),
 // pencereler, tavan vinci, elektrik panosu, tabelalar ve duvar saati. Yalnızca görünüm; çarpışma ve oyun mantığına girmez.
+import { AYAR, ayarDinle } from './00-tercihler.js';
 import { TAU } from './00-temel.js';
 import { FLOOR_Y, M, MX, addSurface, cyl, rbox, renderer, scene, smat } from './02-sahne-tezgah.js';
 import { table } from './03-tabla-parca.js';
@@ -53,7 +54,9 @@ function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on, fromY = F + 5000
   return Promise.all([load, on]).then(([o, base]) => {
     if (!o) return null;
     o.scale.setScalar(1000); o.rotation.y = ry;
-    o.traverse(c => { if (c.isMesh) { c.castShadow = c.receiveShadow = true; if (c.material) c.material.envMapIntensity = env; } });
+    let tri = 0;                                                    // eşyalar gölge almaz-vermez değil: alır ama düşürmez (gölge geçişi ucuzlar)
+    o.traverse(c => { if (c.isMesh) { c.castShadow = false; c.receiveShadow = true; if (c.material) c.material.envMapIntensity = env; tri += (c.geometry.index ? c.geometry.index.count : c.geometry.attributes.position.count) / 3; } });
+    o.userData.agir = tri > 10000; if (o.userData.agir) o.visible = AYAR.esya;
     o.updateMatrixWorld(true);
     if (base) {   // altındaki modelin yüzeyi: aşağı ışın, ilk çarptığı nokta
       ray.set(new THREE.Vector3(x, fromY, z), new THREE.Vector3(0, -1, 0));
@@ -355,5 +358,7 @@ for (const [x, z, s] of [[-300, -40, 120], [470, 20, 90]]) {
 }
 const nip = smat(0xb3261e, 0.4, 0.3, 0.4);
 for (const x of [-360, 520]) { const n = cyl(4, 4, 8, nip, 10); n.rotation.x = Math.PI / 2; n.position.set(x, -75, 58); table.add(n); }
+
+ayarDinle('esya', a => { for (const p of PROPS) if (p.o.userData.agir) p.o.visible = a.esya; });
 
 export { PROPS };

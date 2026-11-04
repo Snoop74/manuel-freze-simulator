@@ -89,7 +89,12 @@ const SENARYO = {
     const { app } = window.__d;
     for (const k of ['MG', 'CR', 'MENU', 'TC', 'IA']) if (!app[k]) throw new Error(`app.${k} yok`);
     app.MENU.kapat();
-    return 'modüller yüklendi';
+    // performans: talaşsız sahnede çizilen üçgen (boş talaş havuzu eskiden ~800 bin üçgen çiziyordu)
+    const { renderer, scene, camera } = await import('/src/js/02-sahne-tezgah.js');
+    renderer.render(scene, camera);
+    const tri = renderer.info.render.triangles;
+    if (tri > 700000) throw new Error(`sahne çok ağır: ${tri} üçgen (sınır 700 bin)`);
+    return `modüller yüklendi, sahne ${Math.round(tri / 1000)} bin üçgen`;
   },
   async mengene() {
     const { S, B, U, app, yeni, sur, son } = window.__d;
@@ -117,6 +122,7 @@ const SENARYO = {
     U.spindle(false);
     if (S.broken || S.alarm) throw new Error(`yüzey almada kırıldı: ${son()}`);
     if (minH() > PH - 0.4) throw new Error(`talaş kalkmadı (en düşük ${minH().toFixed(2)})`);
+    { const { scene } = await import('/src/js/02-sahne-tezgah.js'); let n = 0; scene.traverse(o => { if (o.isInstancedMesh && o.visible) n += o.count; }); if (!n) throw new Error('kesince talaş görünmüyor'); }
     return `${T.no} Ø10, 0.5 mm paso, zorlanma %${Math.round(S.damage * 100)}`;
   },
   async gagalama() {

@@ -114,6 +114,8 @@ MENU.ekran('ayarlar', (k, M) => {
     M.secim('golge', 'Gölgeler', [[0, 'Kapalı'], [1, 'Normal'], [2, 'Yüksek']]);
     M.kaydir('cozunurluk', 'Çözünürlük', 0.5, 1, 0.05, undefined, 'Düşük değer daha akıcı, daha bulanık');
     M.kaydir('talas', 'Talaş miktarı', 0.2, 1, 0.05);
+    M.onay('esya', 'Atölye eşyaları', 'Kompresör, arabalar, kutular; kapalıysa daha akıcı');
+    M.onay('kaliteOto', 'Otomatik kalite', 'Oyun kasarsa kaliteyi kendisi düşürür');
   } else if (s === 'ses') {
     M.kaydir('sesAna', 'Ana ses', 0, 1, 0.05);
     M.kaydir('sesMakine', 'Makine ve kesme', 0, 1, 0.05);

@@ -1,5 +1,5 @@
 // ── Ana döngü ve arayüz: klavye, kamera, frame(), HUD, devir göstergesi, acil stop (paneller ve üst çubuk 11-paneller'de)
-import { ayarDinle } from './00-tercihler.js';
+import { AYAR, ayarDinle, ayarYaz } from './00-tercihler.js';
 import { $, C, H, NX, NY, PD, PW, RAPID, S, TAU, app, clamp, isDrill, log, mat, rapid, tipZ, tool } from './00-temel.js';
 import { beep, initAudio, thud, updateAudio } from './01-ses.js';
 import { FLOOR_Y, camera, controls, motorSwitch, mush, quill, renderer, scene, spLampMat, spindleG, stage, startBtnMat,
@@ -64,6 +64,22 @@ function resize() {
 new ResizeObserver(resize).observe(stage); resize();
 ayarDinle('cozunurluk', resize);                                 // piksel oranı değişince tampon ve partikül ölçeği yenilensin
 
+/* ---------------- Otomatik kalite: 4 s boyunca ortalama kare 25 ms'yi (40 fps) aşarsa kalite bir kademe iner ----------------
+   Oyuncu kaliteyi elle seçerse (menü) kaliteOto kapanır, bir daha dokunulmaz. Sekme arka plandaysa (uzun kare) sayılmaz. */
+const OTO = { t:0, n:0, top:0, biz:false };
+ayarDinle('kalite', () => { if (OTO.ilk && !OTO.biz && AYAR.kaliteOto) ayarYaz('kaliteOto', false); OTO.ilk = true; });
+function otoKalite(rdt) {
+  if (!AYAR.kaliteOto || S.duraklat || rdt > 0.2) return;
+  OTO.t += rdt; OTO.n++; OTO.top += rdt;
+  if (OTO.t < 4) return;
+  const ort = OTO.top / OTO.n; OTO.t = OTO.n = OTO.top = 0;
+  const alt = { yuksek:'orta', orta:'dusuk', ozel:'orta' }[AYAR.kalite];
+  if (ort > 0.025 && alt) {
+    OTO.biz = true; ayarYaz('kalite', alt); OTO.biz = false;
+    log(`Oyun kasıyordu (${Math.round(1 / ort)} kare/sn): grafik kalitesi otomatik olarak ${alt === 'orta' ? 'Orta' : 'Düşük'}'ya indirildi. Ayarlar → Grafik'ten değiştirebilirsiniz.`, 'warn');
+  }
+}
+
 /* ---------------- Ana döngü ---------------- */
 // kamera atölyenin içinde kalır: uzaklaşma sınırı ve duvar/zemin/tavan içinde (duvar iç yüzlerinden 50 mm pay)
 controls.maxDistance = 2600;
@@ -79,6 +95,7 @@ function frame(now) {
   }
   S.realDt = Math.max(0.001, (now - last) / 1000);
   const dt = Math.min(0.05, S.realDt); last = now;
+  otoKalite(S.realDt);
   app.GK.update(dt); app.EG.kare();                                               // G-kod programı hareketi S.pend'e verir
   motion(dt);
   if (now - S.lastCut > 500) S.damage = Math.max(0, S.damage - 0.06 * dt);   // kesme bitince takım soğur

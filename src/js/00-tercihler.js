@@ -7,16 +7,18 @@
 import { kayit } from './00-kayit.js';
 
 const KEY = 'freze-ayarlar';
-// grafik hazır ayarları: gölge 0 kapalı / 1 normal (1024) / 2 yüksek (2048); çözünürlük ekran piksel oranının katı; talaş üretim oranı
+// grafik hazır ayarları: gölge 0 kapalı / 1 normal (1024) / 2 yüksek (2048); çözünürlük ekran piksel oranının katı; talaş üretim oranı;
+// esya: atölyedeki ağır hazır modeller (kompresör, arabalar, kutular; düşükte gizli)
 const KALITE = {
-  dusuk:  { golge:0, cozunurluk:0.6, talas:0.4 },
-  orta:   { golge:1, cozunurluk:0.85, talas:0.7 },
-  yuksek: { golge:2, cozunurluk:1, talas:1 },
+  dusuk:  { golge:0, cozunurluk:0.6, talas:0.4, esya:false },
+  orta:   { golge:1, cozunurluk:0.85, talas:0.7, esya:true },
+  yuksek: { golge:2, cozunurluk:1, talas:1, esya:true },
 };
 const GRAFIK = Object.keys(KALITE.yuksek);
 const VARSAYILAN = Object.assign({ kalite:'yuksek' }, KALITE.yuksek, {
   sesAna:0.9, sesMakine:1, sesArayuz:0.8,      // 0..1
   acilisMenu:true,                               // açılışta ana menü
+  kaliteOto:true,                                // kasarsa kaliteyi kendisi düşürür (oyuncu kaliteyi elle seçince kapanır; 12-dongu)
   gelistirici:false,                             // geliştirici paneli (Ctrl+Shift+D)
 });
 
