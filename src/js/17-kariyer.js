@@ -4,6 +4,7 @@ import { $, MATS, PD, PH, PW, S, TOOLS, app, clamp, isTaster, log } from './00-t
 import { beep, initAudio } from './01-ses.js';
 import { FIXLIM } from './03-tabla-parca.js';
 import { FIX, PAR, warnParallels } from './05-baglama.js';
+import { clearChips } from './06-talas.js';
 import { HOLDERS } from './07-takim-gorsel.js';
 import { renderRack, resetPart, setRackTag, updateToolUI } from './09-kumanda.js';
 import { buildScribe, drawingSVG, drawingTable, mmss, selectJob, setSelJob } from './10-is-emri-muayene.js';
@@ -35,7 +36,7 @@ const CR = (() => {
   ];
   let st = null, on = false, sel = null, arm = { i:-1, t:0 };
   const fresh = () => ({ money:1500, rep:0, done:0, earned:0, owned:Object.fromEntries(START.map(n => [n, 1])), eq:{}, orders:[], seq:1, kirik:{}, eksi:0,
-    gun:1, dk:0, mail:[], mailSeq:1, sonrakiMail:40, bugun:{ gelir:0, gider:0, rep:0, teslim:0, olay:[] } });
+    gun:1, dk:0, mail:[], mailSeq:1, sonrakiMail:40, bugun:{ gelir:0, gider:0, rep:0, teslim:0, olay:[] }, dukkan:{ sv:0, yuk:{} } });
   function load() {
     st = kayit.oku(KEY, null);
     if (!st || typeof st.money !== 'number' || !Number.isFinite(st.money)) st = fresh();
@@ -45,6 +46,7 @@ const CR = (() => {
     if (typeof st.eksi !== 'number') st.eksi = 0;
     if (!Array.isArray(st.mail)) Object.assign(st, { gun:1, dk:0, mail:[], mailSeq:1, sonrakiMail:40 });   // gün ve posta öncesi kayıt
     if (!st.bugun || typeof st.bugun !== 'object') st.bugun = { gelir:0, gider:0, rep:0, teslim:0, olay:[] };
+    if (!st.dukkan || typeof st.dukkan !== 'object' || !st.dukkan.yuk) st.dukkan = { sv:0, yuk:{} };   // dükkân öncesi kayıt: garaj
     st.orders = Array.isArray(st.orders) ? st.orders.filter(o => o && o.J && MATS[o.mat]) : [];
     st.orders.forEach(o => (o.J.pockets || []).forEach(p => { if (p.r == null) p.r = 5; }));
     on = kayit.oku(MKEY) === 'career';
@@ -72,7 +74,7 @@ const CR = (() => {
     log(`${E.n} atölyeye geldi: −${tl(E.p)}.`, 'ok'); render();
   }
 
-  const genOrder = free => uret(free, level(), () => st.seq++);
+  const genOrder = free => { const o = uret(free, level(), () => st.seq++); if (o.cost && st.dukkan.yuk.raf) o.cost = Math.round(o.cost * 0.8 / 10) * 10; return o; };
   const bekler = o => o.teklif === 'bekliyor' || o.teklif === 'karsi';
   const payTxt = o => bekler(o) ? 'teklif bekleniyor' : tl(o.pay) + (o.ayni ? ' + ' + o.ayni : '');
 
@@ -130,7 +132,42 @@ const CR = (() => {
      Normal sipariş ertesi gün akşamına kadar cevap bekler, ACİL olan 1 saat; kabul edilen işin termini var (ACİL: bugün akşam).
      Aynı anda tek iş kabul edilir. 18:00'de (mil dururken) gün biter: kira ve elektrik düşülür, muhasebeden gün sonu raporu gelir. -- */
   const MESAI = 600, ACIL_CEVAP = 60;
-  const kira = () => 120 + level() * 80;
+  /* -- Dükkânı büyütme: aşama (garaj → atölye) ve yükseltmeler. Taşınmak için itibar ve para; kira aşamayla büyür.
+     Her yükseltme oyunda bir şeyi değiştirir ve atölyede görünür (19-atolye). Serbest atölyede hepsi açık (yukVar). -- */
+  const DUKKAN = [
+    { ad:'Garaj', t:'Tek tezgâh, mahalle işleri', kira:120 },
+    { ad:'Atölye', t:'Daha büyük salon, fabrika işleri gelmeye başlar', kira:400, rep:12, para:15000 },
+  ];
+  const YUK = [
+    { id:'olcu', sv:0, ad:'Ölçü masası', p:900, t:'İş penceresinde "Ön kontrol": teslimden önce ölçüleri gör' },
+    { id:'pompa', sv:0, ad:'Soğutma pompası', p:1400, t:'Takım aşınması %30 az' },
+    { id:'raf', sv:0, ad:'Malzeme rafı', p:2500, t:'Ham parça %20 ucuz (toplu alım)' },
+    { id:'yIlerleme', sv:0, ad:'Y ilerleme motoru', p:1800, t:'Kumandada Y ekseni için de otomatik ilerleme' },
+    { id:'motor', sv:1, ad:'Güçlü mil motoru', p:6000, t:'Mil gücü 2.2 → 3.3 kW: derin paso, çelikte hızlı iş' },
+    { id:'cirak', sv:1, ad:'Çırak', p:1500, gunluk:250, t:'Gün sonunda kırık takımları biler, talaşı süpürür. Günlük 250 ₺' },
+    { id:'web', sv:1, ad:'Web sitesi', p:3000, t:'Gelen kutusunda her zaman bir sipariş daha' },
+  ];
+  const yukVar = id => !on || !!(st && st.dukkan.yuk[id]);
+  const kira = () => DUKKAN[st.dukkan.sv].kira + level() * 40;
+  function dukkanUygula() {                                       // yükseltmelerin tezgâha etkisi ve atölyedeki görünüşü
+    S.motorK = yukVar('motor') ? 1.5 : 1;
+    if (app.ATL) app.ATL.dukkanGor({ sv:on ? st.dukkan.sv : 1, yuk:Object.fromEntries(YUK.map(u => [u.id, yukVar(u.id)])) });
+  }
+  function dukkanAl(id) {
+    const u = YUK.find(q => q.id === id); if (!u || st.dukkan.yuk[id]) return false;
+    if (u.sv > st.dukkan.sv) { log(`${u.ad} için önce ${DUKKAN[u.sv].ad}'ye taşının.`, 'warn'); return false; }
+    if (!yeter(u.p)) { log(`${u.ad} için kasa ve kredi yetmiyor (${tl(u.p)}).`, 'warn'); return false; }
+    harca(u.p); cash(-u.p); st.dukkan.yuk[id] = true; save(); dukkanUygula(); render();
+    log(`${u.ad} alındı: ${u.t}.`, 'ok'); return true;
+  }
+  function tasin() {
+    const D = DUKKAN[st.dukkan.sv + 1]; if (!D) return false;
+    if (st.rep < D.rep) { log(`${D.ad}'ye taşınmak için ${D.rep} itibar gerekli (şu an ${st.rep}).`, 'warn'); return false; }
+    if (!yeter(D.para)) { log(`${D.ad}'ye taşınmak için kasa ve kredi yetmiyor (${tl(D.para)}).`, 'warn'); return false; }
+    harca(D.para); cash(-D.para); st.dukkan.sv++; save(); dukkanUygula(); render();
+    mailEkle({ tip:'bilgi', kimden:'Otto Usta', kind:'eski usta', konu:`Hayırlı olsun: ${D.ad}!`, metin:`Duydum ki ${D.ad.toLocaleLowerCase('tr')}ya taşınmışsın. Kira artık ${tl(kira())}/gün, dikkat et; ama büyük işler de büyük yerde yapılır. Yolun açık olsun.` });
+    log(`${D.ad}'ye taşındınız. Yeni yükseltmeler açıldı; kira ${tl(kira())}/gün.`, 'ok'); return true;
+  }
   const simdi = () => st.gun * 1440 + st.dk;                      // karşılaştırma için mutlak dakika
   const GUNLER = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
   const saatTxt = dk => `${String(8 + Math.floor(dk / 60)).padStart(2, '0')}:${String(Math.floor(dk % 60)).padStart(2, '0')}`;
@@ -176,6 +213,11 @@ const CR = (() => {
   function gunSonu() {
     raporBekliyor = true;
     const k = kira(); harca(k); cash(-k);
+    if (st.dukkan.yuk.cirak) {                                    // çırak: maaşını alır, kırıkları biler, talaşı süpürür
+      const n = Object.keys(st.kirik).length, ucret = YUK.find(u => u.id === 'cirak').gunluk;
+      harca(ucret); st.kirik = {}; clearChips(); renderRack();
+      st.bugun.olay.push(`Çırak: ${n ? n + ' kırık takımı biledi, ' : ''}talaşı süpürdü (−${tl(ucret)}).`);
+    }
     const b = st.bugun, yarin = st.orders.filter(o => o.kabul && o.termin && o.termin <= (st.gun + 1) * 1440 + MESAI).map(o => `${o.J.title} (${o.cust}): ${anTxt(o.termin)}`);
     const r = { gun:st.gun, gunAd:GUNLER[(st.gun - 1) % 7], gelir:b.gelir, gider:b.gider, kira:k, kar:b.gelir - b.gider, rep:b.rep, teslim:b.teslim, olay:b.olay.slice(),
       kasa:st.money, eksi:st.money < 0 ? `${st.eksi}/${KREDI_SURE} teslim` : '', yarin, bekleyen:bekleyen().length };
@@ -222,7 +264,7 @@ const CR = (() => {
     if (app.PC) app.PC.yeniMail();
   }
   function fillBoard() {                                          // gelen kutusunda en az 2 bekleyen sipariş (gün içinde yenileri gelir)
-    while (bekleyen().length < 2) { const o = teklifIste(genOrder(false)); st.orders.push(o); siparisMaili(o); }
+    while (bekleyen().length < 2 + (st.dukkan.yuk.web ? 1 : 0)) { const o = teklifIste(genOrder(false)); st.orders.push(o); siparisMaili(o); }
     // kasada ham parçaya bile para yoksa müşteri malzemesini getirir: oyun kilitlenmez
     if (!bekleyen().some(o => yeter(o.cost))) { const o = genOrder(true); st.orders.push(o); siparisMaili(o); }
     for (const o of st.orders) if (!o.mailId) siparisMaili(o);  // eski kayıttan kalan siparişler
@@ -439,7 +481,7 @@ const CR = (() => {
     selectJob(-1);
     if (on) { fillBoard(); save(); PM.preset('kariyer'); log(`Kariyer modu: kasada ${tl(st.money)}, itibar ${st.rep}. Siparişler bilgisayara mail olarak gelir (üst çubuktaki saat).`, 'ok'); }
     else log('Serbest atölye: her şey açık ve ücretsiz.', 'ok');
-    render();
+    dukkanUygula(); render();
   }
   function openShop() { initAudio(); renderShop(); $('shop').hidden = false; }
   $('crShop').addEventListener('click', openShop); $('tbMoney').addEventListener('click', openShop);
@@ -462,7 +504,9 @@ const CR = (() => {
     okunmamis:() => st.mail.filter(m => !m.okundu).length, kabul:id => kabul(st.orders.find(o => o.id === id)), reddet:id => reddet(st.orders.find(o => o.id === id)),
     teklif:(id, f) => teklifVer(st.orders.find(o => o.id === id), f), karsiKabul:id => { const o = st.orders.find(q => q.id === id); teklifKabul(o, o.karsi, o.hizliT); save(); log(`Anlaştınız: ${tl(o.karsi)}.`, 'ok'); },
     onizle:id => select(st.orders.find(o => o.id === id)), TEKLIF, bekler, payTxt, tl, anTxt, kira, kredi, level:() => LEVELS[level()][1], KREDI_SURE,
-    ilerle, kontrol, gunuBitir, ertesiGun, get raporBekliyor() { return raporBekliyor; } };
+    ilerle, kontrol, gunuBitir, ertesiGun, get raporBekliyor() { return raporBekliyor; },
+    // dükkânı büyütme (24-bilgisayar Dükkân sekmesi, 19-atolye görünüm)
+    yukVar, dukkanAl, tasin, dukkanUygula, dukkan:() => ({ sv:st.dukkan.sv, yuk:{ ...st.dukkan.yuk }, DUKKAN, YUK, kira:kira(), rep:st.rep, money:st.money }) };
 })();
 
 Object.assign(app, { CR });   // önceki modüllerin geç başvuruları

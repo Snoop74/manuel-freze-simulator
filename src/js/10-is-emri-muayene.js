@@ -541,5 +541,15 @@ $('rpClose').addEventListener('click', () => { $('report').hidden = true; app.FW
 /* ---------------- Havai fişek: başarılı teslimde ekranın üstünde patlar ----------------
    Yıldız sayısı gösteriyi büyütür; 2B tuval, olayı bitince kendini kapatır. Patlama sesi süzülmüş gürültü + kısa çıtırtı. */
 
+// ölçü masası (kariyerde dükkândan, serbestte açık): teslim etmeden ölçüm; tolerans dışı ölçüler olay kaydına
+$('jobCheck').addEventListener('click', () => {
+  if (!S.job || S.job.done) return;
+  if (S.spindle) { log('Ölçmeden önce mili durdurun.', 'warn'); return; }
+  const items = inspect(S.job.J), bad = items.filter(q => !q.ok);
+  log(bad.length ? `Ön kontrol: ${bad.length}/${items.length} ölçü tolerans dışı: ${bad.slice(0, 5).map(q => `${q.grp} ${q.label.toLocaleLowerCase('tr')} ${q.meas} (istenen ${q.nom})`).join('; ')}${bad.length > 5 ? '…' : ''}.`
+    : `Ön kontrol: ${items.length} ölçünün hepsi tolerans içinde. Teslim edebilirsiniz.`, bad.length ? 'warn' : 'ok');
+});
+setInterval(() => { $('jobCheck').hidden = !(S.job && !S.job.done && app.CR.yukVar('olcu')); }, 500);
+
 export { DIS, JOBS, buildScribe, localTop, threadAt, drawingSVG, drawingTable, inRect, mmss, renderJobs, selJob, selectJob, setSelJob,
   startJob, submitJob };

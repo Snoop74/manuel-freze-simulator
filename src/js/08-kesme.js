@@ -102,7 +102,7 @@ function crash(msg) {
   app.updateSpindleUI(); app.updateToolUI();
   app.PM.flash('tools');
 }
-function stopMotion() { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0; S.autoX = 0; if (typeof app.updateAutoUI === 'function') app.updateAutoUI(); pressed.forEach(p => p.t0 = Infinity); }
+function stopMotion() { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0; S.autoX = S.autoY = 0; if (typeof app.updateAutoUI === 'function') app.updateAutoUI(); pressed.forEach(p => p.t0 = Infinity); }
 
 function loadRatio(T, feedNow, horiz) {
   if (T.type === 'edge' || T.type === 'tap' || isTaster(T) || S.rpm <= 0) return 0;
@@ -213,7 +213,7 @@ function tryStep(nx, ny, nn, dtStep) {
   S.removed += vol; S.cutTime += tCut; S.cutAcc += vol; S.lastCut = performance.now();
   S.lastVc = vcNow; S.lastRa = ra;
   // takım aşınması (Taylor): kesme hızının ~2.5. kuvvetiyle hızlanır; ısı: kesme enerjisinin bir kısmı parçaya geçer
-  S.wear[S.tool] += 0.3 / 900 * mat.wearK * Math.pow(Math.max(vr, 0.2), 2.5) * tCut * (S.coolant && !mat.dry ? 0.8 : 1) * (isDrill(T) ? 1.5 : 1) * md.wear;
+  S.wear[S.tool] += 0.3 / 900 * mat.wearK * Math.pow(Math.max(vr, 0.2), 2.5) * tCut * (S.coolant && !mat.dry ? 0.8 : 1) * (isDrill(T) ? 1.5 : 1) * md.wear * (app.CR.yukVar('pompa') ? 0.7 : 1);   // soğutma pompası
   if (S.wear[S.tool] > 0.3) warnOnce('wear', `Takım köreldi (VB ${S.wear[S.tool].toFixed(2)} mm): yüzey bozuluyor, yük artıyor. Takım panelinden takımı yenileyin.`, 'warn', 8000);
   S.temp += vol * mat.kc * 1e-3 * 0.45 / Math.max(50, S.heatCap);
   const form = chipForm(T, S.lastChip || 1, fRev, vr);
@@ -245,7 +245,7 @@ function tryStep(nx, ny, nn, dtStep) {
     warnOnce('rotlock', 'Döner tabla kilitsiz: parça kesme yükü altında döndü! Öteleme kesmesinden önce kilit kolunu sıkın.', 'warn', 6000);
   }
   // mil gücü: kc · talaş debisi; 1000 dev/dk altında sabit tork, aşırı yükte devir düşer, çok aşırıda mil boğulur
-  const Pc = mat.kc * (W.vol / Math.max(1e-3, winT)) * 1e-6, Pav = P_MAX * Math.min(1, S.rpm / 1000);
+  const Pc = mat.kc * (W.vol / Math.max(1e-3, winT)) * 1e-6, Pav = P_MAX * (S.motorK || 1) * Math.min(1, S.rpm / 1000);   // motorK: kariyerde güçlü motor (17)
   S.power = Pc / Pav;
   if (FIX === 'vac' && app.VAC.check(Pc, vcNow)) return false;
   if (S.power > 1.5) { crash(`Mil boğuldu: kesme ${Pc.toFixed(1)} kW istiyor, motor bu devirde ${Pav.toFixed(1)} kW verebiliyor. Talaş derinliğini ya da ilerlemeyi azaltın.`); return false; }
@@ -448,7 +448,7 @@ function motion(dt) {
   if (S.tap) {                        // kılavuz kavradı: kovanı mil sürer, tabla ve el kumandası devre dışı
     m.x = m.y = wm.x = wm.y = wm.z = 0; S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0;
     m.z = S.spindle ? -S.dir * S.tap.p * Math.max(1, S.rpmEff || S.rpm) / 60 * S.sim * dt : 0; jog = false;
-  } else if (S.autoX) { m.x += S.autoX * S.feed / 60 * S.sim * dt; jog = true; }
+  } else if (S.autoX || S.autoY) { m.x += S.autoX * S.feed / 60 * S.sim * dt; m.y += S.autoY * S.feed / 60 * S.sim * dt; jog = true; }
   // Kesme hesabında kullanılan gerçek ilerleme: kol/tuş ilerlemesi veya el çarkının dönüş hızı
   S.feedNow = Math.max(jog ? (rapid() ? RAPID : S.feed) : 0, wd / dt * 60);
   if ((ROT.on || FIX === 'div') && (ROT.pend || ROT.hold) && !S.tap) rotStep(dt);
@@ -462,7 +462,7 @@ function motion(dt) {
     if (nx !== tx || ny !== ty || nn !== tn) {
       warnOnce('lim', 'Eksen hareket sınırına ulaşıldı.');
       if (nx !== tx) { m.x = wm.x = 0; S.pend.x = S.wheel.x = 0; if (S.autoX) { S.autoX = 0; app.updateAutoUI(); } }
-      if (ny !== ty) { m.y = wm.y = 0; S.pend.y = S.wheel.y = 0; }
+      if (ny !== ty) { m.y = wm.y = 0; S.pend.y = S.wheel.y = 0; if (S.autoY) { S.autoY = 0; app.updateAutoUI(); } }
       if (nn !== tn) { m.z = wm.z = 0; S.pend.z = S.wheel.z = 0; }
     }
     if (nx === S.px && ny === S.py && nn === S.nose) break;
@@ -470,7 +470,7 @@ function motion(dt) {
     S.px = nx; S.py = ny; S.nose = nn; done++;
   }
   if (done) { S.lastMove = performance.now(); S.curFeed += (S.feedNow - S.curFeed) * 0.3; }
-  if (blocked) { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0; if (S.autoX) { S.autoX = 0; app.updateAutoUI(); } return; }
+  if (blocked) { S.pend.x = S.pend.y = S.pend.z = 0; S.wheel.x = S.wheel.y = S.wheel.z = 0; if (S.autoX || S.autoY) { S.autoX = S.autoY = 0; app.updateAutoUI(); } return; }
   for (const ax of ['x', 'y', 'z']) {
     if (!heldDir(ax) && S.pend[ax]) {
       S.pend[ax] -= (m[ax] - wm[ax]) * done / n;

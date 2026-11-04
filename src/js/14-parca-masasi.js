@@ -7,7 +7,7 @@ import { DIVZ } from './04-voksel.js';
 import { FIX, buildStock, flushMesh, markStockReady, stockBase, syncFixtures, topGeo, topMat, walls } from './05-baglama.js';
 import { CHIP_TXT } from './06-talas.js';
 import { press, release } from './08-kesme.js';
-import { TICK, droVals, fmt, resetPart, setAuto, setAxis, setFeed, setRpm, spindle, wheelTicks } from './09-kumanda.js';
+import { TICK, droVals, fmt, resetPart, setAuto, setAutoY, setAxis, setFeed, setRpm, spindle, wheelTicks } from './09-kumanda.js';
 import { estop } from './12-dongu-ust-cubuk.js';
 
 const CP = (() => {
@@ -119,7 +119,7 @@ const CP = (() => {
     b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
   });
   $('cpRapid').addEventListener('click', () => $('rapidBtn').click());
-  $('cpAuto').addEventListener('click', e => { const b = e.target.closest('[data-af]'); if (b) { initAudio(); thud(320, 0.04, 0.025); setAuto(+b.dataset.af); } });
+  $('cpAuto').addEventListener('click', e => { const b = e.target.closest('[data-af]'); if (b) { initAudio(); thud(320, 0.04, 0.025); setAuto(+b.dataset.af); return; } const y = e.target.closest('[data-afy]'); if (y) { thud(320, 0.04, 0.025); setAutoY(+y.dataset.afy); } });
   function render() {
     for (const ax of ['x', 'y', 'z']) document.querySelector(`.lcd-ax[data-ax="${ax}"]`).classList.toggle('sel', st.sel === ax);
     document.querySelectorAll('.key.ax').forEach(b => b.classList.toggle('on', b.dataset.k === st.sel));
@@ -134,7 +134,7 @@ const CP = (() => {
     $('lcdS').textContent = `S ${Math.round(S.spindle ? S.rpmEff : 0)}${S.spindle && S.dir < 0 ? ' GERİ' : ''}`;
     $('lcdF').textContent = `F ${Math.round(S.curFeed && performance.now() - S.lastMove < 200 ? S.curFeed : S.feed)}`;
     $('lcdT').textContent = `${T.no} Ø${T.d}`;
-    $('lcdState').textContent = S.alarm ? 'ALARM' : S.changing ? 'TAKIM DEĞ.' : S.tap ? 'KILAVUZ' : S.autoX ? 'OTO. İLERLEME' : S.spindle ? 'MİL DÖNÜYOR' : 'HAZIR';
+    $('lcdState').textContent = S.alarm ? 'ALARM' : S.changing ? 'TAKIM DEĞ.' : S.tap ? 'KILAVUZ' : S.autoX || S.autoY ? 'OTO. İLERLEME' : S.spindle ? 'MİL DÖNÜYOR' : 'HAZIR';
     const cutting = performance.now() - S.lastCut < 400, ld = cutting ? S.lastStress : 0;
     const bar = (id, v) => { const e = $(id); e.style.width = clamp(v * 100, 0, 100) + '%'; e.className = v > 1 ? 'bad' : v > 0.8 ? 'hi' : ''; };
     bar('lcdLoad', ld / 1.5); $('lcdLoadV').textContent = cutting ? ld.toFixed(2) + '×' : '—';
@@ -147,6 +147,8 @@ const CP = (() => {
     $('lpSpin').classList.toggle('on', S.spindle); $('lpAlarm').classList.toggle('on', S.alarm);
     $('cpRapid').classList.toggle('on', S.rapidBtn);
     $('cpAuto').querySelectorAll('[data-af]').forEach(b => { const f = +b.dataset.af; b.classList.toggle('on', f ? Math.sign(S.autoX) === f : !S.autoX); });
+    $('cpAutoY').hidden = !app.CR.yukVar('yIlerleme');
+    $('cpAutoY').querySelectorAll('[data-afy]').forEach(b => { const f = +b.dataset.afy; b.classList.toggle('on', f ? Math.sign(S.autoY) === f : !S.autoY); });
     $('kRpmV').textContent = S.rpm; $('kFeedV').textContent = S.feed;
     $('kAxisV').textContent = st.axis.toUpperCase(); $('kMulV').textContent = '×' + Math.round(S.wheelMul * 100);   // topuz değeri adın altında, okunur boyda
     $('cpMpgL').textContent = `${st.axis.toUpperCase()} ×${Math.round(S.wheelMul * 100)}`;

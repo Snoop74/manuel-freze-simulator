@@ -90,7 +90,7 @@ const S = {
   peck:{active:false, top:0}, cutting:0, muted:false, spotHint:false,
   wheel:{x:0,y:0,z:0}, wheelMul:0.01, feedNow:0, curFeed:0,
   win:{vol:0,h:0,v:0,ap:0,idle:0}, lastChip:0, lastStress:0, lastCut:0, lastMove:0, damage:0,
-  mat:'al', dir:1, autoX:0, lastAuto:1, tap:null, wear:TOOLS.map(() => 0), temp:0, heatCap:600, power:0, rpmEff:2000, chatNow:0, lastRa:null, lastVc:0, chipForm:null, chipT:0
+  mat:'al', dir:1, autoX:0, autoY:0, lastAuto:1, tap:null, wear:TOOLS.map(() => 0), temp:0, heatCap:600, power:0, rpmEff:2000, chatNow:0, lastRa:null, lastVc:0, chipForm:null, chipT:0
 };
 S.nose = 70 + TOOLS[S.tool].len;
 S.zn = PH + TOOLS[S.tool].len;

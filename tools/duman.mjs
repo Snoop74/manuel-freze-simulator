@@ -246,6 +246,37 @@ const SENARYO = {
     if (cep.some(v => Math.abs(v - 5) > 0.15)) throw new Error(`cep derinliği 5 değil: ${cep.map(v => v.toFixed(2)).join(', ')}`);
     return `ayrıştırıcı 7 denetim, G83 ile 4 delik boydan boya, cep 5 mm (${r.ops.length} adım)`;
   },
+  async dukkan() {
+    const { app, S, U, son } = window.__d, CR = app.CR;
+    document.querySelector('#modeSw [data-mode="career"]').click();
+    if (!CR.on) throw new Error('kariyere geçilmedi');
+    const st = CR.st; st.money = 60000; st.rep = 0;
+    const gor = () => CR.dukkan();
+    if (gor().sv !== 0) throw new Error('yeni kariyer garajda başlamadı');
+    // kilitler: atölye yükseltmesi garajda alınmaz, itibarsız taşınılmaz, motorsuz Y ilerlemesi çalışmaz
+    if (CR.dukkanAl('motor')) throw new Error('garajda atölye yükseltmesi alındı');
+    if (CR.tasin()) throw new Error('itibarsız taşınıldı');
+    U.setAutoY(1); if (S.autoY) throw new Error('motorsuz Y ilerlemesi çalıştı');
+    const k0 = CR.kira();
+    for (const id of ['olcu', 'pompa', 'raf', 'yIlerleme']) if (!CR.dukkanAl(id)) throw new Error(`${id} alınamadı: ${son()}`);
+    U.setAutoY(1); if (S.autoY !== 1) throw new Error('Y ilerleme motoru alınınca Y ilerlemesi çalışmadı'); U.setAutoY(0);
+    st.rep = 12; if (!CR.tasin() || gor().sv !== 1) throw new Error(`atölyeye taşınılmadı: ${son()}`);
+    if (!(CR.kira() > k0)) throw new Error('atölyede kira artmadı');
+    if (Math.abs(S.motorK - 1) > 1e-9) throw new Error('motor alınmadan mil gücü arttı');
+    for (const id of ['motor', 'cirak', 'web']) if (!CR.dukkanAl(id)) throw new Error(`${id} alınamadı: ${son()}`);
+    if (S.motorK !== 1.5) throw new Error('güçlü motor mil gücünü artırmadı');
+    // çırak: gün sonunda kırıkları biler ve maaşını alır; web sitesi: gelen kutusunda 3 sipariş
+    st.kirik = { T3:1 }; const m0 = st.money; S.spindle = false;
+    CR.gunuBitir(); CR.ertesiGun();
+    if (Object.keys(st.kirik).length) throw new Error('çırak kırık takımı bilemedi');
+    if (!(m0 - st.money >= CR.kira() + 250 - 1)) throw new Error(`çırak maaşı ve kira düşmedi (${m0} → ${st.money})`);
+    const bek = st.orders.filter(o => !o.kabul).length;
+    if (bek < 3) throw new Error(`web sitesiyle gelen kutusunda ${bek} sipariş var (en az 3)`);
+    // görünüm: yükseltmeler atölyede görünür
+    const { scene } = await import('/src/js/02-sahne-tezgah.js');
+    if (!app.ATL) throw new Error('atölye görünümü kurulmadı');
+    return `garaj → atölye, 7 yükseltme, kira ${k0} → ${CR.kira()} ₺, çırak ve web çalışıyor`;
+  },
   async kariyer() {
     const { app, S, son } = window.__d;
     document.querySelector('#modeSw [data-mode=career]').click();
@@ -258,7 +289,8 @@ const SENARYO = {
     const para = st.money;                                          // kabulde ham parça parası düşebilir
     S.spindle = false; app.CR.gunuBitir();
     if (!app.CR.raporBekliyor) throw new Error('gün sonu raporu açılmadı');
-    if (st.money !== para - app.CR.kira()) throw new Error(`kira düşmedi (${para} → ${st.money})`);
+    const gider = app.CR.kira() + (st.dukkan && st.dukkan.yuk.cirak ? 250 : 0);   // kira, varsa çırak maaşı
+    if (st.money !== para - gider) throw new Error(`kira düşmedi (${para} → ${st.money}, beklenen −${gider})`);
     app.CR.ertesiGun();
     if (st.gun !== gun + 1) throw new Error('ertesi güne geçilmedi');
     // sipariş üretici (16-siparis): her seviyede 100'er sipariş, bozuk alan yok

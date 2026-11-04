@@ -16,7 +16,7 @@ const PC = (() => {
       <div class="pc-ust"><b id="pcBaslik">Posta</b><span id="pcSaat"></span><button class="pc-x" id="pcKapat" aria-label="Kapat">×</button></div>
       <div class="pc-govde" id="pcGovde"></div>
       <div class="pc-alt">
-        <button data-uyg="posta">✉ Posta <i id="pcRozet"></i></button><button data-uyg="banka">₺ Banka</button><button data-uyg="tedarik">🛒 Tedarik</button><button data-uyg="dolap">🔧 Dolap</button>
+        <button data-uyg="posta">✉ Posta <i id="pcRozet"></i></button><button data-uyg="banka">₺ Banka</button><button data-uyg="dukkan">🏭 Dükkân</button><button data-uyg="tedarik">🛒 Tedarik</button><button data-uyg="dolap">🔧 Dolap</button>
         <span></span><button class="pc-bitir" id="pcBitir">Günü bitir →</button>
       </div>
     </div>
@@ -102,6 +102,24 @@ const PC = (() => {
     </div>`;
   }
 
+  /* -- Dükkân: aşama (garaj → atölye), taşınma ve yükseltmeler (17-kariyer) -- */
+  function dukkan() {
+    const D = CR().dukkan(), tl = CR().tl, sonraki = D.DUKKAN[D.sv + 1];
+    const asama = D.DUKKAN.map((a, i) => `<div class="pc-dk-as${i === D.sv ? ' on' : i < D.sv ? ' gecti' : ''}"><b>${i + 1} · ${esc(a.ad)}</b><small>${esc(a.t)} · kira ${tl(a.kira)}/gün</small></div>`).join('<i>→</i>');
+    const tas = sonraki ? `<div class="pc-dk-tas"><div><b>${esc(sonraki.ad)}'ye taşın</b><small>${sonraki.rep} itibar (sende ${D.rep}) · ${tl(sonraki.para)} · kira ${tl(sonraki.kira)}/gün olur</small></div>
+      <button class="btn${D.rep >= sonraki.rep ? ' start' : ''}" data-tas="1"${D.rep >= sonraki.rep ? '' : ' disabled'}>${D.rep >= sonraki.rep ? 'Taşın' : `${sonraki.rep - D.rep} itibar daha`}</button></div>` : '<div class="pc-dk-tas"><b>En büyük dükkândasın.</b></div>';
+    const kart = u => {
+      const var_ = D.yuk[u.id], kilit = u.sv > D.sv;
+      return `<div class="pc-dk-y${var_ ? ' var' : kilit ? ' kilit' : ''}"><div><b>${esc(u.ad)}</b><small>${esc(u.t)}</small></div>
+        ${var_ ? '<span class="pc-dk-ok">✓ var</span>' : kilit ? `<span class="pc-dk-k">🔒 ${esc(D.DUKKAN[u.sv].ad)}</span>` : `<button class="btn sm" data-al="${u.id}">${tl(u.p)}</button>`}</div>`;
+    };
+    $('pcGovde').innerHTML = `<div class="pc-dk"><div class="pc-dk-ust">${asama}</div>${tas}
+      <div class="pc-dk-liste">${D.YUK.map(kart).join('')}</div>
+      <small class="pc-dk-not">Kasa ${tl(D.money)} · bugünkü kira ${tl(D.kira)} · yükseltmeler atölyede görünür</small></div>`;
+    $('pcGovde').querySelectorAll('[data-al]').forEach(b => b.addEventListener('click', () => { if (CR().dukkanAl(b.dataset.al)) { beep(1100, 0.08); dukkan(); ustCubuk(); } }));
+    const t = $('pcGovde').querySelector('[data-tas]'); if (t) t.addEventListener('click', () => { if (CR().tasin()) { beep(900, 0.12); dukkan(); ustCubuk(); } });
+  }
+
   /* -- Gün sonu raporu (mailde de görünür) -- */
   function raporHTML(r, buyuk) {
     const tl = CR().tl;
@@ -122,9 +140,9 @@ const PC = (() => {
   }
 
   function goster() {
-    $('pcBaslik').textContent = { posta:'Posta', banka:'Banka' }[uyg] || 'Posta';
+    $('pcBaslik').textContent = { posta:'Posta', banka:'Banka', dukkan:'Dükkân' }[uyg] || 'Posta';
     el.querySelectorAll('[data-uyg]').forEach(b => b.classList.toggle('on', b.dataset.uyg === uyg));
-    if (uyg === 'banka') banka(); else posta();
+    if (uyg === 'banka') banka(); else if (uyg === 'dukkan') dukkan(); else posta();
     ustCubuk();
   }
   function ac(u) {

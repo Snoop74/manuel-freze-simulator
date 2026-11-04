@@ -126,6 +126,15 @@ function setAuto(v) {
   S.autoX = v; updateAutoUI();
   if (v) log(`Otomatik tabla ilerlemesi: ${v > 0 ? 'sağa' : 'sola'}, ${S.feed} mm/dk. Durmak için kolu ortalayın ya da Dur'a basın.`);
 }
+// Y ekseni otomatik ilerleme: kariyerde dükkândan alınan ilerleme motoru (17), serbestte açık
+function setAutoY(v) {
+  initAudio();
+  if (v && !app.CR.yukVar('yIlerleme')) { log('Y ekseninde otomatik ilerleme için Y ilerleme motoru gerekli (bilgisayar → Dükkân).', 'warn'); return; }
+  if (v && (S.alarm || S.changing || S.tap)) return;
+  if (S.autoY !== v) thud(170, 0.12, 0.08);
+  S.autoY = v; updateAutoUI();
+  if (v) log(`Otomatik Y ilerlemesi: ${v > 0 ? 'içeri (Y+)' : 'operatöre doğru (Y−)'}, ${S.feed} mm/dk.`);
+}
 $('autoBtns').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setAuto(+b.dataset.af); });
 $('spDir').addEventListener('click', () => {
   initAudio();
@@ -304,6 +313,6 @@ function resetPart(k) {
 /* ---------------- İş emirleri, muayene ve puanlama ---------------- */
 Object.assign(app, { fmt, updateAutoUI, updateRec, updateSpindleUI, updateToolUI });   // önceki modüllerin geç başvuruları
 
-export { COL, TICK, addSpin, drawWheels, droVals, fmt, rackTagOf, renderRack, requestToolChange, resetPart, setAuto,
+export { COL, TICK, addSpin, drawWheels, droVals, fmt, rackTagOf, renderRack, requestToolChange, resetPart, setAuto, setAutoY,
   setAxis, setFeed, setMaterial, setRackTag, setRpm, setStep, spinAng, spindle, toggleCoolant, tok, updateRec,
   updateSpindleUI, updateToolUI, wheelTicks };

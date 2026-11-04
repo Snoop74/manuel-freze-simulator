@@ -788,7 +788,9 @@ body.montaj-on .eg{display:none}
 .tb-menu.tb-liste > button[hidden]{display:none}
 /* kumanda: otomatik ilerleme */
 .cp-auto{display:grid;justify-items:center;gap:.8cqw;align-self:center}
-.cp-auto > div:last-child{display:flex;gap:.9cqw}
+.cp-auto > div:not(.cp-cap){display:flex;gap:.9cqw;align-items:center}
+.cp-auto > div[hidden]{display:none}
+.cp-auto i{font-style:normal;font-weight:700;font-size:max(11px,2cqw);color:#aab3b0;width:1.4em;text-align:center}
 .cp-auto button{width:max(30px,6cqw);height:max(26px,4.8cqw);border:0;cursor:pointer;font-weight:700;font-size:max(12px,2.4cqw);color:#f2f2ec;background:linear-gradient(#5b6368,#3c4246);border-radius:.8cqw;box-shadow:0 .5cqw 0 #1f2427,0 .7cqw 1.2cqw rgba(0,0,0,.45)}
 .cp-auto button.on{background:linear-gradient(#f0b429,#c98a12);color:#2a1d02}
 .cp-auto button:active{transform:translateY(.4cqw);box-shadow:0 .1cqw 0 #1f2427}
@@ -799,3 +801,25 @@ body.tbm-acik .toast{visibility:hidden}
 .menu-baslik2{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:6px 2px -2px}
 .menu-mod{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .menu-mod .menu-dugme.secili{border-color:var(--safety);background:rgba(240,180,41,.08)}
+#jobCheck{width:100%;margin-top:6px}
+/* bilgisayar: Dükkân sekmesi */
+.pc-dk{grid-column:1/-1;display:grid;gap:12px;padding:16px;align-content:start;overflow:auto}
+.pc-dk-ust{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pc-dk-ust i{font-style:normal;color:#8a9094;font-size:18px}
+.pc-dk-as{flex:1;min-width:180px;background:#f1f2ee;border:1px solid #c9cdc6;border-radius:8px;padding:8px 12px;display:grid;gap:2px}
+.pc-dk-as.on{background:#fff6dc;border-color:#d9a417;box-shadow:inset 0 0 0 1px #d9a417}
+.pc-dk-as.gecti{opacity:.6}
+.pc-dk-as b{font-size:14px}.pc-dk-as small{font-size:11.5px;color:#6b7275}
+.pc-dk-tas{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#eef4fb;border:1px solid #b8cde3;border-radius:8px;padding:10px 12px}
+.pc-dk-tas div{display:grid;gap:2px}.pc-dk-tas small{font-size:11.5px;color:#55606a}
+.pc-dk-liste{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px}
+.pc-dk-y{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f8f9f6;border:1px solid #c9cdc6;border-radius:8px;padding:9px 12px}
+.pc-dk-y div{display:grid;gap:2px}.pc-dk-y b{font-size:13.5px}.pc-dk-y small{font-size:11.5px;color:#6b7275;line-height:1.35}
+.pc-dk-y.var{background:#eef7f0;border-color:#9fcfae}
+.pc-dk-y.kilit{opacity:.6}
+.pc-dk-ok{color:#1f7a3f;font-weight:600;white-space:nowrap}.pc-dk-k{color:#6b7275;font-size:12px;white-space:nowrap}
+.pc-dk-not{color:#6b7275;font-size:11.5px}
+.pc-dk .btn{background:#fff;color:#1d2326;border:1px solid #9aa3a7;font-weight:600;white-space:nowrap;min-width:84px}
+.pc-dk .btn:hover:not(:disabled){border-color:#2f6fae;color:#2f6fae}
+.pc-dk .btn.start{background:#2f7d4a;border-color:#2f7d4a;color:#fff}
+.pc-dk .btn:disabled{background:#eceeea;color:#7b8285;border-color:#cfd3cc;cursor:default}

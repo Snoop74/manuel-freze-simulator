@@ -1,9 +1,10 @@
 // ── Atölye donanımı: arka plandaki makineler ve eşyalar (sütunlu matkap, taş motoru, kompresör, malzeme rafı, paletler, variller),
 // pencereler, tavan vinci, elektrik panosu, tabelalar ve duvar saati. Yalnızca görünüm; çarpışma ve oyun mantığına girmez.
 import { AYAR, ayarDinle } from './00-tercihler.js';
-import { TAU } from './00-temel.js';
+import { TAU, app } from './00-temel.js';
 import { FLOOR_Y, M, MX, addSurface, cyl, rbox, renderer, scene, smat } from './02-sahne-tezgah.js';
 import { table } from './03-tabla-parca.js';
+import { CR } from './17-kariyer.js';
 
 const F = FLOOR_Y;
 const WALL_Z = -1600, WALL_X = -3360;   // arka duvarın ve sol duvarın iç yüzü
@@ -27,6 +28,9 @@ const rackPaint = paint(0x3b5a7a, 0.75, 0.1, { det:1, nStr:1, rough:0.8, sc:1 / 
 const extRed = paint(0xb3221a, 0.45, 0.1, { det:0.9, nStr:0.8, rough:0.5, sc:1 / 400 });   // yangın tüpü
 const wood = smat(0x9a7a52, 0.9, 0, 0.1), woodDark = smat(0x6b5236, 0.9, 0, 0.1);
 const add = (m, x, y, z) => { m.position.set(x, y, z); scene.add(m); return m; };
+// dükkânı büyütme: kariyerde alınan yükseltmelerin atölyedeki görünüşü (dukkanGor; serbest atölyede hepsi görünür)
+const DK = { raf:new THREE.Group(), olcu:new THREE.Group(), pompa:new THREE.Group(), cirak:new THREE.Group() };
+for (const g of Object.values(DK)) scene.add(g);
 
 /* ---- Hazır modeller (assets/model, Poly Haven CC0, glTF; metre → mm) ----
    Sayfa açıldıktan sonra arka planda yüklenir; yüklenemezse (file://) yeri boş kalır, oyun etkilenmez.
@@ -101,7 +105,8 @@ for (const lx of [-1200, 300, 1800]) for (const lz of [-700, 700]) model('hangin
   model('barrel_03', { x:2500, z:-760, ry:2.2 });                                    // talaş varili
 }
 
-/* ---- Malzeme rafı (sol duvar): konsol kollarda yuvarlak çubuklar, lamalar ---- */
+/* ---- Malzeme rafı (sol duvar): konsol kollarda yuvarlak çubuklar, lamalar (yükseltme: malzeme rafı) ---- */
+const raf0 = scene.children.length;
 {
   const x0 = WALL_X, ups = [-900, -100, 700], lev = [F + 380, F + 900, F + 1420];
   for (const z of ups) {
@@ -115,6 +120,7 @@ for (const lx of [-1200, 300, 1800]) for (const lz of [-700, 700]) model('hangin
   [[aluBar, 30, 1800], [aluBar, 45, 1500], [aluBar, 20, 2000], [brass, 25, 1200], [brass, 15, 1400]].forEach(([m, r, l], k) => bar(m, r, l, L1, 130 + k * 70, -150 + k * 40));
   for (let k = 0; k < 4; k++) rbox(x0 + 120 + k * 85, x0 + 190 + k * 85, L2, L2 + 12 + k * 4, -1050, 900 - k * 150, 1, k < 2 ? blackBar : aluBar);   // lamalar
 }
+for (const o of scene.children.slice(raf0)) DK.raf.add(o);
 
 /* ---- Palette plakalar (sol ön) ---- */
 {
@@ -358,6 +364,40 @@ for (const [x, z, s] of [[-300, -40, 120], [470, 20, 90]]) {
 }
 const nip = smat(0xb3261e, 0.4, 0.3, 0.4);
 for (const x of [-360, 520]) { const n = cyl(4, 4, 8, nip, 10); n.rotation.x = Math.PI / 2; n.position.set(x, -75, 58); table.add(n); }
+
+/* ---- Dükkân yükseltmeleri: ölçü masası (granit plaka, komparatör), soğutma tankı, çırağın süpürgesi ---- */
+{
+  const g = DK.olcu, x = -1300, z = 760, ust = F + 840;
+  for (const [dx, dz] of [[-320, -190], [320, -190], [-320, 190], [320, 190]]) { const b = cyl(22, 22, 800, P.dark, 10); b.position.set(x + dx, F + 400, z + dz); g.add(b); }
+  rbox(x - 360, x + 360, ust - 40, ust, z - 230, z + 230, 6, P.grey, g);                           // masa tablası
+  rbox(x - 300, x + 300, ust, ust + 90, z - 190, z + 190, 3, smat(0x2b2f33, 0.35, 0.1, 0.5), g);     // granit pleyt
+  const st = cyl(14, 14, 260, MX.chrome, 12); st.position.set(x + 180, ust + 220, z - 80); g.add(st);   // komparatör sehpası
+  rbox(x + 120, x + 240, ust + 90, ust + 120, z - 140, z - 20, 3, P.dark, g);
+  const kd = cyl(38, 38, 18, P.grey, 24); kd.rotation.x = Math.PI / 2; kd.position.set(x + 120, ust + 300, z - 80); g.add(kd);   // kadran
+  rbox(x - 220, x + 20, ust + 90, ust + 98, z + 60, z + 90, 1, MX.chrome, g);                       // kumpas
+}
+{
+  const g = DK.pompa, x = -560, z = -120;
+  rbox(x - 170, x + 170, F, F + 380, z - 170, z + 170, 10, P.blue, g);                               // soğutma tankı
+  rbox(x - 150, x + 150, F + 380, F + 400, z - 150, z + 150, 4, P.dark, g);
+  const pm = cyl(55, 55, 140, P.dark, 16); pm.position.set(x + 60, F + 470, z); g.add(pm);            // pompa motoru
+  const bo = cyl(9, 9, 620, P.dark, 8); bo.rotation.z = Math.PI / 2.4; bo.position.set(x + 240, F + 640, z); g.add(bo);   // hortum tezgâha
+}
+{
+  const g = DK.cirak, x = 620, z = WALL_Z + 70;
+  const sap = cyl(12, 12, 1350, wood, 8); sap.position.set(x, F + 700, z); sap.rotation.z = 0.12; g.add(sap);   // süpürge
+  rbox(x - 140, x + 120, F, F + 90, z - 40, z + 40, 6, woodDark, g);
+  rbox(x + 200, x + 480, F, F + 12, z - 120, z + 120, 3, P.red, g);                                    // faraş
+  rbox(x + 200, x + 230, F, F + 110, z - 120, z + 120, 3, P.red, g);
+}
+const duvarIlk = MX.wallLow.color.clone(), duvarAtolye = new THREE.Color(0x4f7a6a).convertSRGBToLinear();
+function dukkanGor({ sv, yuk }) {
+  DK.raf.visible = !!yuk.raf; DK.olcu.visible = !!yuk.olcu; DK.pompa.visible = !!yuk.pompa; DK.cirak.visible = !!yuk.cirak;
+  MX.wallLow.color.copy(sv >= 1 ? duvarAtolye : duvarIlk);                                         // atölyeye taşınınca duvarlar yeni boyalı
+}
+const ATL = { dukkanGor };
+Object.assign(app, { ATL });
+CR.dukkanUygula();
 
 ayarDinle('esya', a => { for (const p of PROPS) if (p.o.userData.agir) p.o.visible = a.esya; });
 

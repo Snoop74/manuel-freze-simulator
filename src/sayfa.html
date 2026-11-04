@@ -261,7 +261,7 @@
               <button data-j="x-1">X−</button><button class="rapid" id="cpRapid">HIZLI</button><button data-j="x1">X+</button><span></span>
               <span></span><button data-j="y-1">Y−</button><span></span><button data-j="z-1">Z−</button>
             </div>
-            <div class="cp-auto" id="cpAuto"><div class="cp-cap">OTO İLERLEME</div><div><button data-af="-1" title="Tabla sola">◀</button><button data-af="0" title="Dur">■</button><button data-af="1" title="Tabla sağa">▶</button></div></div>
+            <div class="cp-auto" id="cpAuto"><div class="cp-cap">OTO İLERLEME</div><div><i>X</i><button data-af="-1" title="Tabla sola">◀</button><button data-af="0" title="Dur">■</button><button data-af="1" title="Tabla sağa">▶</button></div><div id="cpAutoY" hidden><i>Y</i><button data-afy="-1" title="Operatöre doğru (Y−)">▼</button><button data-afy="0" title="Dur">■</button><button data-afy="1" title="İçeri (Y+)">▲</button></div></div>
           </div>
           <div class="cp-group last">
             <div class="cp-lamps"><span class="lamp2 on g" title="Güç"></span><span class="lamp2 a" id="lpSpin" title="Mil"></span><span class="lamp2 r" id="lpAlarm" title="Alarm"></span></div>
@@ -291,6 +291,7 @@
           <button class="btn" id="jobStart">İşe başla</button>
           <button class="btn start" id="jobSubmit">Parçayı teslim et</button>
         </div>
+        <button class="btn" id="jobCheck" hidden title="Ölçü masası: teslim etmeden ölçüleri gör">Ön kontrol: ölçüleri gör</button>
         <button class="btn" id="jobDemo" hidden title="Delikler delinmiş ve diş çekilmiş plakayla başlar; doğrudan montajı denemek için">Hazır plakayla dene (delinmiş, diş çekilmiş)</button>
       </div>
     </div>
