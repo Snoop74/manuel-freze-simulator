@@ -96,13 +96,20 @@ MENU.ekran('ana', (k, M) => {
   const kariyer = app.CR && app.CR.on;
   const egitim = () => app.EG.baslat();
   if (!app.EG.bitti) M.dugme('Eğitim', egitim, { ana:true, alt:'Otto Usta ile ilk parça · 10 dk · önerilir' });
-  M.dugme('Devam et', () => MENU.kapat(), { ana:app.EG.bitti, alt:kariyer ? 'kariyer' : 'serbest atölye' });
-  M.dugme('Kariyer', () => { modTik('career'); MENU.kapat(); }, { alt:'siparişler, kasa, itibar, dükkân', secili:kariyer });
-  M.dugme('Serbest atölye', () => { modTik('free'); MENU.kapat(); }, { alt:'her şey açık ve ücretsiz', secili:!kariyer });
-  M.dugme('Ayarlar', () => MENU.ac('ayarlar'), { alt:'grafik, ses, oyun' });
+  M.dugme('Devam et', () => MENU.kapat(), { ana:app.EG.bitti, alt:kariyer ? 'kariyerde kaldığın yerden' : 'serbest atölyede kaldığın yerden' });
+  // oyun modu tek satırda: hangisi seçiliyse işaretli
+  M.el('div', 'menu-baslik2', 'Oyun modu');
+  const sat = M.el('div', 'menu-mod');
+  for (const [mod, ad, alt, on] of [['career', 'Kariyer', 'sipariş, kasa, itibar', kariyer], ['free', 'Serbest atölye', 'her şey açık, ücretsiz', !kariyer]]) {
+    const b = document.createElement('button'); b.className = 'menu-dugme' + (on ? ' secili' : '');
+    b.innerHTML = `${on ? '● ' : ''}${ad}<small>${alt}</small>`;
+    b.addEventListener('click', () => { modTik(mod); MENU.kapat(); });
+    sat.append(b);
+  }
+  M.dugme('Ayarlar', () => MENU.ac('ayarlar'), { alt:'grafik, ses, oyun, panelleri sıfırla' });
   if (app.EG.bitti) M.dugme('Eğitim', egitim, { alt:'Otto Usta ile ilk parçayı yeniden yap' });
-  M.dugme('Nasıl oynanır', () => { MENU.kapat(); const h = document.querySelector('[data-menu="help"]'); if (h) h.click(); }, { alt:'ilk adımlar ve kısayollar' });
-  M.el('div', 'menu-not', 'Menü: üst çubukta ☰ · tezgâhta Esc her zaman ACİL STOP');
+  M.dugme('Kısayollar', () => { MENU.kapat(); app.PM.setVis('keys', true); }, { alt:'klavye ve fare' });
+  M.el('div', 'menu-not', 'Bu menü: sol üstteki Menü düğmesi · tezgâhta Esc her zaman ACİL STOP');
   M.el('div', 'menu-not surum-not', 'sürüm ' + (app.SURUM || 'dev'));
 });
 MENU.ekran('ayarlar', (k, M) => {
@@ -123,6 +130,7 @@ MENU.ekran('ayarlar', (k, M) => {
   } else {
     M.onay('acilisMenu', 'Açılışta ana menü', 'Kapalıysa oyun doğrudan tezgâhta açılır');
     M.onay('gelistirici', 'Geliştirici modu', 'Sahne dışa aktarma, yerleşim, konum bilgisi · kısayol Ctrl+Shift+D');
+    M.dugme('Panelleri sıfırla', () => { app.PM.sifirla(); MENU.kapat(); }, { alt:'paneller ilk açılıştaki yerine döner' });
   }
   M.alt(M.dugme('Varsayılanlara dön', () => { ayarSifirla(); MENU.yenile(); }), M.dugme('Geri', () => MENU.geri(), { ana:true }));
 });

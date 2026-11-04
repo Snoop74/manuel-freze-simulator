@@ -57,20 +57,17 @@ const PM = (() => {
     { id:'jobs',    title:'İş emirleri',      col:'L', w:340 },
     { id:'part',    title:'Parça',            col:'L', w:320 },
     { id:'log',     title:'Olay kaydı',       col:'L', w:340 },
-    { id:'spindle', title:'İş mili',          col:'R', w:330 },
+    { id:'spindle', title:'İş mili',          col:'R', w:330 , gizli:true },
     { id:'tools',   title:'Takımlar',         col:'R', w:340 },
-    { id:'dro',     title:'DRO',              col:'R', w:360 },
-    { id:'wheels',  title:'El çarkları',      col:'B', w:440 },
-    { id:'jog',     title:'Hareket',          col:'BL', w:330 },
+    { id:'dro',     title:'DRO',              col:'R', w:360 , gizli:true },
+    { id:'wheels',  title:'El çarkları',      col:'B', w:440 , gizli:true },
+    { id:'jog',     title:'Hareket',          col:'BL', w:330 , gizli:true },
     { id:'drawing', title:'Teknik resim',     col:'C', w:340 },
     { id:'keys',    title:'Kısayollar',       col:'C', w:300 },
     { id:'gkod',    title:'Program (G-kod)',  col:'C', w:640 },
   ];
   const PRESETS = {
-    kumanda: ['console', 'hud'],                                    // takımlar alttaki takım çubuğunda (23-takim-cubugu)
-    temel: ['hud', 'spindle', 'dro', 'tools', 'wheels', 'jog'],
-    tam:   ['hud', 'jobs', 'log', 'spindle', 'dro', 'tools', 'wheels', 'jog'],
-    is:    ['hud', 'jobs', 'spindle', 'dro', 'tools', 'wheels'],
+    kumanda: ['console'],                                           // tek düzen: kumanda sağ altta; takımlar alttaki takım çubuğunda (23-takim-cubugu)
     kariyer: ['console', 'jobs'],
   };
   const P = {};
@@ -96,13 +93,17 @@ const PM = (() => {
   function setVis(id, v, noSave) {
     const p = P[id]; if (!p) return;
     p.vis = v; p.el.hidden = !v;
-    const chip = document.querySelector(`.tbi[data-p="${id}"]`); if (chip) chip.classList.toggle('on', v);
+    document.querySelectorAll(`#topbar [data-p="${id}"]`).forEach(c => c.classList.toggle('on', v));
     if (v) { front(p); place(p); }
     if (!noSave) save();
   }
+  // gizli: eski paneller (DRO, el çarkları, hareket, iş mili): kumanda paneli hepsinin işini görüyor. İçerikleri sayfada kalır
+  // (kod onların düğmelerine ve göstergelerine dokunur) ama görünmez bir kapta durur, panel olarak açılmaz.
+  const gizliKap = document.createElement('div'); gizliKap.id = 'gizliPaneller'; gizliKap.hidden = true;
   function build(cfg) {
     let body = document.querySelector(`[data-panel="${cfg.id}"]`);
     if (!body) return;
+    if (cfg.gizli) { if (!gizliKap.isConnected) document.body.append(gizliKap); gizliKap.append(body); return; }
     const el = document.createElement('section'); el.className = 'panel'; el.hidden = true;
     el.innerHTML = `<div class="ph"><span class="lamp"></span><b>${cfg.title}</b><span class="pstat"></span>${cfg.sizes ? '<button class="psize" title="Boyut: küçük / orta / büyük" aria-label="Panel boyutu">⤡</button>' : ''}<button class="pcol" title="Küçült" aria-label="Paneli küçült">–</button><button class="pclose" title="Kapat" aria-label="Paneli kapat">×</button></div><div class="pb"></div><div class="grip" title="Boyutlandır"></div>`;
     el.querySelector('.pb').append(body);
@@ -179,7 +180,6 @@ const PM = (() => {
     for (const id in P) if (id !== 'drawing') setVis(id, set.includes(id), true);
     for (const id in P) { P[id].collapsed = false; P[id].el.classList.remove('collapsed'); P[id].el.querySelector('.pcol').textContent = '–'; }
     autoLayout();
-    log(`Panel düzeni: ${{ kumanda:'Kumanda', temel:'Temel', tam:'Tam', is:'İş emri', kariyer:'Kariyer' }[name] || 'Temel'}.`);
   }
   function init() {
     CFG.forEach(build);
@@ -188,18 +188,17 @@ const PM = (() => {
     // simgeler, panel düğmeleri, aletler ve açılır menüler
     tb.querySelectorAll('[data-ic]').forEach(el => { const k = el.dataset.ic; el.innerHTML = k === 'logo' ? TBICON.logo : `<svg viewBox="0 0 24 24">${TBICON[k]}</svg>`; });
     const views = document.querySelector('.views'); if (views) views.hidden = true;     // kamera düğmeleri menüden tetiklenir
-    const menus = { layout:$('mnLayout'), camera:$('mnCamera'), help:$('mnHelp') };
-    const closeMenus = () => { for (const k in menus) menus[k].hidden = true; tb.querySelectorAll('.tbi.open').forEach(q => q.classList.remove('open')); };
+    const menus = { alet:$('mnAlet'), camera:$('mnCamera'), help:$('mnHelp') };
+    const closeMenus = () => { for (const k in menus) menus[k].hidden = true; tb.querySelectorAll('.tbi.open').forEach(q => q.classList.remove('open')); document.body.classList.remove('tbm-acik'); };
     tb.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.menu) {
         const m = menus[b.dataset.menu], was = !m.hidden; closeMenus(); if (was) return;
-        m.hidden = false; b.classList.add('open');
+        m.hidden = false; b.classList.add('open'); document.body.classList.add('tbm-acik');   // açık menünün üstüne bildirim binmesin
         const r = b.getBoundingClientRect(); m.style.left = Math.max(6, Math.min(window.innerWidth - m.offsetWidth - 6, r.left + r.width / 2 - m.offsetWidth / 2)) + 'px';
         return;
       }
-      if (b.dataset.p) { setVis(b.dataset.p, !P[b.dataset.p].vis); return; }
-      if (b.dataset.l) { closeMenus(); if (b.dataset.l === 'reset') { kayit.sil(KEY); preset('kumanda'); } else preset(b.dataset.l); return; }
+      if (b.dataset.p) { if (b.closest('.tb-menu')) closeMenus(); if (P[b.dataset.p]) setVis(b.dataset.p, !P[b.dataset.p].vis); return; }
       if (b.dataset.v) { closeMenus(); const v = $(b.dataset.v); if (v) v.click(); return; }
       const a = b.dataset.act; if (!a) return;
       initAudio(); closeMenus();
@@ -209,7 +208,7 @@ const PM = (() => {
       else if (a === 'bench') $('benchOpen').click();
       else if (a === 'editor') app.TE.show(S.tool);
       else if (a === 'shop') app.CR.openShop();
-      else if (a === 'blanks') app.BG.toggle();
+      else if (a === 'egitim') app.EG.baslat();
       else if (a === 'keys') setVis('keys', true);
       else if (a === 'menu') app.MENU.ac('ana');
       else if (a === 'sound') { $('mute').click(); b.innerHTML = `<svg viewBox="0 0 24 24">${TBICON[S.muted ? 'mute' : 'sound']}</svg>`; b.classList.toggle('on', S.muted); }
@@ -234,7 +233,8 @@ const PM = (() => {
   }
   function flash(id) { const p = P[id]; if (!p) return; if (!p.vis) setVis(id, true); front(p); p.el.classList.remove('flash'); void p.el.offsetWidth; p.el.classList.add('flash'); }
   function lamp(id, state) { const p = P[id]; if (!p) return; p.lamp.className = 'lamp' + (state ? ' ' + state : ''); }
-  return { init, preset, flash, lamp, setVis, P };
+  function sifirla() { kayit.sil(KEY); preset('kumanda'); }   // Ayarlar → Oyun → Panelleri sıfırla
+  return { init, preset, flash, lamp, setVis, sifirla, P };
 })();
 
 Object.assign(app, { PM, toolIcon });   // önceki modüllerin geç başvuruları

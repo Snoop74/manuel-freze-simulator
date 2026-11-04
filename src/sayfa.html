@@ -12,26 +12,35 @@
   <header class="topbar" id="topbar">
     <div class="tb-brand" id="tbBrand"><span class="tb-logo" data-ic="logo"></span><div><b>SNOOP3000</b><small id="tbMat"></small></div></div>
     <nav class="tb-icons" aria-label="Paneller ve aletler">
-      <div class="tb-grp" data-g="Makine"><button class="tbi" data-p="console" data-ic="console" data-tip="Kumanda paneli" aria-label="Kumanda paneli"></button><button class="tbi" data-p="dro" data-ic="dro" data-tip="DRO" aria-label="DRO"></button><button class="tbi" data-p="wheels" data-ic="wheels" data-tip="El çarkları" aria-label="El çarkları"></button><button class="tbi" data-p="jog" data-ic="jog" data-tip="Hareket" aria-label="Hareket"></button><button class="tbi" data-p="spindle" data-ic="spindle" data-tip="İş mili" aria-label="İş mili"></button></div>
+      <button class="tbi tbb act" data-act="menu" data-tip="Menü: eğitim, kariyer, ayarlar"><span data-ic="menu"></span><small>Menü</small></button>
       <span class="tb-sep"></span>
-      <div class="tb-grp" data-g="İş"><button class="tbi" data-p="tools" data-ic="tools" data-tip="Takımlar" aria-label="Takımlar"></button><button class="tbi" data-p="part" data-ic="part" data-tip="Parça ve bağlama" aria-label="Parça ve bağlama"></button><button class="tbi" data-p="jobs" data-ic="jobs" data-tip="İş emirleri ve kariyer" aria-label="İş emirleri ve kariyer"></button><button class="tbi act" data-act="drawing" id="tbDraw" data-ic="drawing" data-tip="Teknik resim" aria-label="Teknik resim"></button></div>
-      <span class="tb-sep"></span>
-      <div class="tb-grp" data-g="Aletler"><button class="tbi act" data-act="air" id="tbAir" data-ic="air" data-tip="Hava tabancası (B)" aria-label="Hava tabancası (B)"></button><button class="tbi act" data-act="fd" id="tbFd" data-ic="fd" data-tip="Fareyle sür (G)" aria-label="Fareyle sür (G)"></button><button class="tbi act" data-act="bench" data-ic="bench" data-tip="Parça masası: ölç, kesit al" aria-label="Parça masası: ölç, kesit al"></button><button class="tbi" data-p="gkod" data-ic="gkod" data-tip="Program (G-kod)" aria-label="Program (G-kod)"></button><button class="tbi act" data-act="editor" data-ic="editor" data-tip="Takım editörü" aria-label="Takım editörü"></button><button class="tbi act" data-act="shop" id="tbShop" hidden data-ic="shop" data-tip="Dükkân" aria-label="Dükkân"></button><button class="tbi act" data-act="blanks" data-ic="blank" data-tip="Hazır parça galerisi (geçici)" aria-label="Hazır parça galerisi"></button></div>
-      <span class="tb-sep"></span>
-      <div class="tb-grp" data-g="Bilgi"><button class="tbi" data-p="hud" data-ic="hud" data-tip="Durum" aria-label="Durum"></button><button class="tbi" data-p="log" data-ic="log" data-tip="Olay kaydı" aria-label="Olay kaydı"></button></div>
-      <span class="tb-sep"></span>
-      <div class="tb-grp"><button class="tbi" data-menu="layout" data-ic="layout" data-tip="Panel düzeni" aria-label="Panel düzeni"></button><button class="tbi" data-menu="camera" data-ic="camera" data-tip="Kamera" aria-label="Kamera"></button></div>
+      <button class="tbi tbb" data-p="console" data-tip="Kumanda paneli"><span data-ic="console"></span><small>Kumanda</small></button>
+      <button class="tbi tbb" data-p="jobs" data-tip="İş emirleri, teknik resim, teslim"><span data-ic="jobs"></span><small>İş</small></button>
+      <button class="tbi tbb" data-p="part" data-tip="Parça, malzeme ve bağlama"><span data-ic="part"></span><small>Parça</small></button>
+      <button class="tbi tbb" data-menu="alet" data-tip="Hava tabancası, ölçü, takım editörü…"><span data-ic="tools"></span><small>Aletler ▾</small></button>
+      <button class="tbi tbb" data-menu="camera" data-tip="Hazır kamera açıları"><span data-ic="camera"></span><small>Kamera ▾</small></button>
+      <button class="tbi tbb" data-menu="help" data-tip="Yardım, kısayollar, ayrıntılı durum"><span data-ic="help"></span><small>Yardım ▾</small></button>
     </nav>
     <span class="tb-flex"></span>
     <span class="tb-money" id="tbMoney" title="Kariyer kasası: dükkânı aç" hidden></span>
-    <button class="tbi act" data-act="menu" data-ic="menu" data-tip="Menü: ayarlar, mod, yardım" aria-label="Menü"></button><button class="tbi act" data-act="sound" id="tbMute" data-ic="sound" data-tip="Ses" aria-label="Ses"></button><button class="tbi" data-menu="help" data-ic="help" data-tip="Yardım ve kısayollar" aria-label="Yardım ve kısayollar"></button>
+    <button class="tbi act" data-act="sound" id="tbMute" data-ic="sound" hidden aria-label="Ses"></button>
     <button class="estop" id="estopBtn" title="Mili ve tüm hareketleri durdur (Esc)">ACİL STOP</button>
-    <div class="tb-menu" id="mnLayout" hidden><button data-l="kumanda">Kumanda <small>konsol, takımlar, durum</small></button><button data-l="temel">Temel <small>klasik paneller</small></button><button data-l="tam">Tam <small>hepsi</small></button><button data-l="is">İş emri <small>iş, DRO, takımlar</small></button><button data-l="kariyer">Kariyer <small>sipariş, konsol, takımlar</small></button><hr><button data-l="reset">Panelleri sıfırla</button></div>
-    <div class="tb-menu" id="mnCamera" hidden><button data-v="vOp">Operatör</button><button data-v="vNear">Yakın</button><button data-v="vTop">Üstten</button><button data-v="vFront">Önden</button><small class="tb-hint">Sağ tuş döndür, tekerlek yakınlaştır</small></div>
-    <div class="tb-menu tb-help" id="mnHelp" hidden>
-      <b>Nasıl başlarım</b>
-      <ol><li>Takımlar panelinden takım seç (T3 Ø10 takılı).</li><li>Parçaya yaklaş: ok tuşları X/Y, W/S ya da PgUp/PgDn Z; Shift hızlı.</li><li>Üst yüzeye değince DRO'da Z0'a bas.</li><li>Mili çalıştır (Boşluk), önerilen devir ve ilerlemeyi uygula, paso al.</li><li>İş emirlerinden bir iş seç; teslimde parça ölçülür.</li></ol>
-      <hr><button data-act="keys">Tüm kısayollar</button>
+    <div class="tb-menu tb-liste" id="mnAlet" hidden>
+      <button class="act" data-act="air" id="tbAir"><span data-ic="air"></span><b>Hava tabancası</b><small>talaşı üfle · B</small></button>
+      <button class="act" data-act="fd" id="tbFd"><span data-ic="fd"></span><b>Fareyle sür</b><small>parçanın üstünde çiz · G</small></button>
+      <button class="act" data-act="bench"><span data-ic="bench"></span><b>Parça masası</b><small>ölç, kesit al</small></button>
+      <button class="act" data-act="drawing" id="tbDraw"><span data-ic="drawing"></span><b>Teknik resim</b><small>seçili işin resmi</small></button>
+      <button data-p="tools"><span data-ic="tools"></span><b>Takım ayrıntıları</b><small>tutucu, bileme, taster</small></button>
+      <button class="act" data-act="editor"><span data-ic="editor"></span><b>Takım editörü</b><small>kendi takımını tasarla</small></button>
+      <button data-p="gkod"><span data-ic="gkod"></span><b>Program (G-kod)</b><small>CNC dönüşüm kiti</small></button>
+      <button class="act" data-act="shop" id="tbShop" hidden><span data-ic="shop"></span><b>Dükkân</b><small>takım ve ekipman al</small></button>
+    </div>
+    <div class="tb-menu tb-liste" id="mnCamera" hidden><button data-v="vOp"><b>Operatör</b><small>tezgâhın önünden</small></button><button data-v="vNear"><b>Yakın</b><small>takım ve parça</small></button><button data-v="vTop"><b>Üstten</b><small>parçaya tepeden</small></button><button data-v="vFront"><b>Önden</b><small>düz karşıdan</small></button><small class="tb-hint">Sol tuş: döndür · tekerlek: yaklaş · sağ tuş: kaydır</small></div>
+    <div class="tb-menu tb-help tb-liste" id="mnHelp" hidden>
+      <button class="act" data-act="egitim"><span data-ic="help"></span><b>Eğitim</b><small>Otto Usta ile ilk parça</small></button>
+      <button class="act" data-act="keys"><span data-ic="dro"></span><b>Kısayollar</b><small>klavye ve fare</small></button>
+      <button data-p="hud"><span data-ic="hud"></span><b>Ayrıntılı durum</b><small>devir, sıcaklık, aşınma, yük</small></button>
+      <button data-p="log"><span data-ic="log"></span><b>Olay kaydı</b><small>tezgâhın söyledikleri</small></button>
     </div>
   </header>
   <section class="stage" id="stage">
@@ -252,6 +261,7 @@
               <button data-j="x-1">X−</button><button class="rapid" id="cpRapid">HIZLI</button><button data-j="x1">X+</button><span></span>
               <span></span><button data-j="y-1">Y−</button><span></span><button data-j="z-1">Z−</button>
             </div>
+            <div class="cp-auto" id="cpAuto"><div class="cp-cap">OTO İLERLEME</div><div><button data-af="-1" title="Tabla sola">◀</button><button data-af="0" title="Dur">■</button><button data-af="1" title="Tabla sağa">▶</button></div></div>
           </div>
           <div class="cp-group last">
             <div class="cp-lamps"><span class="lamp2 on g" title="Güç"></span><span class="lamp2 a" id="lpSpin" title="Mil"></span><span class="lamp2 r" id="lpAlarm" title="Alarm"></span></div>

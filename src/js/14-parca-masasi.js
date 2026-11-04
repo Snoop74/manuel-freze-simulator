@@ -7,7 +7,7 @@ import { DIVZ } from './04-voksel.js';
 import { FIX, buildStock, flushMesh, markStockReady, stockBase, syncFixtures, topGeo, topMat, walls } from './05-baglama.js';
 import { CHIP_TXT } from './06-talas.js';
 import { press, release } from './08-kesme.js';
-import { TICK, droVals, fmt, resetPart, setAxis, setFeed, setRpm, spindle, wheelTicks } from './09-kumanda.js';
+import { TICK, droVals, fmt, resetPart, setAuto, setAxis, setFeed, setRpm, spindle, wheelTicks } from './09-kumanda.js';
 import { estop } from './12-dongu-ust-cubuk.js';
 
 const CP = (() => {
@@ -119,6 +119,7 @@ const CP = (() => {
     b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
   });
   $('cpRapid').addEventListener('click', () => $('rapidBtn').click());
+  $('cpAuto').addEventListener('click', e => { const b = e.target.closest('[data-af]'); if (b) { initAudio(); thud(320, 0.04, 0.025); setAuto(+b.dataset.af); } });
   function render() {
     for (const ax of ['x', 'y', 'z']) document.querySelector(`.lcd-ax[data-ax="${ax}"]`).classList.toggle('sel', st.sel === ax);
     document.querySelectorAll('.key.ax').forEach(b => b.classList.toggle('on', b.dataset.k === st.sel));
@@ -145,6 +146,7 @@ const CP = (() => {
     $('cpDir').classList.toggle('rev', S.dir < 0); $('cpDirL').textContent = S.dir < 0 ? 'GERİ' : 'İLERİ';
     $('lpSpin').classList.toggle('on', S.spindle); $('lpAlarm').classList.toggle('on', S.alarm);
     $('cpRapid').classList.toggle('on', S.rapidBtn);
+    $('cpAuto').querySelectorAll('[data-af]').forEach(b => { const f = +b.dataset.af; b.classList.toggle('on', f ? Math.sign(S.autoX) === f : !S.autoX); });
     $('kRpmV').textContent = S.rpm; $('kFeedV').textContent = S.feed;
     $('kAxisV').textContent = st.axis.toUpperCase(); $('kMulV').textContent = '×' + Math.round(S.wheelMul * 100);   // topuz değeri adın altında, okunur boyda
     $('cpMpgL').textContent = `${st.axis.toUpperCase()} ×${Math.round(S.wheelMul * 100)}`;
