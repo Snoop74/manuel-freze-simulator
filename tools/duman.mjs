@@ -1,8 +1,8 @@
 // Duman testi: sayfayı başsız (headless) Edge/Chrome'da açar ve oyunun temel akışlarını kodla sürer.
 // Ek paket yok: statik sunucu node:http, tarayıcı Chrome DevTools protokolüyle (Node'un yerleşik WebSocket'i) sürülür.
 // Kullanım: npm test (önce derler) ya da node tools/duman.mjs [senaryo adı...]. Bir senaryo düşerse çıkış kodu 1.
-import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { execSync, spawn } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { extname, join, normalize, resolve } from 'node:path';
@@ -26,32 +26,69 @@ function sunucu() {
   return new Promise(ok => s.listen(0, '127.0.0.1', () => ok(s)));
 }
 
+// ---- aynı anda tek tarayıcı: kilit, artık süreç temizliği ----
+// 2026-11-05: üç ekonomi ajanı paralel çalışınca bilgisayar dondu. Sebep: her çalıştırma sahneyi işlemciyle (SwiftShader) 60 kare çizen
+// bir Edge açıyordu, zaman aşımında Node ölünce Edge kapanmayıp arkada çizmeye devam ediyordu, sahipsiz tarayıcılar birikti.
+// Artık: makine çapında kilit (sırayla), açılışta artık freze-duman tarayıcıları öldürülür, çıkışta süreç ağacı kapatılır, çizim kısılır.
+const KILIT = join(tmpdir(), 'freze-duman.kilit');
+const yasiyor = pid => { try { process.kill(pid, 0); return true; } catch { return false; } };
+async function kilitAl() {
+  for (let i = 0; ; i++) {
+    try { mkdirSync(KILIT); writeFileSync(join(KILIT, 'pid'), String(process.pid)); break; }
+    catch {
+      let pid = 0; try { pid = +readFileSync(join(KILIT, 'pid'), 'utf8'); } catch {}
+      if (!pid || !yasiyor(pid)) { try { rmSync(KILIT, { recursive:true, force:true }); } catch {} continue; }   // sahibi ölmüş kilit
+      if (i === 0) console.log(`Başka bir duman/ekonomi çalıştırması sürüyor (pid ${pid}); sıra bekleniyor…`);
+      await bekle(2000);
+    }
+  }
+  process.on('exit', () => { try { if (+readFileSync(join(KILIT, 'pid'), 'utf8') === process.pid) rmSync(KILIT, { recursive:true, force:true }); } catch {} });
+}
+function artiklariTemizle() {                                     // önceki çalıştırmalardan kalmış freze-duman tarayıcıları (kilit bizdeyken başka sahibi olamaz)
+  if (process.platform !== 'win32') { try { execSync("pkill -f freze-duman-", { stdio:'ignore' }); } catch {} return; }
+  try { execSync(`powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*freze-duman-*' -and $_.ProcessId -ne ${process.pid} } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`, { stdio:'ignore' }); } catch {}
+}
+const agacKapat = pid => {
+  try { if (process.platform === 'win32') execSync(`taskkill /PID ${pid} /T /F`, { stdio:'ignore' }); else process.kill(-pid, 'SIGKILL'); } catch {}
+};
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => process.exit(130));   // zaman aşımında da 'exit' çalışsın
+
 // ---- tarayıcı ve en küçük CDP istemcisi ----
-async function tarayici() {
+// fps: sayfanın çizim döngüsü (requestAnimationFrame) bu hıza kısılır; yazılım çizimi işlemciyi doldurmasın
+async function tarayici({ fps = 10 } = {}) {
   const exe = TARAYICI.find(p => existsSync(p));
   if (!exe) throw new Error('Edge ya da Chrome bulunamadı (DUMAN_TARAYICI ile yol verilebilir).');
+  await kilitAl(); artiklariTemizle();
   const prof = mkdtempSync(join(tmpdir(), 'freze-duman-'));
-  const p = spawn(exe, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${prof}`, '--no-first-run', '--no-default-browser-check',
-    '--window-size=1280,800', '--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--mute-audio', '--autoplay-policy=no-user-gesture-required', 'about:blank'],
-    { stdio:'ignore' });
-  let port = 0;
-  for (let i = 0; i < 100 && !port; i++) {
-    await bekle(100);
-    const f = join(prof, 'DevToolsActivePort');
-    if (existsSync(f)) port = +readFileSync(f, 'utf8').split('\n')[0];
-  }
-  if (!port) { p.kill(); throw new Error('Tarayıcı hata ayıklama kapısını açmadı.'); }
-  const hedef = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find(t => t.type === 'page');
-  const ws = new WebSocket(hedef.webSocketDebuggerUrl);
-  await new Promise((ok, no) => { ws.onopen = ok; ws.onerror = no; });
-  let sira = 0; const bekleyen = new Map(), dinle = [];
-  ws.onmessage = e => {
-    const m = JSON.parse(e.data);
-    if (m.id && bekleyen.has(m.id)) { const [ok, no] = bekleyen.get(m.id); bekleyen.delete(m.id); m.error ? no(new Error(m.error.message)) : ok(m.result); }
-    else if (m.method) dinle.forEach(f => f(m.method, m.params));
-  };
-  const gonder = (method, params = {}) => new Promise((ok, no) => { const id = ++sira; bekleyen.set(id, [ok, no]); ws.send(JSON.stringify({ id, method, params })); });
-  const kapat = async () => { try { ws.close(); } catch {} p.kill(); await bekle(300); try { rmSync(prof, { recursive:true, force:true }); } catch {} };
+  // CDP boru hattından (fd 3 yaz, fd 4 oku, iletiler \0 ile ayrılır): Node nasıl ölürse ölsün boru kopar, tarayıcı kendisi kapanır
+  const p = spawn(exe, ['--headless=new', '--remote-debugging-pipe', `--user-data-dir=${prof}`, '--no-first-run', '--no-default-browser-check',
+    '--window-size=1280,800', '--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--mute-audio', '--autoplay-policy=no-user-gesture-required',
+    '--disable-extensions', '--disable-background-networking', '--renderer-process-limit=2', '--js-flags=--max-old-space-size=1024', 'about:blank'],
+    { stdio:['ignore', 'ignore', 'ignore', 'pipe', 'pipe'], detached:process.platform !== 'win32' });
+  process.on('exit', () => agacKapat(p.pid));
+  const yaz = p.stdio[3], oku = p.stdio[4];
+  let sira = 0, artik = '', oturum = null; const bekleyen = new Map(), dinle = [];
+  oku.on('data', b => {
+    artik += b.toString('utf8');
+    let i; while ((i = artik.indexOf('\0')) >= 0) {
+      const m = JSON.parse(artik.slice(0, i)); artik = artik.slice(i + 1);
+      if (m.id && bekleyen.has(m.id)) { const [ok, no] = bekleyen.get(m.id); bekleyen.delete(m.id); m.error ? no(new Error(m.error.message)) : ok(m.result); }
+      else if (m.method && (!oturum || m.sessionId === oturum)) dinle.forEach(f => f(m.method, m.params));
+    }
+  });
+  const ham = (method, params = {}, sessionId) => new Promise((ok, no) => {
+    const id = ++sira; bekleyen.set(id, [ok, no]);
+    yaz.write(JSON.stringify(sessionId ? { id, method, params, sessionId } : { id, method, params }) + '\0');
+  });
+  // sayfa hedefine bağlan (tarayıcı düzeyindeki boruda komutlar oturumla gider)
+  let hedef = null;
+  for (let i = 0; i < 100 && !hedef; i++) { try { hedef = (await ham('Target.getTargets')).targetInfos.find(t => t.type === 'page'); } catch {} if (!hedef) await bekle(100); }
+  if (!hedef) { agacKapat(p.pid); throw new Error('Tarayıcı sayfası açılmadı.'); }
+  oturum = (await ham('Target.attachToTarget', { targetId:hedef.targetId, flatten:true })).sessionId;
+  const gonder = (method, params = {}) => ham(method, params, oturum);
+  await gonder('Page.addScriptToEvaluateOnNewDocument', { source:`(() => { const r = window.requestAnimationFrame.bind(window), ms = 1000 / ${fps};
+    window.requestAnimationFrame = cb => setTimeout(() => r(cb), ms); })();` });
+  const kapat = async () => { try { yaz.end(); } catch {} agacKapat(p.pid); await bekle(300); try { rmSync(prof, { recursive:true, force:true }); } catch {} };
   return { gonder, dinle, kapat };
 }
 
@@ -331,7 +368,7 @@ async function calistir() {
     await bekle(1500);
     yaz(!hatalar.length, 'freze.html', hatalar.length ? hatalar.splice(0).join(' / ') : 'açıldı, konsolda hata yok');
     // senaryolar dev.html'de: modüllere doğrudan erişilir
-    await ac('dev.html', `!!document.querySelector('#log > *')`);
+    await ac('dev.html?test', `!!document.querySelector('#log > *')`);
     await deger(`(${YARDIMCI})()`, 'yardımcı');
     for (const ad of adlar) {
       if (!SENARYO[ad]) { yaz(false, ad, 'böyle bir senaryo yok'); continue; }

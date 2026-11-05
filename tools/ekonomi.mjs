@@ -92,7 +92,7 @@ const KUR = (hedefGun, beceri) => {
 };
 
 const srv = await sunucu(), url = `http://127.0.0.1:${srv.address().port}`;
-const br = await tarayici();
+const br = await tarayici({ fps:1 });   // ekonomi çizime bakmaz: saniyede bir kare
 const deger = async ifade => {
   const r = await br.gonder('Runtime.evaluate', { expression:ifade, awaitPromise:true, returnByValue:true });
   if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
@@ -100,7 +100,7 @@ const deger = async ifade => {
 };
 try {
   await br.gonder('Runtime.enable');
-  await br.gonder('Page.navigate', { url:`${url}/dev.html` });
+  await br.gonder('Page.navigate', { url:`${url}/dev.html?test` });
   for (let i = 0; i < 200; i++) { await new Promise(r => setTimeout(r, 100)); try { if (await deger(`!!document.querySelector('#log > *')`)) break; } catch {} }
   // temiz kariyer: kayıtsız başla, kariyere geç
   await deger(`(async () => { window.__T = await import('/src/js/00-temel.js'); const { kayit } = await import('/src/js/00-kayit.js'); kayit.sil('freze-career-v1');

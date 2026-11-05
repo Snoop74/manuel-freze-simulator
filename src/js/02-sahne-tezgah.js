@@ -1,6 +1,6 @@
 // ── Sahne ve tezgâh: renderer, ışık, malzemeler, atölye, gövde, kafa, kovan, kollar, soğutma hortumu
 import { kayit } from './00-kayit.js';
-import { $, S, TAU, app, clamp, tool } from './00-temel.js';
+import { $, S, TAU, TEST, app, clamp, tool } from './00-temel.js';
 import { AYAR, ayarDinle } from './00-tercihler.js';
 
 const canvas = $('c'), stage = $('stage');
@@ -74,7 +74,7 @@ if (THREE.RoomEnvironment) {
   M.steel.envMapIntensity = 0.45; M.ground.envMapIntensity = 0.5;   // makine mat; parlak kalan tek şey işlenen parça
 }
 // gerçek atölye ortamı (assets/hdri, CC0): metaller tavan vincini, pencereleri ve tezgâhları yansıtır; yüklenemezse yapay oda kalır
-new THREE.RGBELoader().setDataType(THREE.UnsignedByteType).load('assets/hdri/machine_shop_02_1k.hdr', hdr => {
+if (!TEST) new THREE.RGBELoader().setDataType(THREE.UnsignedByteType).load('assets/hdri/machine_shop_02_1k.hdr', hdr => {   // test modunda yapay oda kalır
   const pm = new THREE.PMREMGenerator(renderer);
   const old = scene.environment;
   scene.environment = pm.fromEquirectangular(hdr).texture;
@@ -124,6 +124,7 @@ const texLoader = new THREE.TextureLoader();
 const blankTex = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1, THREE.RGBAFormat);
 const texCache = {};
 function loadTex(name) {
+  if (TEST) return Promise.resolve(null);                         // test modu: doku yok, malzeme rengi kalır
   if (!texCache[name]) {
     texCache[name] = new Promise(res => texLoader.load(TEX_DIR + name, t => {
       t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = renderer.capabilities.getMaxAnisotropy();

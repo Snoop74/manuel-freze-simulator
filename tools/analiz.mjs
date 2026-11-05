@@ -14,7 +14,7 @@ const files = readdirSync(DIR).filter(f => /^\d\d-.*\.js$/.test(f)).sort();
 // tarayıcı ve dil globalleri (yeni bir tane gerekirse buraya eklenir)
 const GLOBALS = new Set(`THREE window document performance navigator location localStorage console Math JSON Object Array
   Number String Boolean Symbol Map Set WeakMap Promise Date Error TypeError RangeError RegExp Infinity NaN undefined
-  isFinite isNaN parseFloat parseInt setTimeout clearTimeout setInterval clearInterval requestAnimationFrame
+  isFinite isNaN parseFloat parseInt URLSearchParams setTimeout clearTimeout setInterval clearInterval requestAnimationFrame
   cancelAnimationFrame Float32Array Float64Array Uint8Array Uint16Array Uint32Array Int8Array Int16Array Int32Array
   Uint8ClampedArray ArrayBuffer DataView Blob URL Image ImageData AudioContext webkitAudioContext OfflineAudioContext
   Element HTMLElement HTMLCanvasElement KeyboardEvent PointerEvent MouseEvent Event CustomEvent ResizeObserver

@@ -1,7 +1,7 @@
 // ── Atölye donanımı: arka plandaki makineler ve eşyalar (sütunlu matkap, taş motoru, kompresör, malzeme rafı, paletler, variller),
 // pencereler, tavan vinci, elektrik panosu, tabelalar ve duvar saati. Yalnızca görünüm; çarpışma ve oyun mantığına girmez.
 import { AYAR, ayarDinle } from './00-tercihler.js';
-import { TAU, app } from './00-temel.js';
+import { TAU, TEST, app } from './00-temel.js';
 import { FLOOR_Y, M, MX, addSurface, cyl, rbox, renderer, scene, smat } from './02-sahne-tezgah.js';
 import { table } from './03-tabla-parca.js';
 import { CR } from './17-kariyer.js';
@@ -53,6 +53,7 @@ const YER = {
   'hand_truck#1':[3290.4, -760, -1106.9, -0.6],
 };
 function model(id, { x, z, y = F, ry = 0, wallZ, env = 0.6, on, fromY = F + 5000, topY, foot }) {   // foot: oturma yüksekliğini veren parçanın adı (altından sarkan parça sayılmaz)
+  if (TEST) return Promise.resolve(null);                         // test modu: hazır modeller yüklenmez
   if (!gltfCache[id]) gltfCache[id] = new Promise(res => gltf.load(`assets/model/${id}/${id}.gltf`, g => res(g.scene), undefined, () => res(null)));
   const load = gltfCache[id].then(s => s && (s.parent || s.userData.used ? s.clone(true) : (s.userData.used = true, s)));
   return Promise.all([load, on]).then(([o, base]) => {

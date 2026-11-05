@@ -5,6 +5,7 @@
 //   ayarSifirla()         varsayılanlara döner
 // Yeni ayar: VARSAYILAN'a ekle, kullanan modülde ayarDinle ile uygula, menüde (20-menu.js) bir denetim ekle.
 import { kayit } from './00-kayit.js';
+import { TEST } from './00-temel.js';
 
 const KEY = 'freze-ayarlar';
 // grafik hazır ayarları: gölge 0 kapalı / 1 normal (1024) / 2 yüksek (2048); çözünürlük ekran piksel oranının katı; talaş üretim oranı;
@@ -27,6 +28,7 @@ const AYAR = Object.assign({}, VARSAYILAN);
   const k = kayit.oku(KEY, {});
   for (const a in VARSAYILAN) if (k[a] !== undefined && typeof k[a] === typeof VARSAYILAN[a]) AYAR[a] = k[a];
 }
+if (TEST) Object.assign(AYAR, KALITE.dusuk, { kaliteOto:false, acilisMenu:false, cozunurluk:0.5 });   // test: en hafif (kaydedilmez)
 const dinleyen = new Map();
 function haber(adlar) {
   const fns = new Set();

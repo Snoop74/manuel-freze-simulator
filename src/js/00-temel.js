@@ -129,6 +129,9 @@ function warnOnce(key, msg, lvl = 'warn', gap = 3000) {
    Tek seferlik sesler (kırılma, kavrama) metalin uyumsuz kısmi tonlarıyla çalınır;
    hepsi küçük bir atölye yankısından geçer. */
 
-export { $, C, CUT, EDGE, H, INSP, LIM, MATS, NX, NY, PD, PH, PW, P_MAX, RAPID, S, SURF, TAN59, TAU, TOOLS,
+// test modu (adreste ?test): ortam yansıması, dokular ve atölye modelleri yüklenmez, grafik en düşük (tools/duman.mjs, ekonomi.mjs)
+const TEST = typeof location !== 'undefined' && new URLSearchParams(location.search).has('test');
+
+export { TEST, $, C, CUT, EDGE, H, INSP, LIM, MATS, NX, NY, PD, PH, PW, P_MAX, RAPID, S, SURF, TAN59, TAU, TOOLS,
   allocGrid, app, clamp, isDrill, isProbe, isTaster, lastWarn, log, mat, rapid, recFeed, recRpm, setMat, tipZ,
   tool, unslip, warnOnce };
