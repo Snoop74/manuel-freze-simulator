@@ -17,7 +17,7 @@ import { COND, genOrder as uret, pick, rnd, tl } from './16-siparis.js';
 
 const CR = (() => {
   const KEY = 'freze-career-v1', MKEY = 'freze-mode';
-  const LEVELS = [[0, 'Mahalle atölyesi'], [15, 'Güvenilir atölye'], [45, 'Fabrika tedarikçisi'], [100, 'Hassas iş ustası']];   // 2026-11-05 ekonomi dengesi (eski 12/35/70)
+  const LEVELS = [[0, 'Mahalle atölyesi'], [15, 'Güvenilir atölye'], [45, 'Fabrika tedarikçisi'], [90, 'Hassas iş ustası']];   // 2026-11-05 ekonomi dengesi (eski 12/35/70)
   const BUILTIN_PRICE = { T1:2400, T10:450, T11:380, T12:520, '3B':2500, '3M':1400 };
   const START = ['T3', 'T6', 'T8'];                               // ilk dolap: Ø10 parmak, punta, Ø8.5 matkap
   // ready: tezgâhta kullanılabilir; diğerleri dükkânda "yakında" görünür
@@ -136,19 +136,20 @@ const CR = (() => {
      Her yükseltme oyunda bir şeyi değiştirir ve atölyede görünür (19-atolye). Serbest atölyede hepsi açık (yukVar). -- */
   const DUKKAN = [
     { ad:'Garaj', t:'Tek tezgâh, mahalle işleri', kira:120 },
-    { ad:'Atölye', t:'Daha büyük salon, fabrika işleri gelmeye başlar', kira:400, rep:20, para:15000 },   // nakit: kredi kullanılmaz (tasin)
+    { ad:'Atölye', t:'Daha büyük salon, fabrika işleri gelmeye başlar', kira:400, rep:20, para:13000 },   // nakit: kredi kullanılmaz (tasin)
   ];
   const YUK = [
-    { id:'olcu', sv:0, ad:'Ölçü masası', p:900, t:'İş penceresinde "Ön kontrol": teslimden önce ölçüleri gör' },
-    { id:'pompa', sv:0, ad:'Soğutma pompası', p:1400, t:'Takım aşınması %30 az' },
-    { id:'raf', sv:0, ad:'Malzeme rafı', p:2500, t:'Ham parça %20 ucuz (toplu alım)' },
-    { id:'yIlerleme', sv:0, ad:'Y ilerleme motoru', p:1800, t:'Kumandada Y ekseni için de otomatik ilerleme' },
+    { id:'olcu', sv:0, ad:'Ölçü masası', p:600, t:'İş penceresinde "Ön kontrol": teslimden önce ölçüleri gör' },
+    { id:'pompa', sv:0, ad:'Soğutma pompası', p:1000, t:'Takım aşınması %30 az' },
+    { id:'raf', sv:0, ad:'Malzeme rafı', p:1800, t:'Ham parça %20 ucuz (toplu alım)' },
+    { id:'yIlerleme', sv:0, ad:'Y ilerleme motoru', p:1200, t:'Kumandada Y ekseni için de otomatik ilerleme' },
     { id:'motor', sv:1, ad:'Güçlü mil motoru', p:6000, t:'Mil gücü 2.2 → 3.3 kW: derin paso, çelikte hızlı iş' },
-    { id:'cirak', sv:1, ad:'Çırak', p:1500, gunluk:250, t:'Gün sonunda kırık takımları biler, talaşı süpürür. Günlük 250 ₺' },
-    { id:'web', sv:1, ad:'Web sitesi', p:3000, t:'Gelen kutusunda her zaman bir sipariş daha' },
+    { id:'cirak', sv:1, ad:'Çırak', p:1000, gunluk:250, t:'Gün sonunda kırık takımları biler, talaşı süpürür. Günlük 250 ₺' },
+    { id:'web', sv:1, ad:'Web sitesi', p:2000, t:'Gelen kutusunda her zaman bir sipariş daha' },
   ];
   const yukVar = id => !on || !!(st && st.dukkan.yuk[id]);
-  const kira = () => DUKKAN[st.dukkan.sv].kira + (st.dukkan.sv ? level() * 40 : 0);   // garajda sabit 120 (acemi ezilmesin)
+  const kira = () => Math.round((DUKKAN[st.dukkan.sv].kira + (st.dukkan.sv ? level() * 40 : 0))   // garajda sabit 120 (acemi ezilmesin)
+    * (st.dukkan.sv && st.gun - (st.dukkan.tasinmaGun || 0) < 7 ? 0.5 : 1));                       // taşındıktan sonra ilk hafta kira yarım
   function dukkanUygula() {                                       // yükseltmelerin tezgâha etkisi ve atölyedeki görünüşü
     S.motorK = yukVar('motor') ? 1.5 : 1;
     if (app.ATL) app.ATL.dukkanGor({ sv:on ? st.dukkan.sv : 1, yuk:Object.fromEntries(YUK.map(u => [u.id, yukVar(u.id)])) });
@@ -164,8 +165,8 @@ const CR = (() => {
     const D = DUKKAN[st.dukkan.sv + 1]; if (!D) return false;
     if (st.rep < D.rep) { log(`${D.ad}'ye taşınmak için ${D.rep} itibar gerekli (şu an ${st.rep}).`, 'warn'); return false; }
     if (st.money < D.para) { log(`${D.ad}'ye taşınmak için kasada ${tl(D.para)} nakit gerekli (kredi kullanılamaz; şu an ${tl(st.money)}).`, 'warn'); return false; }   // usta krediyle 5. günde taşınıp kilitleniyordu
-    harca(D.para); cash(-D.para); st.dukkan.sv++; save(); dukkanUygula(); render();
-    mailEkle({ tip:'bilgi', kimden:'Otto Usta', kind:'eski usta', konu:`Hayırlı olsun: ${D.ad}!`, metin:`Duydum ki ${D.ad.toLocaleLowerCase('tr')}ya taşınmışsın. Kira artık ${tl(kira())}/gün, dikkat et; ama büyük işler de büyük yerde yapılır. Yolun açık olsun.` });
+    harca(D.para); cash(-D.para); st.dukkan.sv++; st.dukkan.tasinmaGun = st.gun; save(); dukkanUygula(); render();
+    mailEkle({ tip:'bilgi', kimden:'Otto Usta', kind:'eski usta', konu:`Hayırlı olsun: ${D.ad}!`, metin:`Duydum ki ${D.ad.toLocaleLowerCase('tr')}ya taşınmışsın. İlk hafta ev sahibi kiranın yarısını istiyor (${tl(kira())}/gün), sonra iki katı; dikkat et; ama büyük işler de büyük yerde yapılır. Yolun açık olsun.` });
     log(`${D.ad}'ye taşındınız. Yeni yükseltmeler açıldı; kira ${tl(kira())}/gün.`, 'ok'); return true;
   }
   const simdi = () => st.gun * 1440 + st.dk;                      // karşılaştırma için mutlak dakika
@@ -212,7 +213,7 @@ const CR = (() => {
   }
   function gunSonu() {
     raporBekliyor = true;
-    st.devir = Math.min(300, Math.max(0, Math.round(st.dk - MESAI)));   // 18:00'i aşan süre ertesi sabaha devreder (fazla mesai bedava değil)
+    st.devir = Math.min(MESAI - 60, Math.max(0, Math.round(st.dk - MESAI)));   // 18:00'i aşan süre ertesi sabaha devreder (fazla mesai bedava değil)
     const k = kira(); harca(k); cash(-k);
     if (st.dukkan.yuk.cirak) {                                    // çırak: maaşını alır, kırıkları biler, talaşı süpürür
       const n = Object.keys(st.kirik).length, ucret = YUK.find(u => u.id === 'cirak').gunluk;
@@ -413,9 +414,9 @@ const CR = (() => {
       txt = `Müşterinin parçası hurdaya çıktı: parça bedeli −${tl(v)} · itibar −3.`; tags.push([`Müşteri parçası hurda: parça bedeli −${tl(v)}`, 'warn']);
     }
     else {
-      rep = -2; const geri = Math.round((o.cost || 0) * 0.3 / 10) * 10;   // hurda metal satışı: acemi her hurdada ham parçanın tamamını yakmasın
+      rep = -1; const geri = Math.round((o.cost || 0) * 0.5 / 10) * 10;   // hurda metal satışı: acemi her hurdada ham parçanın tamamını yakmasın
       if (geri) { st.money += geri; st.bugun.gelir += geri; tags.push([`Hurda metal satışı: +${tl(geri)}`, 'ok']); }
-      txt = `Parça hurda: ödeme yok${geri ? `, hurda metal +${tl(geri)}` : ''} · itibar −2. Sipariş panoda duruyor, yeni ham parçayla tekrar deneyebilirsiniz.`; tags.push(['Hurda: sipariş panoda, tekrar deneyebilirsiniz', 'warn']);
+      txt = `Parça hurda: ödeme yok${geri ? `, hurda metal +${tl(geri)}` : ''} · itibar −1. Sipariş panoda duruyor, yeni ham parçayla tekrar deneyebilirsiniz.`; tags.push(['Hurda: sipariş panoda, tekrar deneyebilirsiniz', 'warn']);
     }
     if (run.montaj && run.montaj.cost) { pay -= run.montaj.cost; tags.push([`Yay diş (Heli-Coil) ×${run.montaj.coil}: −${tl(run.montaj.cost)}`, 'warn']); }
     if (run.montaj && r.allOk) tags.unshift(['Kule bağlandı, sensör yandı', 'gold']);
