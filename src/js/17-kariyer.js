@@ -503,7 +503,10 @@ const CR = (() => {
     siparis:id => st.orders.find(o => o.id === id), mailOku:id => { const m = st.mail.find(q => q.id === id); if (m && !m.okundu) { m.okundu = true; save(); } return m; },
     okunmamis:() => st.mail.filter(m => !m.okundu).length, kabul:id => kabul(st.orders.find(o => o.id === id)), reddet:id => reddet(st.orders.find(o => o.id === id)),
     teklif:(id, f) => teklifVer(st.orders.find(o => o.id === id), f), karsiKabul:id => { const o = st.orders.find(q => q.id === id); teklifKabul(o, o.karsi, o.hizliT); save(); log(`Anlaştınız: ${tl(o.karsi)}.`, 'ok'); },
-    onizle:id => select(st.orders.find(o => o.id === id)), TEKLIF, bekler, payTxt, tl, anTxt, kira, kredi, level:() => LEVELS[level()][1], KREDI_SURE,
+    onizle:id => select(st.orders.find(o => o.id === id)),
+    resim:id => { const o = st.orders.find(q => q.id === id); if (!o) return null;                 // mailde teknik resim (hazır parçada parça modeli gerekir)
+      if (o.J.blank && !o.J._P) Object.defineProperty(o.J, '_P', { value:genBlank(o.J.blank.id, o.J.blank.seed), enumerable:false, writable:true, configurable:true });
+      return { svg:drawingSVG(o.J), tablo:drawingTable(o.J) }; }, TEKLIF, bekler, payTxt, tl, anTxt, kira, kredi, level:() => LEVELS[level()][1], KREDI_SURE,
     ilerle, kontrol, gunuBitir, ertesiGun, get raporBekliyor() { return raporBekliyor; },
     // dükkânı büyütme (24-bilgisayar Dükkân sekmesi, 19-atolye görünüm)
     yukVar, dukkanAl, tasin, dukkanUygula, dukkan:() => ({ sv:st.dukkan.sv, yuk:{ ...st.dukkan.yuk }, DUKKAN, YUK, kira:kira(), rep:st.rep, money:st.money }) };

@@ -823,3 +823,23 @@ body.tbm-acik .toast{visibility:hidden}
 .pc-dk .btn:hover:not(:disabled){border-color:#2f6fae;color:#2f6fae}
 .pc-dk .btn.start{background:#2f7d4a;border-color:#2f7d4a;color:#fff}
 .pc-dk .btn:disabled{background:#eceeea;color:#7b8285;border-color:#cfd3cc;cursor:default}
+/* üst çubuk: Posta düğmesi saatten ayrı, belirgin */
+.tb-posta{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:6px;padding:4px 12px;margin-left:4px;border:1px solid #2f6fae;border-radius:6px;background:#173550;color:#cfe6ff;font:600 13px var(--f-display);letter-spacing:.03em;white-space:nowrap}
+.tb-posta .ic{font-size:16px}
+.tb-posta b{background:#e5484d;color:#fff;border-radius:10px;min-width:18px;padding:0 6px;text-align:center;font:700 12px var(--f-body)}
+.tb-posta b[hidden]{display:none}
+.tb-posta:hover{border-color:#7fb6ff;background:#1d4466}
+.tb-posta.var{border-color:#f0b429;box-shadow:0 0 0 0 rgba(240,180,41,.6);animation:postaVar 1.6s ease-out infinite}
+@keyframes postaVar{70%{box-shadow:0 0 0 8px rgba(240,180,41,0)}}
+.tb-posta[hidden]{display:none}
+/* mailde teknik resim */
+.pc-resim{margin:10px 0;background:var(--paper);color:var(--ink);border:1px solid #c9cdc6;border-radius:6px;padding:8px 10px;display:grid;gap:6px}
+.pc-resim-bas{font:700 11px var(--f-display);letter-spacing:.12em;border-bottom:1.5px solid var(--ink);padding-bottom:3px}
+.pc-resim svg{width:100%;max-height:300px;height:auto;display:block}
+.pc-resim svg text{font-family:var(--f-dro);fill:var(--ink)}
+.pc-resim summary{cursor:pointer;font-size:12px;color:var(--ink-2)}
+.tb-posta.yeni{animation:tsYeni .9s ease 2}
+/* üst çubuk dar ekranda: düğmeler küçülmez, yazılar kısalır (saat, marka, posta yazısı) */
+.tb-icons{flex-shrink:0}
+@media (max-width:1280px){.tb-brand > div{display:none} #tsGun{display:none}}
+@media (max-width:900px){.tb-posta > span:not(.ic){display:none} .tbi.tbb{min-width:46px;padding:3px 5px 2px}}

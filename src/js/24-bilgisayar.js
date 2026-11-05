@@ -6,9 +6,12 @@ import { beep, initAudio } from './01-ses.js';
 
 const PC = (() => {
   // üst çubuk: saat + mail rozeti (kasanın solunda)
-  const tb = document.createElement('button'); tb.className = 'tb-saat'; tb.id = 'tbSaat'; tb.title = 'Atölye bilgisayarı: mailler, banka, tedarik';
-  tb.innerHTML = '<span id="tsGun"></span><b id="tsSaat">08:00</b><span class="ts-mail" id="tsMail" hidden></span>';
-  $('tbMoney').before(tb);
+  // saat (bilgisayarı açar) ve ondan ayrı, belirgin Posta düğmesi (arkadaş denemesi: mail düğmesi saatin içinde kayboluyordu)
+  const tb = document.createElement('button'); tb.className = 'tb-saat'; tb.id = 'tbSaat'; tb.title = 'Atölye bilgisayarı: banka, dükkân, tedarik';
+  tb.innerHTML = '<span id="tsGun"></span><b id="tsSaat">08:00</b>';
+  const tp = document.createElement('button'); tp.className = 'tb-posta'; tp.id = 'tbPosta'; tp.title = 'Posta: sipariş mailleri';
+  tp.innerHTML = '<span class="ic">✉</span><span>Posta</span><b id="tsMail" hidden></b>';
+  $('tbMoney').before(tb, tp);
 
   const el = document.createElement('div'); el.className = 'pc'; el.id = 'pc'; el.hidden = true;
   el.innerHTML = `<div class="pc-mon" role="dialog" aria-label="Atölye bilgisayarı">
@@ -31,11 +34,11 @@ const PC = (() => {
   const zaman = m => { const s = CR().st; return m.gun === s.gun ? `${String(8 + Math.floor(m.dk / 60)).padStart(2, '0')}:${String(m.dk % 60).padStart(2, '0')}` : m.gun === s.gun - 1 ? 'dün' : `${m.gun}. gün`; };
 
   function ustCubuk() {
-    const on = CR().on; tb.hidden = !on; if (!on) return;
+    const on = CR().on; tb.hidden = tp.hidden = !on; if (!on) return;
     const z = CR().saat(), n = CR().okunmamis();
     $('tsGun').textContent = `${z.gun}. gün · ${z.gunAd}`;
     $('tsSaat').textContent = z.txt; tb.classList.toggle('gec', z.dk >= z.mesai - 60);
-    $('tsMail').hidden = !n; $('tsMail').textContent = `✉ ${n}`;
+    $('tsMail').hidden = !n; $('tsMail').textContent = n; tp.classList.toggle('var', n > 0);
     if (acik) { $('pcSaat').textContent = `${z.gunAd} ${z.txt}`; $('pcRozet').textContent = n ? n : ''; }
   }
 
@@ -67,11 +70,13 @@ const PC = (() => {
     if (!o) { O.innerHTML = h + `<div class="pc-metin">Bu sipariş artık geçerli değil (${esc(m.durum || 'kapandı')}).</div>`; ustCubuk(); return; }
     const acilMi = o.cond === 'acil';
     h += `<div class="pc-metin">Merhaba usta,<br><br>${esc(o.J.brief)}<br><br>${o.kabul ? `Termin: <b>${CR().anTxt(o.termin)}</b>` : `${acilMi ? 'ACİL: 1 saat içinde cevap bekliyoruz.' : 'Yarın akşama kadar dönüş yaparsanız seviniriz.'}`}</div>`;
-    h += `<div class="pc-etiket"><span>📎 teknik resim</span><span>${o.free ? 'malzeme müşteriden' : 'ham parça ' + tl(o.cost)}</span><span>${CR().bekler(o) ? 'fiyat sizden' : 'ödeme ' + CR().payTxt(o)}</span>${o.cond ? `<span class="c">${o.cond.toUpperCase()}</span>` : ''}</div>`;
+    const rs = CR().resim(o.id);
+    if (rs) h += `<div class="pc-resim"><div class="pc-resim-bas">📎 TEKNİK RESİM · ${esc(o.J.title.toLocaleUpperCase('tr'))}</div>${rs.svg}<details><summary>Ölçü tablosu</summary><div class="dw-tab">${rs.tablo}</div></details></div>`;
+    h += `<div class="pc-etiket"><span>${o.free ? 'malzeme müşteriden' : 'ham parça ' + tl(o.cost)}</span><span>${CR().bekler(o) ? 'fiyat sizden' : 'ödeme ' + CR().payTxt(o)}</span>${o.cond ? `<span class="c">${o.cond.toUpperCase()}</span>` : ''}</div>`;
     h += '<div class="pc-islem" id="pcIslem"></div>';
     O.innerHTML = h;
     const I = $('pcIslem'), btn = (t, cls, fn) => { const b = document.createElement('button'); b.className = 'btn' + (cls ? ' ' + cls : ''); b.innerHTML = t; b.addEventListener('click', () => { initAudio(); fn(); }); I.append(b); return b; };
-    btn('Resmi gör', '', () => { CR().onizle(o.id); kapat(); });
+    btn('Tezgâhta resmi aç', '', () => { CR().onizle(o.id); kapat(); });
     if (o.kabul) { I.insertAdjacentHTML('beforeend', '<span class="pc-not">Aktif iş: tezgâhta. Bitince "Parçayı teslim et".</span>'); return; }
     if (o.teklif === 'karsi') {
       I.insertAdjacentHTML('beforeend', `<span class="pc-not">Karşı teklif: <b>${tl(o.karsi)}</b></span>`);
@@ -151,7 +156,8 @@ const PC = (() => {
     initAudio(); acik = true; el.hidden = false; S.duraklat = true; uyg = u || 'posta'; goster();
   }
   function kapat() { acik = false; el.hidden = true; if (rp.hidden) S.duraklat = false; }
-  tb.addEventListener('click', () => ac('posta'));
+  tb.addEventListener('click', () => ac('banka'));
+  tp.addEventListener('click', () => ac('posta'));
   $('pcKapat').addEventListener('click', kapat);
   $('pcBitir').addEventListener('click', () => { CR().gunuBitir(); });
   el.querySelectorAll('[data-uyg]').forEach(b => b.addEventListener('click', () => {
@@ -168,7 +174,7 @@ const PC = (() => {
   }, true);
   setInterval(() => { if (CR().on) CR().kontrol(); ustCubuk(); }, 500);
   ustCubuk();
-  return { ac, kapat, rapor, yeniMail() { ustCubuk(); tb.classList.remove('yeni'); void tb.offsetWidth; tb.classList.add('yeni'); if (acik && uyg === 'posta') posta(); } };
+  return { ac, kapat, rapor, yeniMail() { ustCubuk(); tp.classList.remove('yeni'); void tp.offsetWidth; tp.classList.add('yeni'); if (acik && uyg === 'posta') posta(); } };
 })();
 
 Object.assign(app, { PC });
