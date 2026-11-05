@@ -17,7 +17,7 @@ import { COND, genOrder as uret, pick, rnd, tl } from './16-siparis.js';
 
 const CR = (() => {
   const KEY = 'freze-career-v1', MKEY = 'freze-mode';
-  const LEVELS = [[0, 'Mahalle atölyesi'], [12, 'Güvenilir atölye'], [35, 'Fabrika tedarikçisi'], [70, 'Hassas iş ustası']];
+  const LEVELS = [[0, 'Mahalle atölyesi'], [15, 'Güvenilir atölye'], [45, 'Fabrika tedarikçisi'], [100, 'Hassas iş ustası']];   // 2026-11-05 ekonomi dengesi (eski 12/35/70)
   const BUILTIN_PRICE = { T1:2400, T10:450, T11:380, T12:520, '3B':2500, '3M':1400 };
   const START = ['T3', 'T6', 'T8'];                               // ilk dolap: Ø10 parmak, punta, Ø8.5 matkap
   // ready: tezgâhta kullanılabilir; diğerleri dükkânda "yakında" görünür
@@ -57,7 +57,7 @@ const CR = (() => {
   const owns = i => !on || (isTaster(TOOLS[i]) ? !!st.eq[TOOLS[i].type] : !!st.owned[TOOLS[i].no] && !st.kirik[TOOLS[i].no]);
   /* -- Kasa eksiye düşebilir (kredili hesap): limit seviyeyle büyür. 5 teslim içinde artıya dönmezse her teslimde borcun %8'i faiz.
      Kırılan takım hurdaya gitmez, dolapta kırık durur: biletmek (ya da alın frezesinde uç değiştirmek) fiyatın %30'u. Böylece oyun kilitlenmez. -- */
-  const KREDI_SURE = 5, FAIZ = 0.08;
+  const KREDI_SURE = 5, FAIZ = 0.05;                              // 2026-11-05: acemi borç sarmalından çıkabilsin (eski %8)
   const kredi = () => 2500 + level() * 1500;
   const yeter = v => st.money - v >= -kredi();                    // bu harcama kredi limitini aşmıyor mu
   const bileme = T => Math.max(60, Math.round(priceOf(T) * 0.3 / 10) * 10);
@@ -102,13 +102,13 @@ const CR = (() => {
       teklifKabul(o, fiyat, hizliSec); beep(1300, 0.08);
       log(`${o.cust} teklifi kabul etti: ${tl(fiyat)}${hizliSec ? ', hızlı termin' : ''}. İşe başlayabilirsiniz.`, 'ok');
     } else if (fiyat / o.pay < 1.45 && Math.random() < 0.6) {
-      o.teklif = 'karsi'; o.karsi = Math.round(o.pay * rnd(0.92, 1.03) / 10) * 10; o.hizliT = hizliSec;
+      o.teklif = 'karsi'; o.karsi = Math.round(o.pay * rnd(0.85, 1.0) / 10) * 10; o.hizliT = hizliSec;
       log(`${o.cust}: "${tl(fiyat)} çok, ${tl(o.karsi)} olur mu?"`, 'warn');
     } else { vazgec(o, `${o.cust} teklifinizi pahalı buldu, başka atölyeye gitti.`); return; }
     save(); select(o);
   }
   function vazgec(o, msg) {
-    st.orders = st.orders.filter(q => q.id !== o.id); sel = null; fillBoard(); save();
+    st.orders = st.orders.filter(q => q.id !== o.id); sel = null; save();   // yerine yenisi posta zamanlayıcısıyla gelir (anında doldurma reddet-yenile sömürüsüydü)
     selectJob(-1); render(); log(msg, 'warn');
   }
   function teklifKart(o) {
@@ -136,7 +136,7 @@ const CR = (() => {
      Her yükseltme oyunda bir şeyi değiştirir ve atölyede görünür (19-atolye). Serbest atölyede hepsi açık (yukVar). -- */
   const DUKKAN = [
     { ad:'Garaj', t:'Tek tezgâh, mahalle işleri', kira:120 },
-    { ad:'Atölye', t:'Daha büyük salon, fabrika işleri gelmeye başlar', kira:400, rep:12, para:15000 },
+    { ad:'Atölye', t:'Daha büyük salon, fabrika işleri gelmeye başlar', kira:400, rep:20, para:15000 },   // nakit: kredi kullanılmaz (tasin)
   ];
   const YUK = [
     { id:'olcu', sv:0, ad:'Ölçü masası', p:900, t:'İş penceresinde "Ön kontrol": teslimden önce ölçüleri gör' },
@@ -148,7 +148,7 @@ const CR = (() => {
     { id:'web', sv:1, ad:'Web sitesi', p:3000, t:'Gelen kutusunda her zaman bir sipariş daha' },
   ];
   const yukVar = id => !on || !!(st && st.dukkan.yuk[id]);
-  const kira = () => DUKKAN[st.dukkan.sv].kira + level() * 40;
+  const kira = () => DUKKAN[st.dukkan.sv].kira + (st.dukkan.sv ? level() * 40 : 0);   // garajda sabit 120 (acemi ezilmesin)
   function dukkanUygula() {                                       // yükseltmelerin tezgâha etkisi ve atölyedeki görünüşü
     S.motorK = yukVar('motor') ? 1.5 : 1;
     if (app.ATL) app.ATL.dukkanGor({ sv:on ? st.dukkan.sv : 1, yuk:Object.fromEntries(YUK.map(u => [u.id, yukVar(u.id)])) });
@@ -163,7 +163,7 @@ const CR = (() => {
   function tasin() {
     const D = DUKKAN[st.dukkan.sv + 1]; if (!D) return false;
     if (st.rep < D.rep) { log(`${D.ad}'ye taşınmak için ${D.rep} itibar gerekli (şu an ${st.rep}).`, 'warn'); return false; }
-    if (!yeter(D.para)) { log(`${D.ad}'ye taşınmak için kasa ve kredi yetmiyor (${tl(D.para)}).`, 'warn'); return false; }
+    if (st.money < D.para) { log(`${D.ad}'ye taşınmak için kasada ${tl(D.para)} nakit gerekli (kredi kullanılamaz; şu an ${tl(st.money)}).`, 'warn'); return false; }   // usta krediyle 5. günde taşınıp kilitleniyordu
     harca(D.para); cash(-D.para); st.dukkan.sv++; save(); dukkanUygula(); render();
     mailEkle({ tip:'bilgi', kimden:'Otto Usta', kind:'eski usta', konu:`Hayırlı olsun: ${D.ad}!`, metin:`Duydum ki ${D.ad.toLocaleLowerCase('tr')}ya taşınmışsın. Kira artık ${tl(kira())}/gün, dikkat et; ama büyük işler de büyük yerde yapılır. Yolun açık olsun.` });
     log(`${D.ad}'ye taşındınız. Yeni yükseltmeler açıldı; kira ${tl(kira())}/gün.`, 'ok'); return true;
@@ -212,6 +212,7 @@ const CR = (() => {
   }
   function gunSonu() {
     raporBekliyor = true;
+    st.devir = Math.min(300, Math.max(0, Math.round(st.dk - MESAI)));   // 18:00'i aşan süre ertesi sabaha devreder (fazla mesai bedava değil)
     const k = kira(); harca(k); cash(-k);
     if (st.dukkan.yuk.cirak) {                                    // çırak: maaşını alır, kırıkları biler, talaşı süpürür
       const n = Object.keys(st.kirik).length, ucret = YUK.find(u => u.id === 'cirak').gunluk;
@@ -227,7 +228,8 @@ const CR = (() => {
   }
   function ertesiGun() {
     raporBekliyor = false;
-    st.gun++; st.dk = 0; sonKayit = 0; st.sonrakiMail = rnd(25, 80); st.bugun = bosGun();
+    st.gun++; st.dk = st.devir || 0; st.devir = 0; sonKayit = 0;
+    if (st.dk) log(`Dünkü işin ${st.dk} dakikası bugüne taştı: güne ${saatTxt(st.dk)}'de başlıyorsunuz.`); st.sonrakiMail = rnd(25, 80); st.bugun = bosGun();
     suresiDolanlar(); fillBoard(); yeniSiparis(false);
     save(); render(); log(`${st.gun}. gün (${GUNLER[(st.gun - 1) % 7]}) başladı: 08:00. Maillere bakın.`, 'ok');
   }
@@ -391,8 +393,8 @@ const CR = (() => {
     const tags = [];
     if (r.allOk) {
       const onTime = run.time <= o.J.target;
-      pay = Math.round(o.pay * ({ 3:1.15, 2:1 }[r.stars] || 0.85) * (onTime ? 1.1 : 1) * (o.cond === 'acil' && !onTime ? 0.8 : 1) / 10) * 10; rep = Math.max(1, r.stars) + o.lv;
-      if (o.cond === 'acil') tags.push(onTime ? ['Acil iş zamanında: ×1.6', 'ok'] : ['Acil iş gecikti: −%20', 'warn']);
+      pay = Math.round(o.pay * ({ 3:1.15, 2:1 }[r.stars] || 0.85) * (onTime ? 1.1 : 1) * (o.cond === 'acil' && !onTime ? 0.65 : 1) / 10) * 10; rep = Math.max(1, r.stars) + o.lv;
+      if (o.cond === 'acil') tags.push(onTime ? ['Acil iş zamanında: ×1.35', 'ok'] : ['Acil iş gecikti: −%35', 'warn']);
       if (o.cond === 'hassas') tags.push(['Hassas iş: ×1.5', 'ok']);
       if (o.hizli && !onTime) { pay = Math.round(pay * 0.7 / 10) * 10; tags.push(['Hızlı termin kaçtı: −%30', 'warn']); }
       if (o.teklif === 'kabul') tags.push(['Teklifinizle çalışıldı', 'ok']);
@@ -410,7 +412,11 @@ const CR = (() => {
       rep = -3; const v = Math.max(0, Math.min(o.value, st.money + kredi())); pay = -v;
       txt = `Müşterinin parçası hurdaya çıktı: parça bedeli −${tl(v)} · itibar −3.`; tags.push([`Müşteri parçası hurda: parça bedeli −${tl(v)}`, 'warn']);
     }
-    else { rep = -2; txt = `Parça hurda: ödeme yok · itibar −2. Sipariş panoda duruyor, yeni ham parçayla tekrar deneyebilirsiniz.`; tags.push(['Hurda: sipariş panoda, tekrar deneyebilirsiniz', 'warn']); }
+    else {
+      rep = -2; const geri = Math.round((o.cost || 0) * 0.3 / 10) * 10;   // hurda metal satışı: acemi her hurdada ham parçanın tamamını yakmasın
+      if (geri) { st.money += geri; st.bugun.gelir += geri; tags.push([`Hurda metal satışı: +${tl(geri)}`, 'ok']); }
+      txt = `Parça hurda: ödeme yok${geri ? `, hurda metal +${tl(geri)}` : ''} · itibar −2. Sipariş panoda duruyor, yeni ham parçayla tekrar deneyebilirsiniz.`; tags.push(['Hurda: sipariş panoda, tekrar deneyebilirsiniz', 'warn']);
+    }
     if (run.montaj && run.montaj.cost) { pay -= run.montaj.cost; tags.push([`Yay diş (Heli-Coil) ×${run.montaj.coil}: −${tl(run.montaj.cost)}`, 'warn']); }
     if (run.montaj && r.allOk) tags.unshift(['Kule bağlandı, sensör yandı', 'gold']);
     const lv0 = level();

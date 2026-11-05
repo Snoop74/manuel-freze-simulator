@@ -297,7 +297,7 @@ const SENARYO = {
     const k0 = CR.kira();
     for (const id of ['olcu', 'pompa', 'raf', 'yIlerleme']) if (!CR.dukkanAl(id)) throw new Error(`${id} alınamadı: ${son()}`);
     U.setAutoY(1); if (S.autoY !== 1) throw new Error('Y ilerleme motoru alınınca Y ilerlemesi çalışmadı'); U.setAutoY(0);
-    st.rep = 12; if (!CR.tasin() || gor().sv !== 1) throw new Error(`atölyeye taşınılmadı: ${son()}`);
+    st.rep = 20; if (!CR.tasin() || gor().sv !== 1) throw new Error(`atölyeye taşınılmadı: ${son()}`);
     if (!(CR.kira() > k0)) throw new Error('atölyede kira artmadı');
     if (Math.abs(S.motorK - 1) > 1e-9) throw new Error('motor alınmadan mil gücü arttı');
     for (const id of ['motor', 'cirak', 'web']) if (!CR.dukkanAl(id)) throw new Error(`${id} alınamadı: ${son()}`);

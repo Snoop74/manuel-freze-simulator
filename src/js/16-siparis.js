@@ -124,9 +124,9 @@ function deckJob(P, flat, maxCut, brief, val, target) {
   let top0 = -1; for (let y = 0; y <= P.d; y += 1) for (let x = 0; x <= P.w; x += 1) if (P.Sf(x, y) === sf && P.H(x, y) >= P.deckBase) top0 = Math.max(top0, P.H(x, y));
   return { deck:{ flat, maxCut, top0, floor:top0 - maxCut, base:P.deckBase - 0.02, sf }, brief, val, target };
 }
-// iş koşulları: acil (süre kısa, ödeme ×1.6), seri (3 adet, son adette +%10), hassas (toleranslar yarıya, ödeme ×1.5)
+// iş koşulları: acil (süre kısa, ödeme ×1.35; 2026-11-05 dengesi, eski ×1.6/×0.55/−%20), seri (3 adet, son adette +%10), hassas (toleranslar yarıya, ödeme ×1.5)
 const COND = {
-  acil:{ tag:'ACİL', txt:'ACİL İŞ: hedef süre kısa, ödeme ×1.6; geç kalırsanız ödemeden %20 kesilir.' },
+  acil:{ tag:'ACİL', txt:'ACİL İŞ: hedef süre kısa, ödeme ×1.35; geç kalırsanız ödemeden %35 kesilir.' },
   seri:{ tag:'SERİ ×3', txt:'SERİ İŞ: 3 adet. Her adet ayrı ödenir ve ham parçası ayrı alınır; üçü de kabul edilirse son adette +%10 seri primi.' },
   hassas:{ tag:'HASSAS', txt:'HASSAS İŞ: bütün toleranslar yarıya iner, ödeme ×1.5.' },
 };
@@ -138,7 +138,7 @@ function addCond(o, lv, sabit) {                                // sabit: işin 
     if (o.J.deck) o.J.deck.flat = +(o.J.deck.flat / 2).toFixed(3);
     if (o.J.face) o.J.face.tol = +(o.J.face.tol / 2).toFixed(3);
   }
-  else if (c === 'acil') { o.cond = 'acil'; o.J.target = Math.round(o.J.target * 0.55 / 10) * 10; o.pay = Math.round(o.pay * 1.6 / 10) * 10; }
+  else if (c === 'acil') { o.cond = 'acil'; o.J.target = Math.round(o.J.target * 0.7 / 10) * 10; o.pay = Math.round(o.pay * 1.35 / 10) * 10; }
   else if (c === 'seri') { o.cond = 'seri'; o.qty = 3; o.doneQty = 0; }
   if (o.cond) o.J.brief += ' ' + COND[o.cond].txt;
   return o;
