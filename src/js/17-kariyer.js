@@ -235,10 +235,22 @@ const CR = (() => {
     const akt = st.orders.find(q => q.kabul && q !== o);
     if (akt) { log(`Önce aktif işi bitirin: ${akt.J.title} (${akt.cust}).`, 'warn'); return false; }
     if (bekler(o)) { log('Önce fiyat teklifi verin.', 'warn'); return false; }
+    // ekonomi ajanı (Opus) buldu: kasa yetmeyince iş kabul edilmiş halde takılı kalıyor, başka iş alınamıyordu
+    if (!o.free && !yeter(o.cost)) { log(`Ham parça için kasa ve kredi yetmiyor (${tl(o.cost)}). Malzemesi müşteriden gelen bir iş seçin.`, 'warn'); return false; }
+    if (o.J.arcs && o.J.arcs.length && !hasEq('rot')) { log('Bu iş döner tabla ister: önce dükkândan alın.', 'warn'); openShop(); return false; }
     o.kabul = true;
     o.termin = o.cond === 'acil' ? (st.dk < 420 ? st.gun * 1440 + MESAI : (st.gun + 1) * 1440 + 240) : (st.gun + (o.qty ? 2 : 1)) * 1440 + MESAI;
     const m = st.mail.find(q => q.id === o.mailId); if (m) m.durum = 'kabul edildi';
     save(); select(o); start();
+    return true;
+  }
+  function birak(o) {                                             // kabul edilmiş işi bırak: itibar −1, ham parça parası geri gelmez
+    if (!o || !o.kabul) return false;
+    if (S.spindle) { log('İşi bırakmadan önce mili durdurun.', 'warn'); return false; }
+    st.rep = Math.max(0, st.rep - 1); st.bugun.rep -= 1;
+    if (S.job && S.job.order === o) S.job = null;
+    const m = st.mail.find(q => q.id === o.mailId); if (m) m.durum = 'bırakıldı';
+    vazgec(o, `${o.cust} işini bıraktınız: itibar −1.`);
     return true;
   }
   function reddet(o) {
@@ -501,7 +513,7 @@ const CR = (() => {
     // bilgisayar (24-bilgisayar) için
     get st() { return st; }, saat:() => ({ gun:st.gun, gunAd:GUNLER[(st.gun - 1) % 7], dk:st.dk, txt:saatTxt(Math.min(st.dk, MESAI + 359)), mesai:MESAI }),
     siparis:id => st.orders.find(o => o.id === id), mailOku:id => { const m = st.mail.find(q => q.id === id); if (m && !m.okundu) { m.okundu = true; save(); } return m; },
-    okunmamis:() => st.mail.filter(m => !m.okundu).length, kabul:id => kabul(st.orders.find(o => o.id === id)), reddet:id => reddet(st.orders.find(o => o.id === id)),
+    okunmamis:() => st.mail.filter(m => !m.okundu).length, kabul:id => kabul(st.orders.find(o => o.id === id)), reddet:id => reddet(st.orders.find(o => o.id === id)), birak:id => birak(st.orders.find(o => o.id === id)),
     teklif:(id, f) => teklifVer(st.orders.find(o => o.id === id), f), karsiKabul:id => { const o = st.orders.find(q => q.id === id); teklifKabul(o, o.karsi, o.hizliT); save(); log(`Anlaştınız: ${tl(o.karsi)}.`, 'ok'); },
     onizle:id => select(st.orders.find(o => o.id === id)),
     resim:id => { const o = st.orders.find(q => q.id === id); if (!o) return null;                 // mailde teknik resim (hazır parçada parça modeli gerekir)

@@ -12,6 +12,7 @@
 //   gun(), durum()                    gün, saat (dk, 0 = 08:00, 600 = 18:00), kasa, itibar, seviye, dükkân, kira, kredi limiti...
 //   siparisler()                      bekleyen ve aktif siparişler (ödeme, ham parça, hedef süre, koşul, gereken ekipman...)
 //   teklif(id, carpan)                fiyat isteyen müşteriye piyasa tahmini × carpan teklif (0.85 ucuz … 1.5 fahiş); sonucu döner
+//   birak(id)                         kabul edilmiş işi bırak (itibar −1)
 //   karsiKabul(id), reddet(id)        karşı teklifi kabul et / siparişi reddet
 //   yapabilir(id)                     ekipman var mı, kasa ham parçaya yetiyor mu ({ok, neden})
 //   kabul(id)                         işi kabul et (termin başlar; aynı anda tek aktif iş)
@@ -58,6 +59,7 @@ const KUR = (hedefGun, beceri) => {
     teklif:(id, c) => { const o = CR.siparis(id); if (!o || !CR.bekler(o)) return 'teklif yok'; CR.teklif(id, Math.round(o.est * c / 10) * 10); const q = CR.siparis(id); return q ? (q.teklif || 'kabul') : 'müşteri vazgeçti'; },
     karsiKabul:id => { CR.karsiKabul(id); return 'kabul'; },
     reddet:id => { CR.reddet(id); return 'reddedildi'; },
+    birak:id => CR.birak(id),
     yapabilir:id => { const o = CR.siparis(id); if (!o) return { ok:false, neden:'sipariş yok' };
       const eks = gerek(o).filter(g => !ekipVar(g)); if (eks.length) return { ok:false, neden:'ekipman yok: ' + eks.join(', ') };
       if (CR.bekler(o)) return { ok:false, neden:'önce teklif' };
@@ -67,8 +69,7 @@ const KUR = (hedefGun, beceri) => {
     isYap:id => {
       const o = CR.siparis(id); if (!o) return { hata:'sipariş yok' };
       const y = eko.yapabilir(id); if (!y.ok) return { hata:y.neden };
-      if (!o.kabul && !CR.kabul(id)) return { hata:'kabul edilemedi (başka aktif iş?)' };
-      if (o.cost && !CR.charge(o.cost, 'ham parça')) return { hata:'ham parça alınamadı' };
+      if (!o.kabul && !CR.kabul(id)) return { hata:'kabul edilemedi (başka aktif iş, kasa ya da ekipman)' };   // kabul işi başlatır ve ham parçayı keser (start)
       const sure = o.J.target * rnd(...BEC.sure), dk = Math.round(sure + rnd(10, 25));   // tezgâh süresi (oyunda 1 s tezgâh = 1 dk mesai) + bağlama/sıfır
       CR.ilerle(dk); if (CR.raporBekliyor) kapatRapor();
       let tak = 0; if (Math.random() < BEC.kirma) { tak = 150 + Math.round(Math.random() * 250); CR.charge(tak, 'kırık takım bileme'); }

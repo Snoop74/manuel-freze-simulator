@@ -330,6 +330,14 @@ const SENARYO = {
     if (st.money !== para - gider) throw new Error(`kira düşmedi (${para} → ${st.money}, beklenen −${gider})`);
     app.CR.ertesiGun();
     if (st.gun !== gun + 1) throw new Error('ertesi güne geçilmedi');
+    // kilitlenme (ekonomi ajanı Opus buldu): kasa ham parçaya yetmezken iş kabul edilmez; kabul edilmiş iş bırakılabilir
+    { const aktif = st.orders.find(q => q.kabul); if (aktif) app.CR.birak(aktif.id);
+      const pahali = st.orders.find(q => !q.free && q.cost > 0 && !app.CR.bekler(q) && !q.kabul);
+      if (pahali) { const m0 = st.money; st.money = -app.CR.kredi() - 10;
+        if (app.CR.kabul(pahali.id)) throw new Error('kasa yetmezken iş kabul edildi (kilitlenir)');
+        st.money = m0; }
+      const is = st.orders.find(q => !app.CR.bekler(q) && !q.kabul && (q.free || q.cost < st.money) && !(q.J.arcs && q.J.arcs.length));
+      if (is) { if (!app.CR.kabul(is.id)) throw new Error('iş kabul edilemedi'); const r0 = st.rep; if (!app.CR.birak(is.id) || st.orders.some(q => q.id === is.id)) throw new Error('kabul edilen iş bırakılamadı'); if (st.rep > r0) throw new Error('bırakınca itibar düşmedi'); } }
     // sipariş üretici (16-siparis): her seviyede 100'er sipariş, bozuk alan yok
     const { genOrder } = await import('/src/js/16-siparis.js');
     let n = 0;

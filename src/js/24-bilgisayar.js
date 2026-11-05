@@ -77,7 +77,11 @@ const PC = (() => {
     O.innerHTML = h;
     const I = $('pcIslem'), btn = (t, cls, fn) => { const b = document.createElement('button'); b.className = 'btn' + (cls ? ' ' + cls : ''); b.innerHTML = t; b.addEventListener('click', () => { initAudio(); fn(); }); I.append(b); return b; };
     btn('Tezgâhta resmi aç', '', () => { CR().onizle(o.id); kapat(); });
-    if (o.kabul) { I.insertAdjacentHTML('beforeend', '<span class="pc-not">Aktif iş: tezgâhta. Bitince "Parçayı teslim et".</span>'); return; }
+    if (o.kabul) {
+      I.insertAdjacentHTML('beforeend', '<span class="pc-not">Aktif iş: tezgâhta. Bitince "Parçayı teslim et".</span>');
+      btn('İşi bırak (itibar −1)', '', () => { if (confirm('Bu işi bırakmak istiyor musunuz? İtibar −1, ham parça parası geri gelmez.') && CR().birak(o.id)) { secili = null; posta(); } });
+      return;
+    }
     if (o.teklif === 'karsi') {
       I.insertAdjacentHTML('beforeend', `<span class="pc-not">Karşı teklif: <b>${tl(o.karsi)}</b></span>`);
       btn('Kabul et', 'start', () => { CR().karsiKabul(o.id); posta(); });
