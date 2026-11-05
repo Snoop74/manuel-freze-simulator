@@ -347,4 +347,6 @@ async function calistir() {
   console.log(dus ? `\n${dus} senaryo düştü.` : '\nDuman testi temiz.');
   process.exit(dus ? 1 : 0);
 }
-calistir();
+// başka betik (ekonomi.mjs) sunucuyu ve tarayıcıyı ödünç alabilir; doğrudan çalıştırılınca testler koşar
+export { sunucu, tarayici };
+if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.dirname, 'duman.mjs')) calistir();

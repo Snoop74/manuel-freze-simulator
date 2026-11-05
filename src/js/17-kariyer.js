@@ -509,7 +509,7 @@ const CR = (() => {
       return { svg:drawingSVG(o.J), tablo:drawingTable(o.J) }; }, TEKLIF, bekler, payTxt, tl, anTxt, kira, kredi, level:() => LEVELS[level()][1], KREDI_SURE,
     ilerle, kontrol, gunuBitir, ertesiGun, get raporBekliyor() { return raporBekliyor; },
     // dükkânı büyütme (24-bilgisayar Dükkân sekmesi, 19-atolye görünüm)
-    yukVar, dukkanAl, tasin, dukkanUygula, dukkan:() => ({ sv:st.dukkan.sv, yuk:{ ...st.dukkan.yuk }, DUKKAN, YUK, kira:kira(), rep:st.rep, money:st.money }) };
+    yukVar, dukkanAl, tasin, dukkanUygula, ekipmanAl:id => { buyEq(id); return !!st.eq[id]; }, EQUIP, dukkan:() => ({ sv:st.dukkan.sv, yuk:{ ...st.dukkan.yuk }, DUKKAN, YUK, kira:kira(), rep:st.rep, money:st.money }) };
 })();
 
 Object.assign(app, { CR });   // önceki modüllerin geç başvuruları
