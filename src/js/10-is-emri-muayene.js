@@ -1,5 +1,5 @@
 // ── İş emirleri: görevler, teknik resim, markalama, muayene ve puan, teslim raporu
-import { para } from './00-dil.js';
+import { dilDinle, para, t } from './00-dil.js';
 import { kayit } from './00-kayit.js';
 import { $, PASIF, C, CUT, EDGE, H, INSP, NX, NY, PD, PH, PW, S, TOOLS, app, clamp, isDrill, log } from './00-temel.js';
 import { AYAR } from './00-tercihler.js';
@@ -10,28 +10,28 @@ import { burst } from './06-talas.js';
 import { resetPart } from './09-kumanda.js';
 
 const JOBS = [
-  { title:'Yüzey alma', target:180,
+  { tk:'j.yuzey', title:'Yüzey alma', target:180,
     brief:'Ham parçanın üst yüzeyinden 1.00 mm alın. Yüzeyin tamamı işlenmiş ve düz olmalı. T1 alın frezesi bu iş için uygundur.',
     face:{ depth:1, tol:0.1 } },
-  { title:'İlk delik', target:150,
+  { tk:'j.ilk_delik', title:'İlk delik', target:150,
     brief:'Parçanın tam ortasına Ø8.5 boydan boya delik açın. Önce T6 ile punta vurun, sonra T8 ile delin.',
     holes:[{ x:75, y:50, d:8.5 }] },
-  { title:'Delik dizisi', target:330,
+  { tk:'j.delik_dizisi', title:'Delik dizisi', target:330,
     brief:'Dört köşeye Ø5 boydan boya delik. 40 mm derinlik matkap çapının 8 katı: talaşı boşaltmak için gagalayarak delin.',
     holes:[{ x:20, y:20, d:5 }, { x:130, y:20, d:5 }, { x:130, y:80, d:5 }, { x:20, y:80, d:5 }] },
-  { title:'Dikdörtgen cep', target:420,
+  { tk:'j.cep', title:'Dikdörtgen cep', target:420,
     brief:'40×30 mm, 5.00 mm derin cep. Takım merkezi duvarlardan takım yarıçapı kadar içeride gezmeli; Ø10 frezeyle merkez X 60…90, Y 40…60 arasında kalır.',
     pockets:[{ x0:55, x1:95, y0:35, y1:65, depth:5 }] },
-  { title:'Flanş plakası', target:960,
+  { tk:'j.flans', title:'Flanş plakası', target:960,
     brief:'Üst yüzeyden 0.5 mm alın, ortaya 60×40×4 cep açın, cebin ortasına Ø12 delik, köşelere 4×Ø8.5 delik açın. Delikler boydan boya.',
     face:{ depth:0.5, tol:0.1 },
     pockets:[{ x0:45, x1:105, y0:30, y1:70, depth:4 }],
     holes:[{ x:75, y:50, d:12 }, { x:15, y:20, d:8.5 }, { x:135, y:20, d:8.5 }, { x:135, y:80, d:8.5 }, { x:15, y:80, d:8.5 }] },
-  { title:'Döner tabla: cıvata dairesi ve yay kanal', target:900, rot:true,
+  { tk:'j.doner', title:'Döner tabla: cıvata dairesi ve yay kanal', target:900, rot:true,
     brief:'Döner tablayla çalışın (iş başlarken bağlanır; parçanın ortası (75, 50) tabla merkezinde). R35 dairesi üzerine 60°\'de bir 6×Ø8.5 boydan boya delik (ilki 0°, merkezin sağında), ortaya R20, 10 mm genişlikte, 3 mm derin, 30°–150° arası yay kanal. İpucu: matkabı X 110, Y 50\'ye getirip delin; her delikten sonra takımı pabuçların üstüne kaldırıp (Z +20) tablayı 60° çevirin. Yay için T3 Ø10\'u X 95, Y 50\'ye getirin, tablayı −30°\'ye alıp kilidi açın, 3 mm dalın ve tablayı −150°\'ye çevirin: tabla döndükçe takım parçaya göre ters yönde ilerler.',
     holes:[0, 60, 120, 180, 240, 300].map(a => ({ x:+(75 + 35 * Math.cos(a * Math.PI / 180)).toFixed(3), y:+(50 + 35 * Math.sin(a * Math.PI / 180)).toFixed(3), d:8.5 })),
     arcs:[{ cx:75, cy:50, r:20, w:10, a0:30, a1:150, depth:3 }] },
-  { title:'Montaj: sensör kulesi', target:600, acik:true,
+  { tk:'j.montaj', title:'Montaj: sensör kulesi', target:600, acik:true,
     brief:'4×M6 diş açın: Ø5 delip T11 M6 kılavuzla diş çekin (mil yavaş, soğutma açık; diş en az 8.5 mm). Kare 44 aralık, merkez (75, 50). Teslimde montaj masası açılır: kuleyi koyun, cıvataları elle takın, tork anahtarıyla çapraz sırayla (1-3-2-4) 8–10 Nm sıkın.',
     holes:[[-22, -22], [22, -22], [22, 22], [-22, 22]].map(([u, v]) => ({ x:75 + u, y:50 + v, d:5, tap:'M6', tapLen:8.5 })),
     montaj:{ parca:'kule', bolt:'M6', cx:75, cy:50, F:60, s:44, tf:8, L:16 } },
@@ -40,22 +40,26 @@ const JOBS = [
 // pads: belirli bölgede istenen yükseklik (tablaya göre) · cukur: küresel uçla yarım küre çukurlar · fai: havacılık ilk parça muayenesi
 const GERCEK = {
   // cene: mengene çenesinin üstü (alt yüzden mm): parça paralellerle yükseltilir, kademeler çenenin en az 5 mm üstünde kalır (Onat: çeneye çarpma riski)
-  mastar:() => ({ title:'Kademe mastarı', target:600, acik:true, mat:'c45', w:120, d:40, h:25, cene:10,
+  mastar:() => ({ tk:'g.mastar', title:t('g.mastar.t'), target:600, acik:true, mat:'c45', w:120, d:40, h:25, cene:10,
     face:{ depth:1, tol:0.02 }, holes:[{ x:15, y:20, d:8.5 }],
     pads:[{ ad:'Kademe 1', x0:30, x1:60, y0:0, y1:40, z:21, tol:0.02 }, { ad:'Kademe 2', x0:60, x1:90, y0:0, y1:40, z:18, tol:0.02 }, { ad:'Kademe 3', x0:90, x1:120, y0:0, y1:40, z:15, tol:0.02 }],
-    brief:'Üretim hattının kontrol mastarı (C45). Üst yüzü 24.00\'a alın (±0.02), sonra 30 mm genişlikte üç kademe: X 30–60 21.00, X 60–90 18.00, X 90–120 15.00 (her biri ±0.02, yükseklik alt yüzden; kademe boyu 3 mm). Askı deliği Ø8.5 (X 15, Y 20). Parça paralellerle yükseltildi: çene üstü 10 mm\'de, kademeler çeneye inmez. Püf noktası: son 0.1 mm\'yi hızlı değil ölçerek alın; Z çarkında bir bölüntü 0.01.' }),
+    brief:t('g.mastar.b') }),
   pralin:() => {
     const pts = []; for (let j = 0; j < 4; j++) for (let i = 0; i < 6; i++) pts.push({ x:22.5 + i * 15, y:17.5 + j * 15 });
-    return { title:'Çikolata kalıbı', target:720, acik:true, mat:'al', w:120, d:80, h:15, face:{ depth:0.5, tol:0.1 },
+    return { tk:'g.pralin', title:t('g.pralin.t'), target:720, acik:true, mat:'al', w:120, d:80, h:15, face:{ depth:0.5, tol:0.1 },
       cukur:{ d:8, depth:4, tol:0.05, pts },
-      brief:'Pastane için çikolata damlası kalıbı: üst yüzden 0.5 alın, sonra 6×4 = 24 yarım küre çukur (Ø8, 4.00 derin ±0.05, 15 aralık). T5 Ø8 küresel frezeyle her noktaya dalın: uç tam 4 mm inince çukur yarım küre olur. Dalarken ilerlemeyi düşürün (~100 mm/dk): küresel ucun ortası kesmez, hızlı dalışta takım penseten kayar ve çukur derin çıkar. Gıdaya değecek: son dalış yavaş, yüzey parlak olsun.' };
+      brief:t('g.pralin.b') };
   },
-  fiting:() => ({ title:'Havacılık bağlantı fitingi', target:900, acik:true, mat:'al', w:120, d:60, h:16, tolK:0.5, fai:true,
+  fiting:() => ({ tk:'g.fiting', title:t('g.fiting.t'), target:900, acik:true, mat:'al', w:120, d:60, h:16, tolK:0.5, fai:true,
     face:{ depth:1, tol:0.05 }, pockets:[{ x0:30, x1:90, y0:15, y1:45, depth:8, r:5 }],
     holes:[{ x:15, y:30, d:8.5 }, { x:105, y:30, d:8.5 }, { x:10, y:10, d:5 }, { x:110, y:10, d:5 }, { x:110, y:50, d:5 }, { x:10, y:50, d:5 }],
-    brief:'7075-T6 alüminyum bağlantı fitingi. Üst yüzü 15.00\'e alın, ortaya 60×30 hafifletme cebi (8 derin, R5: taban 7.00 kalır), iki Ø8.5 pim deliği (aralarında 90.00) ve köşelere 4×Ø5 perçin deliği. Havacılık: toleranslar yarıya iner ve İLK PARÇA MUAYENESİ uygulanır: en çok 3 ölçü dışı sapma onayıyla kesintili kabul edilir, 3\'ten fazlası ret.' }),
+    brief:t('g.fiting.b') }),
 };
 JOBS.push(GERCEK.mastar(), GERCEK.pralin(), GERCEK.fiting());
+// dil: anahtarlı işlerin (tk) başlığı ve tarifi o anki dilden; dil değişince liste ve seçili iş yeniden çizilir
+function isMetni() { for (const J of JOBS) if (J.tk) { J.title = t(J.tk + '.t'); if (t(J.tk + '.b') !== J.tk + '.b') J.brief = t(J.tk + '.b'); } }
+isMetni();
+dilDinle(() => { isMetni(); if (app.CR && app.CR.on) return; renderJobs(); if (selJob >= 0) selectJob(selJob); });
 
 JOBS.forEach(J => { J.pockets = J.pockets || []; J.holes = J.holes || []; J.arcs = J.arcs || []; J.pockets.forEach(p => { if (p.r == null) p.r = 5; }); });
 // cep köşe radyüslü dikdörtgen: dönen takım iç köşeyi keskin açamaz, resimdeki R en büyük köşe radyüsüdür (daha küçüğü fazla kesim sayılmaz)

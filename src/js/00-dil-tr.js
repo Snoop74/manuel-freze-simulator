@@ -549,6 +549,26 @@ const TR = {
   "k.yon_geri": "GERİ ⟲",
   "k.log_ileri": "Mil yönü İLERİ.",
   "k.log_geri": "Mil yönü GERİ: frezeler bu yönde kesmez; kılavuzu çıkarmak içindir.",
+  // 10-is-emri: serbest atölye işleri (j.) ve gerçek parça işleri (g.)
+  "j.yuzey.t": "Yüzey alma",
+  "j.yuzey.b": "Ham parçanın üst yüzeyinden 1.00 mm alın. Yüzeyin tamamı işlenmiş ve düz olmalı. T1 alın frezesi bu iş için uygundur.",
+  "j.ilk_delik.t": "İlk delik",
+  "j.ilk_delik.b": "Parçanın tam ortasına Ø8.5 boydan boya delik açın. Önce T6 ile punta vurun, sonra T8 ile delin.",
+  "j.delik_dizisi.t": "Delik dizisi",
+  "j.delik_dizisi.b": "Dört köşeye Ø5 boydan boya delik. 40 mm derinlik matkap çapının 8 katı: talaşı boşaltmak için gagalayarak delin.",
+  "j.cep.t": "Dikdörtgen cep",
+  "j.cep.b": "40×30 mm, 5.00 mm derin cep. Takım merkezi duvarlardan takım yarıçapı kadar içeride gezmeli; Ø10 frezeyle merkez X 60…90, Y 40…60 arasında kalır.",
+  "j.flans.t": "Flanş plakası",
+  "j.flans.b": "Üst yüzeyden 0.5 mm alın, ortaya 60×40×4 cep açın, cebin ortasına Ø12 delik, köşelere 4×Ø8.5 delik açın. Delikler boydan boya.",
+  "j.doner.t": "Döner tabla: cıvata dairesi ve yay kanal",
+  "j.montaj.t": "Montaj: sensör kulesi",
+  "j.montaj.b": "4×M6 diş açın: Ø5 delip T11 M6 kılavuzla diş çekin (mil yavaş, soğutma açık; diş en az 8.5 mm). Kare 44 aralık, merkez (75, 50). Teslimde montaj masası açılır: kuleyi koyun, cıvataları elle takın, tork anahtarıyla çapraz sırayla (1-3-2-4) 8–10 Nm sıkın.",
+  "g.mastar.t": "Kademe mastarı",
+  "g.mastar.b": "Üretim hattının kontrol mastarı (C45). Üst yüzü 24.00'a alın (±0.02), sonra 30 mm genişlikte üç kademe: X 30–60 21.00, X 60–90 18.00, X 90–120 15.00 (her biri ±0.02, yükseklik alt yüzden; kademe boyu 3 mm). Askı deliği Ø8.5 (X 15, Y 20). Parça paralellerle yükseltildi: çene üstü 10 mm'de, kademeler çeneye inmez. Püf noktası: son 0.1 mm'yi hızlı değil ölçerek alın; Z çarkında bir bölüntü 0.01.",
+  "g.pralin.t": "Çikolata kalıbı",
+  "g.pralin.b": "Pastane için çikolata damlası kalıbı: üst yüzden 0.5 alın, sonra 6×4 = 24 yarım küre çukur (Ø8, 4.00 derin ±0.05, 15 aralık). T5 Ø8 küresel frezeyle her noktaya dalın: uç tam 4 mm inince çukur yarım küre olur. Dalarken ilerlemeyi düşürün (~100 mm/dk): küresel ucun ortası kesmez, hızlı dalışta takım penseten kayar ve çukur derin çıkar. Gıdaya değecek: son dalış yavaş, yüzey parlak olsun.",
+  "g.fiting.t": "Havacılık bağlantı fitingi",
+  "g.fiting.b": "7075-T6 alüminyum bağlantı fitingi. Üst yüzü 15.00'e alın, ortaya 60×30 hafifletme cebi (8 derin, R5: taban 7.00 kalır), iki Ø8.5 pim deliği (aralarında 90.00) ve köşelere 4×Ø5 perçin deliği. Havacılık: toleranslar yarıya iner ve İLK PARÇA MUAYENESİ uygulanır: en çok 3 ölçü dışı sapma onayıyla kesintili kabul edilir, 3'ten fazlası ret.",
   // @MODULLER@
 };
 

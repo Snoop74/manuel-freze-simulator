@@ -263,7 +263,8 @@ const SENARYO = {
     document.querySelector('#modeSw [data-mode="career"]').click();
     if (!app.CR.hasEq('cnc')) { GK.baslat(false); if (GK.calisiyor) throw new Error('kariyerde kitsiz program çalıştı'); document.getElementById('shop').hidden = true; }
     document.querySelector('#modeSw [data-mode="free"]').click();
-    app.setStock(150, 100, 40, true); yeni(); takim(t => t.no === 'T7');
+    app.setStock(150, 100, 40, true); yeni(); const t7 = takim(t => t.no === 'T7');
+    S.wear[T.TOOLS.indexOf(t7)] = 0; T.unslip(t7);   // taze matkap: önceki senaryoların aşındırdığı T7 programda ara sıra kırılıyordu
     S.zx = 0; S.zy = 0; S.zn = S.nose - (S.nose - T.TOOLS[S.tool].len - T.PH);   // Z0 = parça üstü (bu takımla)
     GK.yukle(GK.ORNEK.delik[1]); GK.baslat(false);
     if (!GK.calisiyor) throw new Error(`program başlamadı: ${son()}`);

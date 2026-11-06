@@ -549,6 +549,26 @@ const EN = {
   "k.yon_geri": "REVERSE ⟲",
   "k.log_ileri": "Spindle direction FORWARD.",
   "k.log_geri": "Spindle direction REVERSE: mills do not cut this way; it is for backing out a tap.",
+  // 10-is-emri: serbest atölye işleri (j.) ve gerçek parça işleri (g.)
+  "j.yuzey.t": "Facing",
+  "j.yuzey.b": "Take 1.00 mm off the top face of the raw stock. The whole face must be machined and flat. The T1 face mill suits this job.",
+  "j.ilk_delik.t": "First hole",
+  "j.ilk_delik.b": "Drill a Ø8.5 through hole in the exact centre of the part. Spot it first with T6, then drill with T8.",
+  "j.delik_dizisi.t": "Hole pattern",
+  "j.delik_dizisi.b": "Ø5 through holes in the four corners. 40 mm depth is 8 times the drill diameter: peck to clear the chips.",
+  "j.cep.t": "Rectangular pocket",
+  "j.cep.b": "A 40×30 mm pocket, 5.00 mm deep. The tool centre must travel one tool radius inside the walls; with the Ø10 mill the centre stays within X 60…90, Y 40…60.",
+  "j.flans.t": "Flange plate",
+  "j.flans.b": "Take 0.5 mm off the top, mill a 60×40×4 pocket in the middle, a Ø12 hole in the centre of the pocket and 4×Ø8.5 holes in the corners. All holes go through.",
+  "j.doner.t": "Rotary table: bolt circle and arc slot",
+  "j.montaj.t": "Assembly: sensor tower",
+  "j.montaj.b": "Cut 4×M6 threads: drill Ø5 and tap with T11 M6 (slow spindle, coolant on; at least 8.5 mm of thread). 44 mm square pattern, centre (75, 50). On delivery the assembly bench opens: place the tower, fit the bolts by hand and tighten them crosswise (1-3-2-4) to 8–10 Nm with the torque wrench.",
+  "g.mastar.t": "Step gauge",
+  "g.mastar.b": "The production line's inspection gauge (C45). Take the top face to 24.00 (±0.02), then three 30 mm wide steps: X 30–60 21.00, X 60–90 18.00, X 90–120 15.00 (each ±0.02, height from the bottom face; 3 mm per step). Hanging hole Ø8.5 (X 15, Y 20). The part is raised on parallels: the jaw top is at 10 mm, so the steps never reach the jaws. Tip: take the last 0.1 mm by measuring, not by rushing; one click of the Z wheel is 0.01.",
+  "g.pralin.t": "Chocolate mould",
+  "g.pralin.b": "Chocolate drop mould for a pastry shop: take 0.5 off the top, then 6×4 = 24 hemispherical cavities (Ø8, 4.00 deep ±0.05, 15 pitch). Plunge into each point with the T5 Ø8 ball mill: when the tip goes exactly 4 mm down the cavity is a hemisphere. Lower the feed while plunging (~100 mm/min): the centre of a ball mill does not cut, a fast plunge pulls the tool out of the collet and the cavity comes out too deep. It will touch food: last plunge slow, surface shiny.",
+  "g.fiting.t": "Aerospace attach fitting",
+  "g.fiting.b": "7075-T6 aluminium attach fitting. Take the top face to 15.00, mill a 60×30 lightening pocket in the middle (8 deep, R5: 7.00 floor remains), two Ø8.5 pin holes (90.00 apart) and 4×Ø5 rivet holes in the corners. Aerospace: hole position and depth tolerances are halved and a FIRST ARTICLE INSPECTION applies: up to 3 out-of-tolerance features are accepted with a deviation permit and a deduction, more than 3 means rejection.",
   // @MODULLER@
 };
 

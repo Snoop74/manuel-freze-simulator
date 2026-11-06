@@ -549,6 +549,26 @@ const DE = {
   "k.yon_geri": "LINKS ⟲",
   "k.log_ileri": "Drehrichtung RECHTS.",
   "k.log_geri": "Drehrichtung LINKS: Fräser schneiden so nicht; das ist zum Herausdrehen des Gewindebohrers.",
+  // 10-is-emri: serbest atölye işleri (j.) ve gerçek parça işleri (g.)
+  "j.yuzey.t": "Planfräsen",
+  "j.yuzey.b": "Von der Oberseite des Rohteils 1.00 mm abtragen. Die ganze Fläche muss bearbeitet und eben sein. Der Planfräser T1 eignet sich dafür.",
+  "j.ilk_delik.t": "Erste Bohrung",
+  "j.ilk_delik.b": "Eine Ø8.5-Durchgangsbohrung genau in die Mitte des Teils. Zuerst mit T6 anbohren, dann mit T8 bohren.",
+  "j.delik_dizisi.t": "Lochbild",
+  "j.delik_dizisi.b": "Ø5-Durchgangsbohrungen in den vier Ecken. 40 mm Tiefe ist das Achtfache des Bohrerdurchmessers: zum Entspanen ausfahren (Spanbruch).",
+  "j.cep.t": "Rechtecktasche",
+  "j.cep.b": "Eine Tasche 40×30 mm, 5.00 mm tief. Die Werkzeugmitte fährt um den Werkzeugradius innerhalb der Wände; mit dem Ø10-Fräser bleibt sie in X 60…90, Y 40…60.",
+  "j.flans.t": "Flanschplatte",
+  "j.flans.b": "Oben 0.5 mm abtragen, in der Mitte eine Tasche 60×40×4, in die Taschenmitte eine Ø12-Bohrung und in die Ecken 4×Ø8.5. Alle Bohrungen durchgehend.",
+  "j.doner.t": "Rundtisch: Lochkreis und Bogennut",
+  "j.montaj.t": "Montage: Sensorturm",
+  "j.montaj.b": "4×M6-Gewinde: Ø5 bohren und mit T11 M6 gewinden (Spindel langsam, Kühlung an; mindestens 8.5 mm Gewinde). Quadrat 44 mm, Mitte (75, 50). Bei der Abgabe öffnet sich die Montagebank: Turm aufsetzen, Schrauben von Hand eindrehen und über Kreuz (1-3-2-4) mit dem Drehmomentschlüssel auf 8–10 Nm anziehen.",
+  "g.mastar.t": "Stufenlehre",
+  "g.mastar.b": "Prüflehre der Fertigungslinie (C45). Oberseite auf 24.00 (±0.02), dann drei 30 mm breite Stufen: X 30–60 21.00, X 60–90 18.00, X 90–120 15.00 (je ±0.02, Höhe von der Unterseite; 3 mm je Stufe). Aufhängebohrung Ø8.5 (X 15, Y 20). Das Teil liegt auf Parallelunterlagen erhöht: Backenoberkante bei 10 mm, die Stufen erreichen die Backen nie. Tipp: die letzten 0.1 mm messend nehmen, nicht hastig; eine Raste am Z-Rad ist 0.01.",
+  "g.pralin.t": "Pralinenform",
+  "g.pralin.b": "Pralinenform für eine Konditorei: oben 0.5 abtragen, dann 6×4 = 24 Halbkugel-Mulden (Ø8, 4.00 tief ±0.05, Teilung 15). Mit dem Kugelfräser T5 Ø8 in jeden Punkt eintauchen: genau 4 mm tief ergibt eine Halbkugel. Beim Eintauchen den Vorschub senken (~100 mm/min): die Mitte eines Kugelfräsers schneidet nicht, zu schnelles Eintauchen zieht das Werkzeug aus der Spannzange und die Mulde wird zu tief. Kommt mit Lebensmitteln in Kontakt: letztes Eintauchen langsam, Oberfläche glänzend.",
+  "g.fiting.t": "Luftfahrt-Anschlussbeschlag",
+  "g.fiting.b": "Anschlussbeschlag aus Aluminium 7075-T6. Oberseite auf 15.00, in der Mitte eine Erleichterungstasche 60×30 (8 tief, R5: Boden 7.00), zwei Ø8.5-Stiftbohrungen (Abstand 90.00) und 4×Ø5-Nietbohrungen in den Ecken. Luftfahrt: Toleranzen für Bohrungsposition und Tiefe halbiert, ERSTMUSTERPRÜFUNG: bis zu 3 Abweichungen werden mit Sonderfreigabe und Abzug angenommen, mehr als 3 bedeutet Ausschuss.",
   // @MODULLER@
 };
 
