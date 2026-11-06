@@ -533,6 +533,22 @@ const DE = {
   "k:tersane": "Werft",
   "k:öğrenci takımı": "Studententeam",
   "k:pastane": "Konditorei",
+  // 14-parca-masasi: kumanda paneli LCD ve anahtarlar
+  "k.git": "LOS",
+  "k.eksen_sec": "ACHSE WÄHLEN",
+  "k.geri": "LINKS",
+  "k.ileri": "RECHTS",
+  "k.alarm": "ALARM",
+  "k.takim_deg": "WZ-WECHSEL",
+  "k.kilavuz": "GEWINDE",
+  "k.oto": "VORSCHUB",
+  "k.mil_donuyor": "SPINDEL AN",
+  "k.hazir": "BEREIT",
+  "k.mil_yonu": "Drehrichtung: {y}",
+  "k.yon_ileri": "RECHTS ⟳",
+  "k.yon_geri": "LINKS ⟲",
+  "k.log_ileri": "Drehrichtung RECHTS.",
+  "k.log_geri": "Drehrichtung LINKS: Fräser schneiden so nicht; das ist zum Herausdrehen des Gewindebohrers.",
   // @MODULLER@
 };
 

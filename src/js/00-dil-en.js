@@ -533,6 +533,22 @@ const EN = {
   "k:tersane": "shipyard",
   "k:öğrenci takımı": "student team",
   "k:pastane": "pastry shop",
+  // 14-parca-masasi: kumanda paneli LCD ve anahtarlar
+  "k.git": "GO",
+  "k.eksen_sec": "SELECT AXIS",
+  "k.geri": "REV",
+  "k.ileri": "FWD",
+  "k.alarm": "ALARM",
+  "k.takim_deg": "TOOL CHG.",
+  "k.kilavuz": "TAPPING",
+  "k.oto": "POWER FEED",
+  "k.mil_donuyor": "SPINDLE ON",
+  "k.hazir": "READY",
+  "k.mil_yonu": "Spindle direction: {y}",
+  "k.yon_ileri": "FORWARD ⟳",
+  "k.yon_geri": "REVERSE ⟲",
+  "k.log_ileri": "Spindle direction FORWARD.",
+  "k.log_geri": "Spindle direction REVERSE: mills do not cut this way; it is for backing out a tap.",
   // @MODULLER@
 };
 

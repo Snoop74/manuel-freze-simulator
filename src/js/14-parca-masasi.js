@@ -1,5 +1,6 @@
 // ── Parça masası (CP): ayrı sahnede inceleme, kumpas, yükseklik, delik/cep, kesit; ham parça ölçüsü (BN)
 import { $, C, H, INSP, NX, NY, PD, PH, PW, S, TAU, TEST, app, clamp, log, mat, rapid, tool, warnOnce } from './00-temel.js';
+import { t } from './00-dil.js';
 import { initAudio, thud } from './01-ses.js';
 import { M, MX, bakeRest } from './02-sahne-tezgah.js';
 import { FIXLIM } from './03-tabla-parca.js';
@@ -125,17 +126,17 @@ const CP = (() => {
     for (const ax of ['x', 'y', 'z']) document.querySelector(`.lcd-ax[data-ax="${ax}"]`).classList.toggle('sel', st.sel === ax);
     document.querySelectorAll('.key.ax').forEach(b => b.classList.toggle('on', b.dataset.k === st.sel));
     const tg = Object.keys(st.tgt).map(a => a.toUpperCase() + st.tgt[a]).join(' ');
-    $('lcdSel').textContent = (tg ? 'GİT ' + tg + ' · ' : '') + (st.sel ? `${st.sel.toUpperCase()} =` : tg ? '' : 'EKSEN SEÇ');
+    $('lcdSel').textContent = (tg ? t('k.git') + ' ' + tg + ' · ' : '') + (st.sel ? `${st.sel.toUpperCase()} =` : tg ? '' : t('k.eksen_sec'));
     $('lcdBuf').textContent = st.sel ? (st.buf || '_') : '';
   }
   // ekran ve ışıklar (updateHud içinden ~15 Hz)
   function update(T) {
     const d = droVals();
     $('lcdX').textContent = fmt(d.x); $('lcdY').textContent = fmt(d.y); $('lcdZ').textContent = fmt(d.z);
-    $('lcdS').textContent = `S ${Math.round(S.spindle ? S.rpmEff : 0)}${S.spindle && S.dir < 0 ? ' GERİ' : ''}`;
+    $('lcdS').textContent = `S ${Math.round(S.spindle ? S.rpmEff : 0)}${S.spindle && S.dir < 0 ? ' ' + t('k.geri') : ''}`;
     $('lcdF').textContent = `F ${Math.round(S.curFeed && performance.now() - S.lastMove < 200 ? S.curFeed : S.feed)}`;
     $('lcdT').textContent = `${T.no} Ø${T.d}`;
-    $('lcdState').textContent = S.alarm ? 'ALARM' : S.changing ? 'TAKIM DEĞ.' : S.tap ? 'KILAVUZ' : S.autoX || S.autoY ? 'OTO. İLERLEME' : S.spindle ? 'MİL DÖNÜYOR' : 'HAZIR';
+    $('lcdState').textContent = t(S.alarm ? 'k.alarm' : S.changing ? 'k.takim_deg' : S.tap ? 'k.kilavuz' : S.autoX || S.autoY ? 'k.oto' : S.spindle ? 'k.mil_donuyor' : 'k.hazir');
     const cutting = performance.now() - S.lastCut < 400, ld = cutting ? S.lastStress : 0;
     const bar = (id, v) => { const e = $(id); e.style.width = clamp(v * 100, 0, 100) + '%'; e.className = v > 1 ? 'bad' : v > 0.8 ? 'hi' : ''; };
     bar('lcdLoad', ld / 1.5); $('lcdLoadV').textContent = cutting ? ld.toFixed(2) + '×' : '—';
@@ -144,7 +145,7 @@ const CP = (() => {
     $('lcdWear').textContent = `VB ${S.wear[S.tool].toFixed(2)} mm`; $('lcdRa').textContent = S.lastRa === null ? '—' : S.lastRa.toFixed(2) + ' µm';
     $('lcdChip').textContent = S.chipForm && performance.now() - S.chipT < 800 ? CHIP_TXT[S.chipForm].toUpperCase() : '—';
     $('cpStart').classList.toggle('lit', S.spindle); $('cpCool').classList.toggle('lit', S.coolant);
-    $('cpDir').classList.toggle('rev', S.dir < 0); $('cpDirL').textContent = S.dir < 0 ? 'GERİ' : 'İLERİ';
+    $('cpDir').classList.toggle('rev', S.dir < 0); $('cpDirL').textContent = t(S.dir < 0 ? 'k.geri' : 'k.ileri');
     $('lpSpin').classList.toggle('on', S.spindle); $('lpAlarm').classList.toggle('on', S.alarm);
     $('cpRapid').classList.toggle('on', S.rapidBtn);
     $('cpAuto').querySelectorAll('[data-af]').forEach(b => { const f = +b.dataset.af; b.classList.toggle('on', f ? Math.sign(S.autoX) === f : !S.autoX); });

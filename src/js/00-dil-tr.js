@@ -533,6 +533,22 @@ const TR = {
   "k:tersane": "tersane",
   "k:öğrenci takımı": "öğrenci takımı",
   "k:pastane": "pastane",
+  // 14-parca-masasi: kumanda paneli LCD ve anahtarlar
+  "k.git": "GİT",
+  "k.eksen_sec": "EKSEN SEÇ",
+  "k.geri": "GERİ",
+  "k.ileri": "İLERİ",
+  "k.alarm": "ALARM",
+  "k.takim_deg": "TAKIM DEĞ.",
+  "k.kilavuz": "KILAVUZ",
+  "k.oto": "OTO. İLERLEME",
+  "k.mil_donuyor": "MİL DÖNÜYOR",
+  "k.hazir": "HAZIR",
+  "k.mil_yonu": "Mil yönü: {y}",
+  "k.yon_ileri": "İLERİ ⟳",
+  "k.yon_geri": "GERİ ⟲",
+  "k.log_ileri": "Mil yönü İLERİ.",
+  "k.log_geri": "Mil yönü GERİ: frezeler bu yönde kesmez; kılavuzu çıkarmak içindir.",
   // @MODULLER@
 };
 

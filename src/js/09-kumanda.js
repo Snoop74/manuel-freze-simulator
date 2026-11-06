@@ -1,4 +1,5 @@
 // ── Kumanda: DRO, devir/ilerleme, takım dolabı, takım değişimi, mil, jog, el çarkları, malzeme ve parça sıfırlama
+import { dilDinle, t } from './00-dil.js';
 import { kayit } from './00-kayit.js';
 import { $, CUT, EDGE, H, INSP, MATS, NX, NY, PD, PH, PW, S, SURF, TOOLS, app, clamp, isDrill, isProbe, isTaster, log,
   mat, rapid, recFeed, recRpm, setMat, tipZ, tool, unslip } from './00-temel.js';
@@ -140,8 +141,8 @@ $('spDir').addEventListener('click', () => {
   initAudio();
   if (S.tap && S.spindle) thud(140, 0.14, 0.1);
   S.dir = -S.dir;
-  $('spDir').textContent = 'Mil yönü: ' + (S.dir > 0 ? 'İLERİ ⟳' : 'GERİ ⟲'); $('spDir').classList.toggle('on', S.dir < 0);
-  log(S.dir > 0 ? 'Mil yönü İLERİ.' : 'Mil yönü GERİ: frezeler bu yönde kesmez; kılavuzu çıkarmak içindir.');
+  yonYaz(); $('spDir').classList.toggle('on', S.dir < 0);
+  log(t(S.dir > 0 ? 'k.log_ileri' : 'k.log_geri'));
 });
 $('applyRec').addEventListener('click', () => { const T = tool(); setRpm(recRpm(T)); setFeed(recFeed(T)); log(`Önerilen kesme değerleri uygulandı: ${recRpm(T)} dev/dk, ${recFeed(T)} mm/dk.`); });
 $('coolant').addEventListener('click', toggleCoolant);
@@ -312,6 +313,10 @@ function resetPart(k) {
 
 /* ---------------- İş emirleri, muayene ve puanlama ---------------- */
 Object.assign(app, { fmt, updateAutoUI, updateRec, updateSpindleUI, updateToolUI });   // önceki modüllerin geç başvuruları
+
+// mil yönü düğmesinin yazısı: yönle ve dille değişir (dil değişince sayfa() sabit metne çevirmesin diye şablonda data-t yok)
+function yonYaz() { $('spDir').textContent = t('k.mil_yonu', { y:t(S.dir > 0 ? 'k.yon_ileri' : 'k.yon_geri') }); }
+dilDinle(yonYaz); yonYaz();
 
 export { COL, TICK, addSpin, drawWheels, droVals, fmt, rackTagOf, renderRack, requestToolChange, resetPart, setAuto, setAutoY,
   setAxis, setFeed, setMaterial, setRackTag, setRpm, setStep, spinAng, spindle, toggleCoolant, tok, updateRec,
