@@ -417,8 +417,9 @@ const BN = (() => {
   }
   function section() {
     const x = +$('bnSecX').value, y = +$('bnSecY').value;
-    clipX.constant = x - PW / 2;                      // grp −PW/2 kaydırılmış: dünya x = parça x − PW/2
-    clipY.constant = y - PD / 2;                      // dünya z = PD/2 − parça y; z ≥ PD/2 − y tarafı görünür
+    // kapalıyken düzlem parçadan uzakta: tam kenarda durursa kenar yüzü düzlemle çakışır, her karede rastgele kesilip çizgi çizgi titrer (Onat'ın gördüğü)
+    clipX.constant = x >= PW ? 1e4 : x - PW / 2;                      // grp −PW/2 kaydırılmış: dünya x = parça x − PW/2
+    clipY.constant = y >= PD ? 1e4 : y - PD / 2;                      // dünya z = PD/2 − parça y; z ≥ PD/2 − y tarafı görünür
     $('bnSecXv').textContent = x >= PW ? 'kapalı' : 'X ' + x.toFixed(1);
     $('bnSecYv').textContent = y >= PD ? 'kapalı' : 'Y ' + y.toFixed(1);
   }
