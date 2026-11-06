@@ -133,6 +133,10 @@
         <div class="bench-body">
           <div class="bench-view" id="bnView"><canvas id="bnC" aria-label="Parçanın 3B görünümü"></canvas><div class="bench-hint" id="bnHint"></div></div>
           <div class="bench-side">
+            <div class="sub">Kontrol listesi <span id="bnJob"></span></div>
+            <ul class="bn-kontrol" id="bnKontrol"></ul>
+            <div class="bn-row"><button class="btn start" id="bnHepsi">Hepsini ölç</button><button class="btn" id="bnSapma">Sapma haritası</button></div>
+            <div class="bn-lejant" id="bnLejant" hidden><span class="ok">tolerans içi</span><span class="az">malzeme kaldı</span><span class="fz">fazla kesilmiş</span><span>işlenmeyecek</span></div>
             <div class="sub">Ölçü aleti</div>
             <div class="tools"><button class="btn on" data-bt="cal">Kumpas</button><button class="btn" data-bt="h">Yükseklik</button><button class="btn" data-bt="hole">Delik / cep</button></div>
             <div class="sub">Kesit</div>
@@ -141,7 +145,7 @@
             <div class="sub">Ölçümler</div>
             <ul id="bnList"></ul>
             <button class="btn" id="bnClear">Ölçümleri temizle</button>
-            <div class="dro-note">Sol tık ölç, sağ tık sürükle döndür, tekerlek yakınlaştır. Kesit kaydırıcıları parçayı o düzlemden keser; iç cepler ve delikler görünür.</div>
+            <div class="dro-note">Kontrol listesi teknik resmin ölçüleridir: bir satıra tıkla, o ölçü alınır ve teslimdeki muayeneyle aynı sonucu verir. Serbest ölçüm: aleti seç, parçaya tıkla. Sürükle: döndür, tekerlek: yakınlaştır. Kesit kaydırıcıları parçayı o düzlemden keser.</div>
           </div>
         </div>
       </div>

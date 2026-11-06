@@ -351,6 +351,19 @@ table{color:inherit;font-size:inherit}
 .bg-head{display:flex;align-items:center;gap:8px;font-family:var(--f-display)}
 .bg-head b{letter-spacing:.12em;font-size:13px}.bg-head small{color:var(--warn);flex:1}
 .bg-list{display:grid;gap:6px}
+/* ölçüm masası: kontrol listesi, sapma haritası lejantı */
+.bn-kontrol{list-style:none;margin:0;padding:0;display:grid;gap:3px;max-height:38vh;overflow:auto}
+.bn-kontrol li{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:baseline;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);cursor:pointer;font-size:12px}
+.bn-kontrol li:hover{border-color:var(--safety)}
+.bn-kontrol li b{font-family:var(--f-display);font-size:11px;color:var(--muted);letter-spacing:.05em}
+.bn-kontrol li small{grid-column:2/4;color:var(--muted);font-family:var(--f-dro)}
+.bn-kontrol li i{font-style:normal;font-family:var(--f-dro);color:var(--muted)}
+.bn-kontrol li.ok i{color:var(--ok)}.bn-kontrol li.bad i{color:var(--bad)}.bn-kontrol li.ok{border-color:rgba(70,194,127,.45)}.bn-kontrol li.bad{border-color:rgba(229,72,77,.6)}
+.bn-kontrol .bos{cursor:default;color:var(--muted)}
+.bn-row{display:flex;gap:6px}.bn-row .btn{flex:1}
+.bn-lejant{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11px;color:var(--muted)}
+.bn-lejant span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px;background:#8a8f92}
+.bn-lejant .ok::before{background:#3fbf6f}.bn-lejant .az::before{background:#3d8fe0}.bn-lejant .fz::before{background:#e5484d}
 .bg-sec{font-family:var(--f-display);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:6px}
 .bg-card{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:grid;gap:5px}
 .bg-t{display:flex;justify-content:space-between;align-items:baseline}
@@ -1092,6 +1105,10 @@ body.tbm-acik .toast{visibility:hidden}
         <div class="bench-body">
           <div class="bench-view" id="bnView"><canvas id="bnC" aria-label="Parçanın 3B görünümü"></canvas><div class="bench-hint" id="bnHint"></div></div>
           <div class="bench-side">
+            <div class="sub">Kontrol listesi <span id="bnJob"></span></div>
+            <ul class="bn-kontrol" id="bnKontrol"></ul>
+            <div class="bn-row"><button class="btn start" id="bnHepsi">Hepsini ölç</button><button class="btn" id="bnSapma">Sapma haritası</button></div>
+            <div class="bn-lejant" id="bnLejant" hidden><span class="ok">tolerans içi</span><span class="az">malzeme kaldı</span><span class="fz">fazla kesilmiş</span><span>işlenmeyecek</span></div>
             <div class="sub">Ölçü aleti</div>
             <div class="tools"><button class="btn on" data-bt="cal">Kumpas</button><button class="btn" data-bt="h">Yükseklik</button><button class="btn" data-bt="hole">Delik / cep</button></div>
             <div class="sub">Kesit</div>
@@ -1100,7 +1117,7 @@ body.tbm-acik .toast{visibility:hidden}
             <div class="sub">Ölçümler</div>
             <ul id="bnList"></ul>
             <button class="btn" id="bnClear">Ölçümleri temizle</button>
-            <div class="dro-note">Sol tık ölç, sağ tık sürükle döndür, tekerlek yakınlaştır. Kesit kaydırıcıları parçayı o düzlemden keser; iç cepler ve delikler görünür.</div>
+            <div class="dro-note">Kontrol listesi teknik resmin ölçüleridir: bir satıra tıkla, o ölçü alınır ve teslimdeki muayeneyle aynı sonucu verir. Serbest ölçüm: aleti seç, parçaya tıkla. Sürükle: döndür, tekerlek: yakınlaştır. Kesit kaydırıcıları parçayı o düzlemden keser.</div>
           </div>
         </div>
       </div>

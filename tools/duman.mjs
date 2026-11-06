@@ -364,6 +364,28 @@ const SENARYO = {
     void T5;
     return `${out.join(', ')} kusursuz kabul; sığ çukur ve 4 sapmalı fiting ret; dalış ${der.toFixed(2)} derin, ağız Ø${cap.toFixed(1)}`;
   },
+  async olcum() {
+    // ölçüm masası: kontrol listesi teslim muayenesiyle aynı, muayene parçaya iz bırakmaz, sapma haritası kurulur
+    const { T, app } = window.__d;
+    const M = await import('/src/js/10-is-emri-muayene.js');
+    app.MENU.kapat(); if (app.CR.on) document.querySelector('#modeSw [data-mode="free"]').click();
+    const i = M.JOBS.findIndex(q => q.title === 'Kademe mastarı'); M.selectJob(i); M.startJob();
+    const J = M.JOBS[i], { H, C, NX } = T;
+    for (let k = 0; k < H.length; k++) if ((k % NX) * C < 60) H[k] = 24;   // yarısı işlenmiş
+    const iz0 = T.INSP.reduce((a, b) => a + b, 0);
+    app.BN.show();
+    const kon = app.BN.kon; if (!kon || !kon.it.length) throw new Error('kontrol listesi boş');
+    const bek = M.inspect(J).map(q => q.ok);
+    if (kon.it.map(q => q.ok).join() !== bek.join()) throw new Error('kontrol listesi teslim muayenesinden farklı');
+    app.BN.hepsi();
+    const sat = [...document.querySelectorAll('#bnKontrol li')], ok = sat.filter(l => l.classList.contains('ok')).length, bad = sat.filter(l => l.classList.contains('bad')).length;
+    if (ok + bad !== kon.it.length) throw new Error(`hepsini ölç: ${ok + bad}/${kon.it.length} satır işaretlendi`);
+    if (!bad) throw new Error('yarım işlenmiş mastarda tolerans dışı ölçü çıkmadı');
+    T.INSP.fill(0); for (let k = 0; k < iz0; k++) T.INSP[k] = 1;   // muayene (inspect) çağrısının izini sil, sonra masanın bırakmadığını denetle
+    app.BN.show(); if (T.INSP.reduce((a, b) => a + b, 0) !== iz0) throw new Error('ölçüm masası parçaya muayene izi bıraktı');
+    app.BN.sapma(true); app.BN.sapma(false); app.BN.hide();
+    return `${kon.it.length} ölçü (${ok} içeride, ${bad} dışarıda), muayeneyle aynı, sapma haritası açıldı`;
+  },
   async dukkan() {
     const { app, S, U, son } = window.__d, CR = app.CR;
     document.querySelector('#modeSw [data-mode="career"]').click();

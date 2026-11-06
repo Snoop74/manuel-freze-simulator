@@ -605,5 +605,5 @@ $('jobCheck').addEventListener('click', () => {
 });
 setInterval(() => { $('jobCheck').hidden = !(S.job && !S.job.done && app.CR.yukVar('olcu')); }, 500);
 
-export { GERCEK, DIS, JOBS, ceneAyari, inspect, scoreJob, buildScribe, localTop, threadAt, drawingSVG, drawingTable, inRect, mmss, renderJobs, selJob, selectJob, setSelJob,
+export { GERCEK, DIS, JOBS, allowedAt, ceneAyari, inspect, scoreJob, buildScribe, localTop, threadAt, drawingSVG, drawingTable, inRect, mmss, renderJobs, selJob, selectJob, setSelJob,
   startJob, submitJob };

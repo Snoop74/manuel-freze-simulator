@@ -1,13 +1,14 @@
 // ── Parça masası (CP): ayrı sahnede inceleme, kumpas, yükseklik, delik/cep, kesit; ham parça ölçüsü (BN)
-import { $, C, H, NX, NY, PD, PH, PW, S, TAU, app, clamp, log, mat, rapid, tool, warnOnce } from './00-temel.js';
+import { $, C, H, INSP, NX, NY, PD, PH, PW, S, TAU, app, clamp, log, mat, rapid, tool, warnOnce } from './00-temel.js';
 import { initAudio, thud } from './01-ses.js';
 import { M } from './02-sahne-tezgah.js';
 import { FIXLIM } from './03-tabla-parca.js';
 import { DIVZ } from './04-voksel.js';
-import { FIX, buildStock, flushMesh, markStockReady, stockBase, syncFixtures, topGeo, topMat, walls } from './05-baglama.js';
+import { FIX, buildStock, flushMesh, markDirty, markStockReady, stockBase, syncFixtures, topGeo, topMat, walls } from './05-baglama.js';
 import { CHIP_TXT } from './06-talas.js';
 import { press, release } from './08-kesme.js';
 import { TICK, droVals, fmt, resetPart, setAuto, setAutoY, setAxis, setFeed, setRpm, spindle, wheelTicks } from './09-kumanda.js';
+import { JOBS, allowedAt, inspect, localTop, selJob } from './10-is-emri-muayene.js';
 import { estop } from './12-dongu-ust-cubuk.js';
 
 const CP = (() => {
@@ -186,26 +187,140 @@ const BN = (() => {
     r = new THREE.WebGLRenderer({ canvas:cv, antialias:true });
     r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); r.outputEncoding = THREE.sRGBEncoding;
     r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.9; r.localClippingEnabled = true; r.shadowMap.enabled = true;
-    sc = new THREE.Scene(); sc.background = new THREE.Color(0x1a1f22);
+    r.shadowMap.type = THREE.PCFSoftShadowMap;
+    sc = new THREE.Scene(); sc.background = new THREE.Color(0x221f1c); sc.fog = new THREE.Fog(0x221f1c, 1400, 3200);
     if (THREE.RoomEnvironment) { const pm = new THREE.PMREMGenerator(r); sc.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture; pm.dispose(); }
     sc.add(new THREE.HemisphereLight(0xe8eef5, 0x2a2622, 0.35));
-    const l1 = new THREE.DirectionalLight(0xffffff, 0.8); l1.position.set(120, 260, 180); l1.castShadow = true; l1.shadow.mapSize.set(2048, 2048);
-    Object.assign(l1.shadow.camera, { left:-200, right:200, top:200, bottom:-200, near:10, far:800 }); sc.add(l1);
-    const l2 = new THREE.DirectionalLight(0x9fc4ff, 0.3); l2.position.set(-200, 80, -120); sc.add(l2);
-    const plate = new THREE.Mesh(new THREE.BoxGeometry(520, 30, 380), new THREE.MeshStandardMaterial({ color:new THREE.Color(0x2c3235).convertSRGBToLinear(), roughness:0.85 }));
-    plate.position.y = -15.2; plate.receiveShadow = true; plate.material.envMapIntensity = 0.25; sc.add(plate);
+    const l1 = new THREE.DirectionalLight(0xfff1dc, 0.85); l1.position.set(140, 320, 200); l1.castShadow = true; l1.shadow.mapSize.set(2048, 2048);
+    l1.shadow.bias = -0.0006; l1.shadow.normalBias = 0.6;           // çift yüzlü parça malzemesinde gölge sivilcesi (yan yüzlerde dikey çizgiler) olmasın
+    Object.assign(l1.shadow.camera, { left:-220, right:220, top:220, bottom:-220, near:10, far:900 }); sc.add(l1);
+    const l2 = new THREE.DirectionalLight(0x9fc4ff, 0.25); l2.position.set(-200, 80, -120); sc.add(l2);
+    const lamba = new THREE.PointLight(0xffc98a, 0.5, 1600, 1.6); lamba.position.set(-180, 420, -160); sc.add(lamba);   // masa lambası
+    ortam();
     cam = new THREE.PerspectiveCamera(38, 1, 2, 4000);
     ctl = new THREE.OrbitControls(cam, cv); ctl.enableDamping = true; ctl.maxPolarAngle = Math.PI * 0.49;
     grp = new THREE.Group(); sc.add(grp);
     // parçanın üst yüzeyi işleme izleriyle; kesit için malzemeler kopyalanır (ana görünüm kesilmesin)
     mats.top = topMat.clone(); mats.top.onBeforeCompile = topMat.onBeforeCompile; mats.top.customProgramCacheKey = () => 'benchTop';
     mats.raw = M.raw.clone();
-    for (const m of [mats.top, mats.raw]) { m.clippingPlanes = [clipX, clipY]; m.side = THREE.DoubleSide; }
+    for (const m of [mats.top, mats.raw]) { m.clippingPlanes = [clipX, clipY]; m.side = THREE.DoubleSide; m.shadowSide = THREE.BackSide; }
+    mats.sapma = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.6, metalness:0.05, clippingPlanes:[clipX, clipY], side:THREE.DoubleSide, shadowSide:THREE.BackSide });
     cv.addEventListener('pointerdown', e => { if (e.button === 0) down = { x:e.clientX, y:e.clientY }; });
     cv.addEventListener('pointerup', e => { if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) pick(e); down = null; });
     new ResizeObserver(resize).observe(cv.parentElement);
   }
   let down = null;
+  // ortam: benekli siyah granit pleyt (pahlı), masa gövdesi, arkada pano ve tabela
+  function ortam() {
+    const tex = (w, h, ciz) => { const c = document.createElement('canvas'); c.width = w; c.height = h; ciz(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t; };
+    const granit = tex(512, 512, (x, w, h) => {
+      x.fillStyle = '#1b1c1e'; x.fillRect(0, 0, w, h);
+      for (let k = 0; k < 14000; k++) { const v = Math.random(); x.fillStyle = v < 0.6 ? `rgba(0,0,0,${0.25 + Math.random() * 0.35})` : v < 0.97 ? `rgba(95,96,100,${0.12 + Math.random() * 0.22})` : `rgba(170,166,158,${0.12 + Math.random() * 0.2})`; const s = 0.5 + Math.random() * 1.4; x.fillRect(Math.random() * w, Math.random() * h, s, s); }
+    });
+    granit.wrapS = granit.wrapT = THREE.RepeatWrapping; granit.repeat.set(5, 3.4);
+    const sh = new THREE.Shape(), a = 450, b = 300, rc = 14;
+    sh.moveTo(-a + rc, -b); sh.lineTo(a - rc, -b); sh.quadraticCurveTo(a, -b, a, -b + rc); sh.lineTo(a, b - rc); sh.quadraticCurveTo(a, b, a - rc, b);
+    sh.lineTo(-a + rc, b); sh.quadraticCurveTo(-a, b, -a, b - rc); sh.lineTo(-a, -b + rc); sh.quadraticCurveTo(-a, -b, -a + rc, -b);
+    const pg = new THREE.ExtrudeGeometry(sh, { depth:70, bevelEnabled:true, bevelThickness:4, bevelSize:4, bevelSegments:2 });
+    pg.rotateX(-Math.PI / 2); pg.translate(0, -78.2, 0);
+    const uv = pg.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) / 900, uv.getY(k) / 600);
+    const plate = new THREE.Mesh(pg, new THREE.MeshStandardMaterial({ map:granit, roughness:0.32, metalness:0.05, envMapIntensity:0.45 }));
+    plate.receiveShadow = true; sc.add(plate);
+    const govde = new THREE.Mesh(new THREE.BoxGeometry(860, 700, 560), new THREE.MeshStandardMaterial({ color:new THREE.Color(0x2f3a36).convertSRGBToLinear(), roughness:0.7, metalness:0.2 }));
+    govde.position.y = -82 - 350; sc.add(govde);
+    const zemin = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.MeshStandardMaterial({ color:new THREE.Color(0x2a2724).convertSRGBToLinear(), roughness:0.95 }));
+    zemin.rotation.x = -Math.PI / 2; zemin.position.y = -782; sc.add(zemin);
+    const pano = tex(1024, 512, (x, w, h) => {
+      x.fillStyle = '#3c4a45'; x.fillRect(0, 0, w, h); x.fillStyle = '#34413c'; x.fillRect(0, h * 0.62, w, h * 0.38);
+      x.fillStyle = '#c9a33a'; x.fillRect(0, h * 0.6, w, 6);
+      x.fillStyle = '#e8e3d4'; x.fillRect(w * 0.3, h * 0.12, w * 0.4, h * 0.16); x.strokeStyle = '#1f2624'; x.lineWidth = 4; x.strokeRect(w * 0.3, h * 0.12, w * 0.4, h * 0.16);
+      x.fillStyle = '#1f2624'; x.font = 'bold 40px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('KALİTE KONTROL', w / 2, h * 0.2);
+      x.font = '20px monospace'; x.fillStyle = '#d8d2c2'; x.textAlign = 'left';
+      ['ÖLÇÜM ÖNCESİ PARÇAYI TEMİZLE', 'GRANİTE ALET BIRAKMA', 'ÖLÇÜM ODASI 20 °C'].forEach((t, k) => x.fillText(t, w * 0.06, h * (0.4 + k * 0.07)));
+      for (let k = 0; k < 6; k++) { x.fillStyle = '#26302d'; x.fillRect(w * (0.66 + k * 0.05), h * 0.36, 8, 60 + k * 10); }   // askıdaki aletlerin gölgesi
+    });
+    const duvar = new THREE.Mesh(new THREE.PlaneGeometry(1800, 900), new THREE.MeshStandardMaterial({ map:pano, roughness:0.85 }));
+    duvar.position.set(0, 330, -520); sc.add(duvar);
+  }
+  // kamera parçayı çerçeveler (eskiden parça burnun dibinde açılıyordu)
+  function cerceve() {
+    const R = Math.hypot(PW, PD, PH) / 2, d = R / Math.sin(cam.fov / 2 * Math.PI / 180) * 1.55;
+    const dir = new THREE.Vector3(0.38, 0.5, 1).normalize();
+    ctl.target.set(0, PH * 0.4, 0); cam.position.copy(ctl.target).addScaledVector(dir, d); ctl.minDistance = 40; ctl.maxDistance = d * 3; ctl.update();
+  }
+
+  /* -- Kontrol listesi: teknik resmin ölçüleri, teslim muayenesiyle aynı hesap (inspect) -- */
+  let kon = null, sapmaAcik = false, sapmaMesh = null, odak = null;
+  const aktifIs = () => S.job && !S.job.done ? S.job.J : app.CR.on ? (app.CR.sel && app.CR.sel.kabul ? app.CR.sel.J : null) : selJob >= 0 ? JOBS[selJob] : null;
+  function olcumler(J) {                                           // muayene parçanın üstüne iz bırakmasın (INSP)
+    const yedek = INSP.slice(); const it = inspect(J); INSP.set(yedek); markDirty(0, NX - 1, 0, NY - 1); return it;
+  }
+  function yer(J, g) {                                             // ölçünün parçadaki yeri: kamera oraya döner
+    let m;
+    if ((m = /^D(\d+)/.exec(g)) && J.holes[m[1] - 1]) { const h = J.holes[m[1] - 1]; return { x:h.x, y:h.y }; }
+    if ((m = /^C(\d+)/.exec(g)) && J.pockets[m[1] - 1]) { const p = J.pockets[m[1] - 1]; return { x:(p.x0 + p.x1) / 2, y:(p.y0 + p.y1) / 2 }; }
+    const q = (J.pads || []).find((q, i) => g === (q.ad || 'Ayak ' + (i + 1))); if (q) return { x:(q.x0 + q.x1) / 2, y:(q.y0 + q.y1) / 2 };
+    if (g === 'Çukurlar' && J.cukur) return J.cukur.pts[0];
+    return { x:PW / 2, y:PD / 2 };
+  }
+  function kontrol() {
+    const L = $('bnKontrol'); L.innerHTML = ''; const J = aktifIs();
+    $('bnJob').textContent = J ? '· ' + J.title : '';
+    if (!J) { kon = null; L.innerHTML = '<li class="bos">Aktif iş yok: serbest ölçüm yapabilirsiniz. Bir iş seçince resmin ölçüleri burada listelenir.</li>'; $('bnHepsi').disabled = true; return; }
+    $('bnHepsi').disabled = false;
+    kon = { J, it:olcumler(J), olc:new Set() };
+    kon.it.forEach((q, k) => {
+      const li = document.createElement('li'); li.dataset.k = k;
+      li.innerHTML = `<b>${q.grp}</b><span>${q.label}</span><i>—</i><small>istenen ${q.nom || '—'}</small>`;
+      li.addEventListener('click', () => olc(k, true)); L.append(li);
+    });
+  }
+  function olc(k, git) {
+    if (!kon) return; const q = kon.it[k], li = $('bnKontrol').children[k]; if (!q || !li) return;
+    kon.olc.add(k); li.className = q.ok ? 'ok' : 'bad';
+    li.querySelector('i').textContent = `${q.meas} ${q.ok ? '✓' : '✗'}`;
+    if (git) {
+      const p = yer(kon.J, q.grp), z = Math.max(0, localTop(kon.J, p.x, p.y));
+      odak = { t:0, t0:ctl.target.clone(), t1:new THREE.Vector3(p.x - PW / 2, z, PD / 2 - p.y), p0:cam.position.clone() };
+      thud(900, 0.03, 0.03);
+      const bad = kon.it.filter((_, i) => kon.olc.has(i) && !kon.it[i].ok).length;
+      hint(`${q.grp} · ${q.label}: ${q.meas} (istenen ${q.nom}) ${q.ok ? '✓ tolerans içi' : '✗ TOLERANS DIŞI'} · ölçülen ${kon.olc.size}/${kon.it.length}${bad ? `, ${bad} dışarıda` : ''}`);
+    }
+  }
+  function hepsi() {
+    if (!kon) return; kon.it.forEach((_, k) => olc(k, false));
+    const bad = kon.it.filter(q => !q.ok).length;
+    hint(bad ? `${kon.it.length} ölçüden ${bad} tanesi tolerans dışı: kırmızı satırlara bakın.` : `${kon.it.length} ölçünün hepsi tolerans içinde: teslime hazır.`);
+    if (!sapmaAcik) sapma(true);
+  }
+
+  /* -- Sapma haritası (CMM renkleri): her hücre resimdeki hedefe göre boyanır -- */
+  const _c = new THREE.Color();
+  function sapmaRenk() {
+    const J = aktifIs(), n = NX * NY, col = new Float32Array(n * 3);
+    for (let k = 0; k < n; k++) {
+      const i = k % NX, j = (k - i) / NX, x = i * C, y = j * C, h = H[k];
+      let c = [0.54, 0.56, 0.57];                                  // işlenmeyecek / iş yok
+      if (J) {
+        const e = allowedAt(J, x, y), t = localTop(J, x, y), o = J._P ? J._P.H(x, y) : J.h;
+        if (e < 0) c = h < 0.3 ? [0.18, 0.72, 0.38] : [0.16, 0.48, 0.9];                       // delik: delinmiş mi
+        else if (h < e - 0.05) c = [0.9, 0.18, 0.2];                                             // fazla kesilmiş
+        else if (t < o - 0.01) c = h > t + 0.05 ? [0.16, 0.48, 0.9] : [0.18, 0.72, 0.38];      // işlenecek yer: kaldı mı, tamam mı
+      }
+      _c.setRGB(c[0], c[1], c[2]).convertSRGBToLinear(); col[k * 3] = _c.r; col[k * 3 + 1] = _c.g; col[k * 3 + 2] = _c.b;   // renkler doğrusal uzayda: soluk görünmesin
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', topGeo.attributes.position); g.setAttribute('normal', topGeo.attributes.normal); if (topGeo.index) g.setIndex(topGeo.index);
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return g;
+  }
+  function sapma(on) {
+    sapmaAcik = on; $('bnSapma').classList.toggle('on', on); $('bnLejant').hidden = !on;
+    if (sapmaMesh) { grp.remove(sapmaMesh); sapmaMesh.geometry.dispose(); sapmaMesh = null; }
+    const top = grp.children.find(o => o.geometry === topGeo); if (top) top.visible = !on;
+    if (on) { sapmaMesh = new THREE.Mesh(sapmaRenk(), mats.sapma); sapmaMesh.castShadow = sapmaMesh.receiveShadow = true; grp.add(sapmaMesh); }
+  }
+
   function build() {
     while (grp.children.length) grp.remove(grp.children[0]);
     mats.raw.color.copy(M.raw.color); mats.raw.metalness = M.raw.metalness; mats.raw.roughness = M.raw.roughness;
@@ -215,7 +330,7 @@ const BN = (() => {
     add(topGeo, mats.top); for (const w of walls) add(w.w.g, mats.raw); add(stockBase.geometry, mats.raw);
     grp.position.set(-PW / 2, 0, PD / 2);
     $('bnSecX').max = PW; $('bnSecY').max = PD; $('bnSecX').value = PW; $('bnSecY').value = PD; section();
-    clearMarks();
+    clearMarks(); sapmaMesh = null; sapma(sapmaAcik); kontrol();
   }
   function resize() {
     if (!r) return;
@@ -293,6 +408,12 @@ const BN = (() => {
   const _v = new THREE.Vector3();
   function loop() {
     if (!open) return;
+    if (odak) {                                                    // kontrol satırı: kamera ölçünün yerine süzülür
+      odak.t = Math.min(1, odak.t + 0.04); const e = 1 - (1 - odak.t) ** 3;
+      const tt = odak.t0.clone().lerp(odak.t1, e), off = odak.p0.clone().sub(odak.t0), L = off.length(), hedefL = clamp(Math.hypot(PW, PD) * 1.25, 120, L);
+      off.setLength(L + (hedefL - L) * e); ctl.target.copy(tt); cam.position.copy(tt).add(off);
+      if (odak.t >= 1) odak = null;
+    }
     ctl.update(); r.render(sc, cam);
     const rc = $('bnC').getBoundingClientRect();
     for (const l of labels) { _v.copy(l.at).project(cam); l.el.style.left = ((_v.x + 1) / 2 * rc.width) + 'px'; l.el.style.top = ((1 - _v.y) / 2 * rc.height) + 'px'; l.el.style.display = _v.z < 1 ? '' : 'none'; }
@@ -301,23 +422,25 @@ const BN = (() => {
   function show() {
     if (!r) init();
     open = true; $('bench').hidden = false; build(); resize();
-    cam.position.set(PW * 0.6, Math.max(PW, PD) * 0.9 + PH, PD * 1.4 + 60); ctl.target.set(0, PH * 0.4, 0); ctl.update();
+    cerceve();
     $('bnInfo').textContent = `${mat.short} · ${PW}×${PD}×${PH} mm · kaldırılan talaş ${(S.removed / 1000).toFixed(1)} cm³`;
     setTool(tool); cancelAnimationFrame(raf); loop();
   }
   function hide() { open = false; $('bench').hidden = true; cancelAnimationFrame(raf); }
   $('benchOpen').addEventListener('click', () => { initAudio(); if (FIX === 'div') { log('Divizör parçası parça masasında henüz incelenemiyor.', 'warn'); return; } if (S.spindle) { log('Parçayı masaya almak için önce mili durdurun.', 'warn'); return; } show(); });
   $('bnClose').addEventListener('click', hide);
+  $('bnHepsi').addEventListener('click', () => { initAudio(); hepsi(); });
+  $('bnSapma').addEventListener('click', () => sapma(!sapmaAcik));
   document.querySelectorAll('[data-bt]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.bt)));
   $('bnClear').addEventListener('click', () => { clearMarks(); $('bnList').innerHTML = ''; hint('Ölçümler temizlendi.'); });
   $('bnSecX').addEventListener('input', section); $('bnSecY').addEventListener('input', section);
   window.addEventListener('keydown', e => { if (open && e.code === 'Escape') { e.stopImmediatePropagation(); hide(); } }, true);
-  return { show, hide };
+  return { show, hide, get kon() { return kon; }, hepsi, sapma };   // kon, hepsi, sapma: duman testi de kullanır
 })();
 
 /* ---------------- Takım editörü: kendi takımını tasarla ----------------
    Tip, çap, ağız sayısı, boylar, helis, köşe radyüsü, uç açısı, malzeme ve kaplama seçilir; takım T13'ten itibaren dolaba eklenir.
    Parametreler fiziğe bağlıdır (toolMods): önerilen hız ve ilerleme, aşınma, kırılma direnci, tırlama, yüzey, talaş sıkışması. */
-Object.assign(app, { CP, setStock });   // önceki modüllerin geç başvuruları
+Object.assign(app, { BN, CP, setStock });   // önceki modüllerin geç başvuruları
 
 export { setStock };
