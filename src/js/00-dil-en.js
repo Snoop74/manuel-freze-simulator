@@ -569,6 +569,15 @@ const EN = {
   "g.pralin.b": "Chocolate drop mould for a pastry shop: take 0.5 off the top, then 6×4 = 24 hemispherical cavities (Ø8, 4.00 deep ±0.05, 15 pitch). Plunge into each point with the T5 Ø8 ball mill: when the tip goes exactly 4 mm down the cavity is a hemisphere. Lower the feed while plunging (~100 mm/min): the centre of a ball mill does not cut, a fast plunge pulls the tool out of the collet and the cavity comes out too deep. It will touch food: last plunge slow, surface shiny.",
   "g.fiting.t": "Aerospace attach fitting",
   "g.fiting.b": "7075-T6 aluminium attach fitting. Take the top face to 15.00, mill a 60×30 lightening pocket in the middle (8 deep, R5: 7.00 floor remains), two Ø8.5 pin holes (90.00 apart) and 4×Ø5 rivet holes in the corners. Aerospace: hole position and depth tolerances are halved and a FIRST ARTICLE INSPECTION applies: up to 3 out-of-tolerance features are accepted with a deviation permit and a deduction, more than 3 means rejection.",
+  // 10-is-emri: gerçek parça işleri paket 2 (soğutucu, havacılık kaburgası) ve ağırlık ölçümü
+  "g.sogutucu.t": "Aluminium heat sink",
+  "g.sogutucu.b": "Aluminium heat sink for an amplifier: mill 9 slots and leave the fins standing. Slots with the Ø6 mill (T4), 6 wide, 20 deep, right through (Y 0–80); centres start at X 16 with an 11 mm pitch (16, 27 … 104). A 10 mm base remains. The part is raised on parallels: jaw top at 5 mm, slot floor 5 mm above the jaws. Tip: thin fins chatter on deep passes; go down in several passes (5 mm) and keep the feed low.",
+  "g.kaburga.t": "Aerospace rib panel",
+  "g.kaburga.b": "Aerospace: lightened rib panel (7075-T6). Take the top face to 19.00, then 3×2 = 6 pockets (46×40, 14 deep, R5); 5 and 8 mm ribs between them, a 5.00 floor remains. Weight target {hedef} g ±{tol}: cut too much and the floor gets thin, too little and it stays heavy. In aerospace every gram counts. FIRST ARTICLE INSPECTION: up to 3 out-of-tolerance features are accepted with a deviation permit and a deduction, more than 3 means rejection.",
+  "c:Akustik Amfi Atölyesi": "Loud & Clear Amp Shop",
+  "c:LED Aydınlatma Ltd.": "Bright LED Lighting Ltd.",
+  "c:Bilgisayar Toplayıcı Mert": "PC builder Mark",
+  "k:elektronik": "electronics",
   // @MODULLER@
 };
 

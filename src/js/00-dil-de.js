@@ -569,6 +569,15 @@ const DE = {
   "g.pralin.b": "Pralinenform für eine Konditorei: oben 0.5 abtragen, dann 6×4 = 24 Halbkugel-Mulden (Ø8, 4.00 tief ±0.05, Teilung 15). Mit dem Kugelfräser T5 Ø8 in jeden Punkt eintauchen: genau 4 mm tief ergibt eine Halbkugel. Beim Eintauchen den Vorschub senken (~100 mm/min): die Mitte eines Kugelfräsers schneidet nicht, zu schnelles Eintauchen zieht das Werkzeug aus der Spannzange und die Mulde wird zu tief. Kommt mit Lebensmitteln in Kontakt: letztes Eintauchen langsam, Oberfläche glänzend.",
   "g.fiting.t": "Luftfahrt-Anschlussbeschlag",
   "g.fiting.b": "Anschlussbeschlag aus Aluminium 7075-T6. Oberseite auf 15.00, in der Mitte eine Erleichterungstasche 60×30 (8 tief, R5: Boden 7.00), zwei Ø8.5-Stiftbohrungen (Abstand 90.00) und 4×Ø5-Nietbohrungen in den Ecken. Luftfahrt: Toleranzen für Bohrungsposition und Tiefe halbiert, ERSTMUSTERPRÜFUNG: bis zu 3 Abweichungen werden mit Sonderfreigabe und Abzug angenommen, mehr als 3 bedeutet Ausschuss.",
+  // 10-is-emri: gerçek parça işleri paket 2 (soğutucu, havacılık kaburgası) ve ağırlık ölçümü
+  "g.sogutucu.t": "Aluminium-Kühlkörper",
+  "g.sogutucu.b": "Aluminium-Kühlkörper für einen Verstärker: 9 Nuten fräsen, die Rippen bleiben stehen. Nuten mit dem Ø6-Fräser (T4), 6 breit, 20 tief, durchgehend (Y 0–80); Mitten ab X 16 mit 11 mm Teilung (16, 27 … 104). Es bleibt ein 10 mm Boden. Das Teil liegt auf Parallelunterlagen erhöht: Backenoberkante bei 5 mm, Nutgrund 5 mm über den Backen. Tipp: dünne Rippen rattern bei tiefen Schnitten; in mehreren Zustellungen (5 mm) nach unten und den Vorschub niedrig halten.",
+  "g.kaburga.t": "Luftfahrt-Rippenpaneel",
+  "g.kaburga.b": "Luftfahrt: erleichtertes Rippenpaneel (7075-T6). Oberseite auf 19.00, dann 3×2 = 6 Taschen (46×40, 14 tief, R5); dazwischen Rippen von 5 und 8 mm, es bleibt ein Boden von 5.00. Zielgewicht {hedef} g ±{tol}: zu viel abgetragen und der Boden wird dünn, zu wenig und es bleibt schwer. In der Luftfahrt zählt jedes Gramm. ERSTMUSTERPRÜFUNG: bis zu 3 Abweichungen mit Sonderfreigabe und Abzug, mehr als 3 bedeutet Ausschuss.",
+  "c:Akustik Amfi Atölyesi": "Röhrenverstärker Klangwerk",
+  "c:LED Aydınlatma Ltd.": "LED-Leuchten GmbH",
+  "c:Bilgisayar Toplayıcı Mert": "PC-Bastler Max",
+  "k:elektronik": "Elektronik",
   // @MODULLER@
 };
 

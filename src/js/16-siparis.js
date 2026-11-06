@@ -171,6 +171,8 @@ const GERCEK_IS = {
   mastar:{ lv:0, cust:[['Yıldız Makina kalite birimi', 'fabrika'], ['Akın Otomasyon kalite', 'fabrika'], ['Kaya Hidrolik montaj hattı', 'fabrika']], pay:900 },
   pralin:{ lv:0, cust:[["Ayten'in Pastanesi", 'pastane'], ['Butik Çikolatacı Leyla', 'dükkân'], ['Otel Pastane Şefi', 'otel']], pay:750 },
   fiting:{ lv:2, cust:[['Gökçe Havacılık', 'havacılık'], ['Anadolu Uçak Bakım', 'havacılık']], pay:2600, sabit:'yok' },
+  sogutucu:{ lv:1, cust:[['Akustik Amfi Atölyesi', 'elektronik'], ['LED Aydınlatma Ltd.', 'fabrika'], ['Bilgisayar Toplayıcı Mert', 'elektronik']], pay:1400 },
+  kaburga:{ lv:2, cust:[['Gökçe Havacılık', 'havacılık'], ['Anadolu Uçak Bakım', 'havacılık']], pay:3600, sabit:'yok' },
 };
 function genGercekOrder(lv, sira, free) {
   const ids = Object.keys(GERCEK_IS).filter(k => GERCEK_IS[k].lv <= lv); if (!ids.length) return null;

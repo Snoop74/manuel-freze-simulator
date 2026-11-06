@@ -1,7 +1,7 @@
 // ── İş emirleri: görevler, teknik resim, markalama, muayene ve puan, teslim raporu
 import { dilDinle, para, t } from './00-dil.js';
 import { kayit } from './00-kayit.js';
-import { $, PASIF, C, CUT, EDGE, H, INSP, NX, NY, PD, PH, PW, S, TOOLS, app, clamp, isDrill, log } from './00-temel.js';
+import { $, PASIF, C, CUT, MATS, EDGE, H, INSP, NX, NY, PD, PH, PW, S, TOOLS, app, clamp, isDrill, log } from './00-temel.js';
 import { AYAR } from './00-tercihler.js';
 import { beep, initAudio } from './01-ses.js';
 import { rotIn } from './03-tabla-parca.js';
@@ -50,14 +50,26 @@ const GERCEK = {
       cukur:{ d:8, depth:4, tol:0.05, pts },
       brief:t('g.pralin.b') };
   },
+  // soğutucu: dar derin kanallar (pockets), parça yükseltilmiş (cene). kaburga: 6 cep, ağırlık hedefi (agirlik), ilk parça muayenesi (fai)
+  sogutucu:() => ({ tk:'g.sogutucu', title:t('g.sogutucu.t'), target:840, acik:true, mat:'al', w:120, d:80, h:30, cene:5,
+    pockets:Array.from({ length:9 }, (_, k) => ({ x0:13 + k * 11, x1:19 + k * 11, y0:0, y1:80, depth:20, r:0 })),
+    brief:t('g.sogutucu.b') }),
+  kaburga:() => {
+    const pockets = [], xs = [[6, 52], [57, 103], [108, 154]], ys = [[6, 46], [54, 94]];
+    for (const [y0, y1] of ys) for (const [x0, x1] of xs) pockets.push({ x0, x1, y0, y1, depth:14, r:5 });
+    const kose = 4 * (25 - Math.PI * 25 / 4);                      // R5 köşelerde kalan malzeme (mm²)
+    const hacim = 160 * 100 * 19 - pockets.length * (46 * 40 - kose) * 14, hedef = Math.round(hacim / 1000 * MATS.al.rho), tol = 12;   // ±12 g: 0.5 mm ızgarada cep duvarı ±0.25 mm belirsiz (~±10 g); tabanı 0.5 mm fazla almak ~15 g
+    return { tk:'g.kaburga', title:t('g.kaburga.t'), target:1200, acik:true, mat:'al', w:160, d:100, h:20, fai:true,
+      face:{ depth:1, tol:0.05 }, pockets, agirlik:{ hedef, tol }, brief:t('g.kaburga.b', { hedef, tol }) };
+  },
   fiting:() => ({ tk:'g.fiting', title:t('g.fiting.t'), target:900, acik:true, mat:'al', w:120, d:60, h:16, tolK:0.5, fai:true,
     face:{ depth:1, tol:0.05 }, pockets:[{ x0:30, x1:90, y0:15, y1:45, depth:8, r:5 }],
     holes:[{ x:15, y:30, d:8.5 }, { x:105, y:30, d:8.5 }, { x:10, y:10, d:5 }, { x:110, y:10, d:5 }, { x:110, y:50, d:5 }, { x:10, y:50, d:5 }],
     brief:t('g.fiting.b') }),
 };
-JOBS.push(GERCEK.mastar(), GERCEK.pralin(), GERCEK.fiting());
+JOBS.push(GERCEK.mastar(), GERCEK.pralin(), GERCEK.fiting(), GERCEK.sogutucu(), GERCEK.kaburga());
 // dil: anahtarlı işlerin (tk) başlığı ve tarifi o anki dilden; dil değişince liste ve seçili iş yeniden çizilir
-function isMetni() { for (const J of JOBS) if (J.tk) { J.title = t(J.tk + '.t'); if (t(J.tk + '.b') !== J.tk + '.b') J.brief = t(J.tk + '.b'); } }
+function isMetni() { for (const J of JOBS) if (J.tk) { J.title = t(J.tk + '.t'); if (t(J.tk + '.b') !== J.tk + '.b') J.brief = t(J.tk + '.b', J.agirlik); } }
 isMetni();
 dilDinle(() => { isMetni(); if (app.CR && app.CR.on) return; renderJobs(); if (selJob >= 0) selectJob(selJob); });
 
@@ -239,6 +251,7 @@ function drawingTable(J) {
   if (J.cukur) { const K = J.cukur, p0 = K.pts[0], nx = new Set(K.pts.map(q => q.x)).size, ny = K.pts.length / nx, ad = K.pts[1].x - p0.x;
     t += `<tr><th>Çukur</th><th>X</th><th>Y</th><th>Ø</th><th>Derinlik</th></tr><tr><td>K1</td><td>${p0.x.toFixed(2)}</td><td>${p0.y.toFixed(2)}</td><td>${K.d} küresel</td><td>${K.depth.toFixed(2)} ±${K.tol}</td></tr>`;
     t += `<tr><td colspan="5">${K.pts.length} çukur: K1'den ${ad} aralıkla ${nx} sütun × ${ny} sıra, konum ±${HOLE_TOL}</td></tr>`; }
+  if (J.agirlik) t += `<tr><td colspan="5">Ağırlık hedefi ${J.agirlik.hedef} g ±${J.agirlik.tol} (Al ${MATS[J.mat || 'al'].rho} g/cm³)</td></tr>`;
   if (J.fai) t += '<tr><td colspan="5">İLK PARÇA MUAYENESİ (havacılık): en çok 3 ölçü dışı sapma onayıyla kesintili kabul, fazlası ret</td></tr>';
   if (J.flush) t += `<tr><td colspan="5">Kaynak dikişleri plaka yüzeyiyle sıfırlanacak (${J.flush.top.toFixed(2)} +${J.flush.tol}); plakaya en çok 0.2 mm dalınabilir</td></tr>`;
   if (J.exist && J.exist.length) t += '<tr><td colspan="5">Kesik daireler parçada zaten olan delik ve detaylardır.</td></tr>';
@@ -421,6 +434,11 @@ function inspect(J) {
     const N = K.pts.length;
     add('Çukurlar', 'Derinlik ' + K.depth.toFixed(2) + ' ±' + K.tol, N + '/' + N, okD + '/' + N + ' (en kötü ±' + worst.toFixed(3) + ')', okD === N, okD / N * dev(worst, K.tol) ** 0.3, 3);
     add('Çukurlar', 'Konum ±' + HOLE_TOL, N + '/' + N, okP + '/' + N, okP === N, okP / N, 2);
+  }
+  if (J.agirlik) {                                                 // ağırlık: kalan hacim × yoğunluk (hücre başına yükseklik)
+    let v = 0; for (let j = 0; j < NY - 1; j++) for (let i = 0; i < NX - 1; i++) { const k = j * NX + i; v += (H[k] + H[k + 1] + H[k + NX] + H[k + NX + 1]) / 4; }
+    const g = v * C * C / 1000 * MATS[J.mat || 'al'].rho, A = J.agirlik;
+    add('Ağırlık', 'Parça ağırlığı', A.hedef + ' g ±' + A.tol, g.toFixed(1) + ' g', Math.abs(g - A.hedef) <= A.tol, dev(Math.abs(g - A.hedef), A.tol), 2);
   }
   if (J.flush) {                                                   // kaynaklı plaka: dikiş yüzeyle sıfır
     let n = 0, hi = 0, mx = -1e9;

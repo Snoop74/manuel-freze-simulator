@@ -332,7 +332,7 @@ const SENARYO = {
       }
     };
     const out = [];
-    for (const ad of ['Kademe mastarı', 'Çikolata kalıbı', 'Havacılık bağlantı fitingi']) {
+    for (const ad of ['Kademe mastarı', 'Çikolata kalıbı', 'Havacılık bağlantı fitingi', 'Alüminyum soğutucu', 'Havacılık kaburga paneli']) {
       const i = M.JOBS.findIndex(q => q.title === ad); if (i < 0) throw new Error(`${ad} serbest iş listesinde yok`);
       M.selectJob(i); M.startJob();
       const J = M.JOBS[i];
@@ -344,6 +344,7 @@ const SENARYO = {
       const it = M.inspect(J), r = M.scoreJob(J, run(J), it);
       if (!r.allOk) throw new Error(`${ad}: kusursuz parça kabul edilmedi: ` + it.filter(q => !q.ok).map(q => `${q.grp} ${q.label} ${q.meas}`).join('; '));
       out.push(`${ad.split(' ')[0].toLowerCase()} ${r.stars}★`);
+      if (J.agirlik) { const g = it.find(q => q.grp === 'Ağırlık'); out.push(`kaburga ${g.meas} (hedef ${J.agirlik.hedef})`); }
       if (J.cukur) { kur(J, 0.2); const b = M.inspect(J); if (b.every(q => q.ok)) throw new Error('0.2 mm sığ çukurlar kabul edildi'); }
       if (J.fai) {                                                    // ilk parça muayenesi: 3 sapmaya kadar kesintili kabul, fazlası ret
         const sahte = n => it.map((q, k) => k < n ? Object.assign({}, q, { ok:false, sc:0.5 }) : q);

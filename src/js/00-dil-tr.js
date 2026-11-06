@@ -569,6 +569,15 @@ const TR = {
   "g.pralin.b": "Pastane için çikolata damlası kalıbı: üst yüzden 0.5 alın, sonra 6×4 = 24 yarım küre çukur (Ø8, 4.00 derin ±0.05, 15 aralık). T5 Ø8 küresel frezeyle her noktaya dalın: uç tam 4 mm inince çukur yarım küre olur. Dalarken ilerlemeyi düşürün (~100 mm/dk): küresel ucun ortası kesmez, hızlı dalışta takım penseten kayar ve çukur derin çıkar. Gıdaya değecek: son dalış yavaş, yüzey parlak olsun.",
   "g.fiting.t": "Havacılık bağlantı fitingi",
   "g.fiting.b": "7075-T6 alüminyum bağlantı fitingi. Üst yüzü 15.00'e alın, ortaya 60×30 hafifletme cebi (8 derin, R5: taban 7.00 kalır), iki Ø8.5 pim deliği (aralarında 90.00) ve köşelere 4×Ø5 perçin deliği. Havacılık: toleranslar yarıya iner ve İLK PARÇA MUAYENESİ uygulanır: en çok 3 ölçü dışı sapma onayıyla kesintili kabul edilir, 3'ten fazlası ret.",
+  // 10-is-emri: gerçek parça işleri paket 2 (soğutucu, havacılık kaburgası) ve ağırlık ölçümü
+  "g.sogutucu.t": "Alüminyum soğutucu",
+  "g.sogutucu.b": "Amfi için alüminyum soğutucu: 9 kanal açın, kanatçıklar kalsın. Kanallar Ø6 frezeyle (T4) 6 genişlikte, 20 derin, boydan boya (Y 0–80); merkezleri X 16'dan başlayıp 11 aralıkla (16, 27 … 104). Taban 10 mm kalır. Parça paralellerle yükseltildi: çene üstü 5 mm, kanal dibi çenenin 5 mm üstünde. Püf noktası: ince kanatçık derin pasoda titrer; kanalı birkaç pasoda (5 mm) inin, ilerlemeyi düşük tutun.",
+  "g.kaburga.t": "Havacılık kaburga paneli",
+  "g.kaburga.b": "Havacılık: hafifletilmiş kaburga paneli (7075-T6). Üst yüzü 19.00'a alın, sonra 3×2 = 6 cep (46×40, 14 derin, R5); aralarında 5 ve 8 mm kaburgalar, taban 5.00 kalır. Ağırlık hedefi {hedef} g ±{tol}: fazla alırsanız taban incelir, az alırsanız ağır kalır. Havacılıkta her gram önemli. İLK PARÇA MUAYENESİ: en çok 3 ölçü dışı sapma onayıyla kesintili kabul, fazlası ret.",
+  "c:Akustik Amfi Atölyesi": "Akustik Amfi Atölyesi",
+  "c:LED Aydınlatma Ltd.": "LED Aydınlatma Ltd.",
+  "c:Bilgisayar Toplayıcı Mert": "Bilgisayar Toplayıcı Mert",
+  "k:elektronik": "elektronik",
   // @MODULLER@
 };
 
