@@ -1,6 +1,6 @@
 // ── İş emirleri: görevler, teknik resim, markalama, muayene ve puan, teslim raporu
 import { kayit } from './00-kayit.js';
-import { $, C, CUT, EDGE, H, INSP, NX, NY, PD, PH, PW, S, TOOLS, app, clamp, isDrill, log } from './00-temel.js';
+import { $, PASIF, C, CUT, EDGE, H, INSP, NX, NY, PD, PH, PW, S, TOOLS, app, clamp, isDrill, log } from './00-temel.js';
 import { AYAR } from './00-tercihler.js';
 import { beep, initAudio } from './01-ses.js';
 import { rotIn } from './03-tabla-parca.js';
@@ -70,7 +70,8 @@ let progress = {};
 progress = kayit.oku('freze-progress', {}) || {};
 function saveProgress() { kayit.yaz('freze-progress', progress); }
 const bestStars = i => (progress['j' + i] && progress['j' + i].stars) || 0;
-const unlocked = i => i === 0 || JOBS[i].acik || bestStars(i - 1) >= 1;   // acik: yeni iş tipi, sıradan bağımsız denenebilir
+const gizliIs = i => !!(JOBS[i] && JOBS[i].rot && PASIF.rot);  // pasif döner tabla işi listede görünmez, sırayı kilitlemez
+const unlocked = i => i === 0 || JOBS[i].acik || bestStars(i - 1) >= 1 || (gizliIs(i - 1) && unlocked(i - 1));   // acik: yeni iş tipi, sıradan bağımsız denenebilir
 
 const jobTop = J => (J.h || PH) - (J.face ? J.face.depth : 0);
 const inRect = (x, y, p, m = 0) => x >= p.x0 - m && x <= p.x1 + m && y >= p.y0 - m && y <= p.y1 + m;
@@ -412,6 +413,7 @@ const setSelJob = i => { selJob = i; };
 function renderJobs() {
   const L = $('jobList'); L.innerHTML = '';
   JOBS.forEach((J, i) => {
+    if (gizliIs(i)) return;
     const b = document.createElement('button');
     const st = bestStars(i), lock = !unlocked(i);
     b.disabled = lock; b.classList.toggle('active', i === selJob);
@@ -514,7 +516,8 @@ function showReport(run, items, r, newBest) {
     `<div class="dro-note">Süre: ${mmss(run.time)} (hedef ${mmss(run.J.target)}) · kırılan takım ${st.breaks} · aşırı yük uyarısı ${st.load} · puntasız delme ${st.spot} · gagalama uyarısı ${st.peck} · sürtünme ${st.rub}</div>`;
   $('rpTable').innerHTML = '<tr><th></th><th>Ölçü</th><th>İstenen</th><th>Ölçülen</th><th></th></tr>' +
     items.map(i => `<tr><td>${i.grp}</td><td>${i.label}</td><td class="num">${i.nom}</td><td class="num">${i.meas}</td><td class="${i.ok ? 'ok-t' : 'bad-t'}">${i.ok ? '✓' : '✗'}</td></tr>`).join('');
-  const hasNext = !run.order && run.idx + 1 < JOBS.length && unlocked(run.idx + 1);
+  let nx = run.idx + 1; while (gizliIs(nx)) nx++;
+  const hasNext = !run.order && nx < JOBS.length && unlocked(nx);
   $('rpNext').hidden = !hasNext;
   // özet: tolerans dışı ölçüler tek cümlede, ayrıntılar "Detayları gör"de
   const bad = items.filter(i => !i.ok);

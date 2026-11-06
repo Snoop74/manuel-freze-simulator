@@ -1,6 +1,6 @@
 // ── Ana döngü ve arayüz: klavye, kamera, frame(), HUD, devir göstergesi, acil stop (paneller ve üst çubuk 11-paneller'de)
 import { AYAR, ayarDinle, ayarYaz } from './00-tercihler.js';
-import { $, C, H, NX, NY, PD, PW, RAPID, S, TAU, app, clamp, isDrill, log, mat, rapid, tipZ, tool } from './00-temel.js';
+import { $, C, H, NX, NY, PASIF, PD, PW, RAPID, S, TAU, app, clamp, isDrill, log, mat, rapid, tipZ, tool } from './00-temel.js';
 import { beep, initAudio, thud, updateAudio } from './01-ses.js';
 import { FLOOR_Y, camera, controls, motorSwitch, mush, quill, renderer, scene, spLampMat, spindleG, stage, startBtnMat,
   toolRot, updateCoolant, zFine, zLever } from './02-sahne-tezgah.js';
@@ -26,7 +26,7 @@ window.addEventListener('keydown', e => {
   if (e.repeat) return;
   if (e.code === 'Space') { e.preventDefault(); spindle(!S.spindle); }
   else if (e.code === 'KeyC') toggleCoolant();
-  else if (e.code === 'KeyG') app.FD.setOn(!app.FD.on);
+  else if (e.code === 'KeyG' && !PASIF.fd) app.FD.setOn(!app.FD.on);
   else if (e.code === 'KeyB') app.AG.setOn(!app.AG.on);
   else if (e.code === 'KeyR') $('spDir').click();
   else if (e.code === 'Escape') estop();

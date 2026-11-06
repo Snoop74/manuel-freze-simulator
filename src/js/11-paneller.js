@@ -1,6 +1,6 @@
 // ── Paneller (PM; 12-dongu'dan ayrıldı): taşınabilir/ölçeklenebilir paneller, düzen hazır ayarları, üst çubuk simgeleri ve menüleri, takım simgeleri
 import { kayit } from './00-kayit.js';
-import { $, S, app, clamp, log } from './00-temel.js';
+import { $, PASIF, S, app, clamp, log } from './00-temel.js';
 import { initAudio } from './01-ses.js';
 
 /* ---------------- Takım simgeleri (kalem kartları için) ---------------- */
@@ -187,6 +187,7 @@ const PM = (() => {
     // üst çubuk: marka, panel düğmeleri, düzenler, kamera, acil stop
     const tb = $('topbar');
     // simgeler, panel düğmeleri, aletler ve açılır menüler
+    document.querySelectorAll('[data-pasif]').forEach(el => { if (PASIF[el.dataset.pasif]) el.hidden = true; });   // pasif özelliklerin düğme ve kısayolları
     tb.querySelectorAll('[data-ic]').forEach(el => { const k = el.dataset.ic; el.innerHTML = k === 'logo' ? TBICON.logo : `<svg viewBox="0 0 24 24">${TBICON[k]}</svg>`; });
     const views = document.querySelector('.views'); if (views) views.hidden = true;     // kamera düğmeleri menüden tetiklenir
     const menus = { alet:$('mnAlet'), camera:$('mnCamera'), help:$('mnHelp') };
@@ -205,7 +206,7 @@ const PM = (() => {
       initAudio(); closeMenus();
       if (a === 'drawing') $('drawing').hidden = !$('drawing').hidden;
       else if (a === 'air') app.AG.setOn(!app.AG.on);
-      else if (a === 'fd') app.FD.setOn(!app.FD.on);
+      else if (a === 'fd' && !PASIF.fd) app.FD.setOn(!app.FD.on);
       else if (a === 'bench') $('benchOpen').click();
       else if (a === 'editor') app.TE.show(S.tool);
       else if (a === 'shop') app.CR.openShop();

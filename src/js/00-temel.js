@@ -132,6 +132,10 @@ function warnOnce(key, msg, lvl = 'warn', gap = 3000) {
 // test modu (adreste ?test): ortam yansıması, dokular ve atölye modelleri yüklenmez, grafik en düşük (tools/duman.mjs, ekonomi.mjs)
 const TEST = typeof location !== 'undefined' && new URLSearchParams(location.search).has('test');
 
-export { TEST, $, C, CUT, EDGE, H, INSP, LIM, MATS, NX, NY, PD, PH, PW, P_MAX, RAPID, S, SURF, TAN59, TAU, TOOLS,
+// pasif özellikler (2026-11-06, Onat: oyunu yalınlaştırmak için): kod durur, arayüzde ve siparişte görünmez. false yapınca geri gelir.
+//   rot: döner tabla, div: divizör, fd: fareyle sürme (gravür)
+const PASIF = { rot:true, div:true, fd:true };
+
+export { PASIF, TEST, $, C, CUT, EDGE, H, INSP, LIM, MATS, NX, NY, PD, PH, PW, P_MAX, RAPID, S, SURF, TAN59, TAU, TOOLS,
   allocGrid, app, clamp, isDrill, isProbe, isTaster, lastWarn, log, mat, rapid, recFeed, recRpm, setMat, tipZ,
   tool, unslip, warnOnce };

@@ -274,7 +274,8 @@ const SENARYO = {
     if (dip.some(v => v > 0.05)) throw new Error(`delikler boydan boya değil: ${dip.map(v => v.toFixed(1)).join(', ')}`);
     if (S.spindle) throw new Error('M30 sonrası mil dönüyor');
     // cep örneği: T3 Ø10, iki pasoda 5 mm
-    yeni(); takim(t => t.no === 'T3');
+    yeni(); const t3 = takim(t => t.no === 'T3');
+    S.wear[T.TOOLS.indexOf(t3)] = 0; T.unslip(t3);   // taze takım: eğitim T3'ü aşındırıyordu, aşınmış takım tutucuda rastgele kayıp cebi 0.5–0.7 mm derin açıyordu
     S.zx = 0; S.zy = 0; S.zn = T.TOOLS[S.tool].len + T.PH;
     GK.yukle(GK.ORNEK.cep[1]); GK.baslat(false);
     for (let k = 0; k < 400000 && GK.calisiyor; k++) { GK.update(1 / 60); K.motion(1 / 60); }

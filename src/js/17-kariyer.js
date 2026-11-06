@@ -1,6 +1,6 @@
 // ── Kariyer (CR): kasa, itibar, kredi, gün ve posta, teklif, dükkân, ekipman, teslimde ödeme (sipariş üretimi 16-siparis'te)
 import { kayit } from './00-kayit.js';
-import { $, MATS, PD, PH, PW, S, TOOLS, app, clamp, isTaster, log } from './00-temel.js';
+import { $, MATS, PASIF, PD, PH, PW, S, TOOLS, app, clamp, isTaster, log } from './00-temel.js';
 import { beep, initAudio } from './01-ses.js';
 import { FIXLIM } from './03-tabla-parca.js';
 import { FIX, PAR, warnParallels } from './05-baglama.js';
@@ -330,6 +330,7 @@ const CR = (() => {
     });
     const E0 = $('shopEq'); E0.innerHTML = '';
     EQUIP.forEach(E => {
+      if (PASIF[E.id]) return;
       const own = E.ready && hasEq(E.id), d = document.createElement('div'); d.className = 'sh-item' + (own ? ' own' : E.ready ? '' : ' soon');
       d.innerHTML = `<span class="ico">◇</span><span class="nm"><b>${E.n}</b><small>${E.t}</small></span>`;
       const b = document.createElement('button'); b.className = 'btn' + (own || !E.ready ? '' : ' start');

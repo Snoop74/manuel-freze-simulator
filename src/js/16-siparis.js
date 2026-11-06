@@ -1,6 +1,6 @@
 // ── Sipariş üretici (17-kariyer'den ayrıldı): seviyeye göre müşteri, malzeme, ham parça ölçüsü, delik/cep/yay özellikleri,
 //   hazır (müşteri getirdiği) parça işleri ve koşullar (acil, seri, hassas). Durum tutmaz: sipariş numarasını kariyer verir (sira).
-import { MATS } from './00-temel.js';
+import { MATS, PASIF } from './00-temel.js';
 import { DIS, inRect } from './10-is-emri-muayene.js';
 import { BLANKS, SF, genBlank, r05, rp, rr, withSeed } from './16-hazir-parca.js';
 
@@ -163,7 +163,7 @@ function genOrder(free, lv, sira) {
   if (!free && Math.random() < 0.5) return genBlankOrder(lv, sira);
   const m = pick([['al', 'pom', 'brass', 'al'], ['al', 'brass', 's235', 'pom'], ['s235', 'c45', 'al', 'gg25', 'brass'], ['c45', 'ss304', 's235', 'brass']][lv]);
   const big = lv >= 1 && Math.random() < 0.25;                   // büyük plaka: mengene en fazla 135 mm açılır
-  const arc = !big && lv >= 1 && Math.random() < 0.25;           // yay kanallı flanş: döner tabla ister
+  const arc = !PASIF.rot && !big && lv >= 1 && Math.random() < 0.25;           // yay kanallı flanş: döner tabla ister
   const pcd = !big && !arc && lv >= 1 && Math.random() < 0.2;    // cıvata dairesi: döner tablayla kolay, DRO hesabıyla da olur
   const [w, d, h] = arc ? pick([[120, 80, 25], [150, 100, 30]]) : big ? pick([[200, 140, 15], [220, 140, 12], [180, 140, 10], [240, 140, 20]]) : pick([[100, 60, 20], [120, 80, 25], [150, 100, 30], [150, 100, 40], [180, 120, 30]].slice(0, 2 + lv));
   const J = { pockets:[], holes:[], w, d, h, mat:m, big };

@@ -984,7 +984,7 @@ body.tbm-acik .toast{visibility:hidden}
     <button class="estop" id="estopBtn" title="Mili ve tüm hareketleri durdur (Esc)">ACİL STOP</button>
     <div class="tb-menu tb-liste" id="mnAlet" hidden>
       <button class="act" data-act="air" id="tbAir"><span data-ic="air"></span><b>Hava tabancası</b><small>talaşı üfle · B</small></button>
-      <button class="act" data-act="fd" id="tbFd"><span data-ic="fd"></span><b>Fareyle sür</b><small>parçanın üstünde çiz · G</small></button>
+      <button class="act" data-act="fd" id="tbFd" data-pasif="fd"><span data-ic="fd"></span><b>Fareyle sür</b><small>parçanın üstünde çiz · G</small></button>
       <button class="act" data-act="bench"><span data-ic="bench"></span><b>Parça masası</b><small>ölç, kesit al</small></button>
       <button class="act" data-act="drawing" id="tbDraw"><span data-ic="drawing"></span><b>Teknik resim</b><small>seçili işin resmi</small></button>
       <button data-p="tools"><span data-ic="tools"></span><b>Takım ayrıntıları</b><small>tutucu, bileme, taster</small></button>
@@ -1423,7 +1423,7 @@ body.tbm-acik .toast{visibility:hidden}
         <kbd>1 2 3 4</kbd><span>kol adımı 0.01 / 0.1 / 1 / 10</span>
         <kbd>C</kbd><span>soğutma sıvısı</span>
         <kbd>R</kbd><span>mil yönü İLERİ / GERİ</span>
-        <kbd>G</kbd><span>fareyle sürme</span>
+        <kbd data-pasif="fd">G</kbd><span data-pasif="fd">fareyle sürme</span>
         <kbd>B</kbd><span>hava tabancası (basılı tut, üfle)</span>
         <kbd>Q</kbd><kbd>E</kbd><span>döner tablayı çevir (basılı tut)</span>
         <kbd>Esc</kbd><span>acil stop: mil ve tüm hareketler</span>

@@ -1,5 +1,5 @@
 // ── Aletler: makine üstü etkileşim (IA), fareyle sürme (FD), hava tabancası (AG), mekanik taster (DT), 3B taster (PR), vakum (VAC), bağlama ve paralel seçimi
-import { $, C, H, PD, PH, PW, S, TAU, app, log, tipZ, tool, warnOnce } from './00-temel.js';
+import { $, C, H, PASIF, PD, PH, PW, S, TAU, app, log, tipZ, tool, warnOnce } from './00-temel.js';
 import { SN, ac, beep, bus, initAudio, metalRing, noiseBuffer, noiseHit, thud } from './01-ses.js';
 import { HOSE, bStart, box, camera, canvas, controls, coolHandle, coolValve, cyl, hoseGrp, motorSwitch, mush, scene, setHose, smat,
   stage, zFine, zLever } from './02-sahne-tezgah.js';
@@ -461,7 +461,7 @@ const FIXNOTE = {
   vac:'Vakum tabla: X 30–260, Y 30–150, Z 3–40 mm. Parçanın her yeri açık; kurban plakasına 5 mm kadar inilebilir. Tutma alanla orantılı, delikler hava kaçırır: ağır pasoda parça kopar.',
 };
 function setFix(k, quiet) {
-  if (!FIXLIM[k]) return false;
+  if (!FIXLIM[k] || PASIF[k]) return false;
   if (k !== 'vise' && !app.CR.hasEq(k)) { log(`${FIXNAME[k]} atölyede yok: dükkândan alabilirsiniz.`, 'warn'); app.CR.openShop(); return false; }
   if (!quiet && S.job && !S.job.done) { log('İş sürerken bağlama değiştirilmez.', 'warn'); return false; }
   if (S.spindle) spindle(false);
@@ -479,6 +479,7 @@ function setFix(k, quiet) {
   if (!quiet) log(`Bağlama: ${FIXNAME[k]}. ${PW}×${PD}×${PH} mm ham parça bağlandı.`, 'ok');
   return true;
 }
+for (const b of $('fixSeg').children) if (PASIF[b.dataset.fx]) b.hidden = true;   // pasif bağlamalar seçilemez
 $('fixSeg').addEventListener('click', e => { const b = e.target.closest('[data-fx]'); if (b && b.dataset.fx !== FIX) { initAudio(); setFix(b.dataset.fx); } });
 // döner tabla kumandaları: adım, açıya git, sıfır, kilit
 const rotGoTo = deg => { if (!ROT.on && FIX !== 'div') return; if (ROT.lock) { log('Döner tabla kilitli: önce kilidi açın.', 'warn'); return; } ROT.pend += deg; };
