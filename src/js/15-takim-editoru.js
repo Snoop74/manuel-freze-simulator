@@ -1,4 +1,5 @@
 // ── Takım editörü (TE): tip, ölçüler, kaplama, fiyat, kesmeye etkiler, kayıt
+import { para } from './00-dil.js';
 import { kayit } from './00-kayit.js';
 import { $, S, TOOLS, app, clamp, isDrill, log, mat, recFeed, recRpm } from './00-temel.js';
 import { initAudio } from './01-ses.js';
@@ -169,7 +170,7 @@ const TE = (() => {
     if (T.type === 'end') add('Yüzey kalitesi', md.ra < 0.99 ? `Ra ×${md.ra.toFixed(2)}` : 'standart', '', md.ra < 0.99 ? 'radyüs taban izini yumuşatır' : '');
     if (!isDrill(T) && T.z >= 4) add('Talaş cebi', 'dar', 'warn', 'alüminyum ve plastikte tam kanalda talaş sıkışır');
     if (isDrill(T) && T.flute < T.stick - 30) add('Delik derinliği', `en çok ${T.flute} mm`, '', 'ağız boyu delme derinliğini sınırlar');
-    add('Fiyat', `${T.price.toLocaleString('tr-TR')} ₺`);
+    add('Fiyat', para(T.price));
     $('teStats').innerHTML = li.join('');
   }
   function fillBase() {
@@ -200,7 +201,7 @@ const TE = (() => {
     const T = TOOLS[i];
     saveTools(); renderRack(); updateToolUI();
     if (i === S.tool) { buildToolVisual(); updateRec(); }
-    log(`${T.no} ${T.name} Ø${T.d} (${T.mat}) dolaba kaydedildi. Fiyatı ${T.price.toLocaleString('tr-TR')} ₺.`, 'ok');
+    log(`${T.no} ${T.name} Ø${T.d} (${T.mat}) dolaba kaydedildi. Fiyatı ${para(T.price)}.`, 'ok');
     fillBase(); load(i);
     if (mount) { hide(); requestToolChange(i); }
   }

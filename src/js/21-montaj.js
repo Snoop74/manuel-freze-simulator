@@ -320,7 +320,7 @@ const MT = (() => {
     $('mtList').innerHTML = B.map(b => `<li class="${b.st === 'el' ? (b.tq >= tq0() && b.tq <= tq1() ? 'ok' : b.tq > tq1() ? 'warn' : '') : b.st === 'siyrik' || (b.st === 'agiz' && b.goal > 0 && b.z <= b.goal + 1e-6) ? 'bad' : ''}"><b>${b.i + 1}</b> ${stTxt(b)}${b.tq ? ` · ${b.tq.toFixed(1)} Nm` : ''}${b.coil ? ' · yay diş' : ''}${b.zor && b.st === 'el' ? ' · zorlandı' : ''}</li>`).join('');
     $('mtPlace').hidden = st.placed;
     const bad = B.filter(b => b.st === 'siyrik');
-    $('mtCoil').hidden = !bad.length; $('mtCoil').textContent = `Yay diş tak (${bad.length} delik, ${bad.length * COIL} ₺)`;
+    $('mtCoil').hidden = !bad.length; $('mtCoil').textContent = `Yay diş tak (${bad.length} delik, ${bad.length * COIL} $)`;
     $('mtOrder').textContent = st.order.length ? 'Sıkma sırası: ' + st.order.map(i => i + 1).join('-') : '';
   }
 
@@ -398,7 +398,7 @@ const MT = (() => {
     const bad = st.bolts.filter(b => b.st === 'siyrik');
     for (const b of bad) { remove(b); b.coil = true; }
     st.cost += bad.length * COIL; st.coil += bad.length;
-    beep(900, 0.08); hint(`Yay diş takıldı: ${bad.length} delik, −${bad.length * COIL} ₺. Cıvatayı yeniden takın.`);
+    beep(900, 0.08); hint(`Yay diş takıldı: ${bad.length} delik, −${bad.length * COIL} $. Cıvatayı yeniden takın.`);
     panel();
   }
   function unscrew() {

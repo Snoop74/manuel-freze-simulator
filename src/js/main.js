@@ -1,5 +1,6 @@
 // ── Giriş: modüller bu sırayla yüklenir (her modül yalnızca kendinden öncekilerden alır)
 import './three-kur.js';   // önce: modüller yüklenirken THREE hazır olmalı
+import './00-dil.js';
 import './00-kayit.js';
 import './00-temel.js';
 import './00-tercihler.js';

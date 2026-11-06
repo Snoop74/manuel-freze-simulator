@@ -1,10 +1,11 @@
 // ── Sipariş üretici (17-kariyer'den ayrıldı): seviyeye göre müşteri, malzeme, ham parça ölçüsü, delik/cep/yay özellikleri,
 //   hazır (müşteri getirdiği) parça işleri ve koşullar (acil, seri, hassas). Durum tutmaz: sipariş numarasını kariyer verir (sira).
+import { para } from './00-dil.js';
 import { MATS, PASIF } from './00-temel.js';
 import { DIS, GERCEK, inRect } from './10-is-emri-muayene.js';
 import { BLANKS, SF, genBlank, r05, rp, rr, withSeed } from './16-hazir-parca.js';
 
-const tl = v => Math.round(v).toLocaleString('tr-TR') + ' ₺';
+const tl = para;                                                   // 2026-11-06: oyunun parası dolar, biçim dile göre (00-dil)
 const PRICE_KG = { al:180, s235:60, c45:80, ss304:220, brass:350, gg25:70, pom:250 };
 const MATF = { al:1, pom:1, brass:1.1, s235:1.3, gg25:1.3, c45:1.5, ss304:1.9 };
 
@@ -104,7 +105,7 @@ const BLANK_JOBS = {
   teyze:{ lv:0, absurd:true, ayni:{ ad:'bir tepsi börek', pay:50, rep:4 }, cust:[['Nermin Teyze', 'komşu'], ['Hayriye Teyze', 'komşu']], title:'Dikiş makinesi pedal mesnedi', value:150, make(P) {
     const cx = P.w / 2, cy = r05(P.d / 2);
     return { pockets:[{ x0:cx - 12, x1:cx + 12, y0:cy - 6, y1:cy + 6, depth:2, r:3 }], holes:[{ x:10, y:cy, d:5 }, { x:P.w - 10, y:cy, d:5 }],
-      brief:`"Evladım rahmetli eniştenin makinesi, pedalın yatağı kırıldı." 24×12 yatak cebi (2 derin, R3) ve iki uca Ø5 vida deliği. Ödeme: 50 ₺ ve bir tepsi börek (bütün mahalleye anlatır: itibar +4).`, val:50, target:150 }; } },
+      brief:`"Evladım rahmetli eniştenin makinesi, pedalın yatağı kırıldı." 24×12 yatak cebi (2 derin, R3) ve iki uca Ø5 vida deliği. Ödeme: 50 $ ve bir tepsi börek (bütün mahalleye anlatır: itibar +4).`, val:50, target:150 }; } },
   rende:{ lv:0, absurd:true, cust:[['Kars Kaşar Mandırası', 'mandıra'], ['Peynir Festivali Komitesi', 'dernek']], title:'Dev peynir rendesi', value:500, make(P) {
     const holes = [], nx = 6, ny = 4, sx = (P.w - 40) / (nx - 1), sy = (P.d - 40) / (ny - 1);
     for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) holes.push({ x:r05(20 + i * sx), y:r05(20 + j * sy), d:5 });

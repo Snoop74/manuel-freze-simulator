@@ -5,6 +5,7 @@
 //   ayarSifirla()         varsayılanlara döner
 // Yeni ayar: VARSAYILAN'a ekle, kullanan modülde ayarDinle ile uygula, menüde (20-menu.js) bir denetim ekle.
 import { kayit } from './00-kayit.js';
+import { setDil, varsayilanDil } from './00-dil.js';
 import { TEST } from './00-temel.js';
 
 const KEY = 'freze-ayarlar';
@@ -21,6 +22,7 @@ const VARSAYILAN = Object.assign({ kalite:'yuksek' }, KALITE.yuksek, {
   acilisMenu:true,                               // açılışta ana menü
   kaliteOto:true,                                // kasarsa kaliteyi kendisi düşürür (oyuncu kaliteyi elle seçince kapanır; 12-dongu)
   gelistirici:false,                             // geliştirici paneli (Ctrl+Shift+D)
+  dil:varsayilanDil(),                           // tr / en / de (00-dil); ilk açılışta tarayıcının dili
 });
 
 const AYAR = Object.assign({}, VARSAYILAN);
@@ -28,7 +30,7 @@ const AYAR = Object.assign({}, VARSAYILAN);
   const k = kayit.oku(KEY, {});
   for (const a in VARSAYILAN) if (k[a] !== undefined && typeof k[a] === typeof VARSAYILAN[a]) AYAR[a] = k[a];
 }
-if (TEST) Object.assign(AYAR, KALITE.dusuk, { kaliteOto:false, acilisMenu:false, cozunurluk:0.5 });   // test: en hafif (kaydedilmez)
+if (TEST) Object.assign(AYAR, KALITE.dusuk, { kaliteOto:false, acilisMenu:false, cozunurluk:0.5, dil:'tr' });   // test: en hafif, Türkçe (kaydedilmez)
 const dinleyen = new Map();
 function haber(adlar) {
   const fns = new Set();
@@ -52,5 +54,7 @@ function ayarSifirla() {
   Object.assign(AYAR, VARSAYILAN); kayit.yaz(KEY, AYAR);
   haber(Object.keys(VARSAYILAN));
 }
+
+ayarDinle('dil', a => setDil(a.dil));                  // dil: sayfa ve kayıtlı modüller o dilde yeniden yazılır
 
 export { AYAR, KALITE, ayarDinle, ayarSifirla, ayarYaz };

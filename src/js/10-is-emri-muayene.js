@@ -1,4 +1,5 @@
 // ── İş emirleri: görevler, teknik resim, markalama, muayene ve puan, teslim raporu
+import { para } from './00-dil.js';
 import { kayit } from './00-kayit.js';
 import { $, PASIF, C, CUT, EDGE, H, INSP, NX, NY, PD, PH, PW, S, TOOLS, app, clamp, isDrill, log } from './00-temel.js';
 import { AYAR } from './00-tercihler.js';
@@ -584,9 +585,9 @@ function showReport(run, items, r, newBest) {
 }
 // kariyer teslimi: kazanç, itibar ve kasa büyük; primler etiket
 function showPayout(res) {
-  $('rpHero').innerHTML = `<div class="rp-card big ${res.pay > 0 ? 'good' : 'bad'}"><span>Kazanç</span><b>${res.pay > 0 ? '+' : ''}${res.pay.toLocaleString('tr-TR')} ₺</b><small>${res.pay > 0 ? 'müşteri ödedi' : res.pay < 0 ? 'parça bedeli ödendi' : 'ödeme yok'}</small></div>` +
+  $('rpHero').innerHTML = `<div class="rp-card big ${res.pay > 0 ? 'good' : 'bad'}"><span>Kazanç</span><b>${res.pay > 0 ? '+' : ''}${para(res.pay)}</b><small>${res.pay > 0 ? 'müşteri ödedi' : res.pay < 0 ? 'parça bedeli ödendi' : 'ödeme yok'}</small></div>` +
     `<div class="rp-card ${res.rep > 0 ? 'good' : res.rep < 0 ? 'bad' : ''}"><span>İtibar</span><b>${res.rep > 0 ? '+' : ''}${res.rep}</b><small>toplam ${res.repTotal}</small></div>` +
-    `<div class="rp-card"><span>Kasa</span><b>${Math.round(res.money).toLocaleString('tr-TR')}</b><small>₺</small></div>`;
+    `<div class="rp-card"><span>Kasa</span><b>${para(res.money)}</b></div>`;
   $('rpTags').innerHTML = res.tags.map(([t, c]) => `<span class="rp-tag ${c}">${t}</span>`).join('');
 }
 $('rpMore').addEventListener('click', () => { const open = $('rpDetail').hidden; $('rpDetail').hidden = !open; $('rpMore').setAttribute('aria-expanded', String(open)); $('rpMore').firstChild.textContent = open ? 'Detayları gizle ' : 'Detayları gör '; });

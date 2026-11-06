@@ -47,5 +47,20 @@ for (const [i, f] of files.entries()) {
   console.log(`${f.padEnd(26)} içe ${String(nImp).padStart(3)} (${from.size} modülden), dışa ${String(nExp).padStart(3)}`);
 }
 for (const [n, at] of unknown) { console.log(`✗ tanımsız ad ${n}: ${at.slice(0, 3).join(', ')}${at.length > 3 ? ' …' : ''}`); bad++; }
+// dil sözlükleri (00-dil-*.js): her anahtar üç dilde de olmalı; kodda t('anahtar') ve şablonda data-t ile kullanılan her anahtar Türkçe sözlükte olmalı
+{
+  const anahtarlar = f => new Set([...readFileSync(join(DIR, f), 'utf8').matchAll(/^\s*"([^"]+)":/gm)].map(m => m[1]));
+  const [tr, en, de] = ['00-dil-tr.js', '00-dil-en.js', '00-dil-de.js'].map(anahtarlar);
+  for (const [ad, s] of [['İngilizce', en], ['Almanca', de]]) {
+    const eksik = [...tr].filter(k => !s.has(k)), fazla = [...s].filter(k => !tr.has(k));
+    if (eksik.length) { console.log(`✗ ${ad} sözlükte eksik ${eksik.length} anahtar: ${eksik.slice(0, 5).join(', ')}`); bad++; }
+    if (fazla.length) { console.log(`✗ ${ad} sözlükte Türkçede olmayan anahtar: ${fazla.slice(0, 5).join(', ')}`); bad++; }
+  }
+  const kullanilan = new Map();
+  for (const f of files.filter(f => !f.startsWith('00-dil'))) for (const m of readFileSync(join(DIR, f), 'utf8').matchAll(/\bt\('([a-z][\w.]*)'/g)) kullanilan.set(m[1], f);
+  for (const m of readFileSync(join(ROOT, 'src', 'sayfa.html'), 'utf8').matchAll(/data-t(?:-\w+)?="([^"]+)"/g)) kullanilan.set(m[1], 'sayfa.html');
+  for (const [k, f] of kullanilan) if (!tr.has(k)) { console.log(`✗ ${f}: sözlükte olmayan dil anahtarı ${k}`); bad++; }
+  console.log(`dil: ${tr.size} anahtar × 3 dil, kodda ${kullanilan.size} kullanım`);
+}
 console.log(bad ? `\n${bad} sorun` : '\nSorun yok: bağımlılıklar tek yönlü, tanımsız ad yok.');
 process.exitCode = bad ? 1 : 0;

@@ -19,7 +19,7 @@ const PC = (() => {
       <div class="pc-ust"><b id="pcBaslik">Posta</b><span id="pcSaat"></span><button class="pc-x" id="pcKapat" aria-label="Kapat">×</button></div>
       <div class="pc-govde" id="pcGovde"></div>
       <div class="pc-alt">
-        <button data-uyg="posta">✉ Posta <i id="pcRozet"></i></button><button data-uyg="banka">₺ Banka</button><button data-uyg="dukkan">🏭 Dükkân</button><button data-uyg="tedarik">🛒 Tedarik</button><button data-uyg="dolap">🔧 Dolap</button>
+        <button data-uyg="posta">✉ Posta <i id="pcRozet"></i></button><button data-uyg="banka">$ Banka</button><button data-uyg="dukkan">🏭 Dükkân</button><button data-uyg="tedarik">🛒 Tedarik</button><button data-uyg="dolap">🔧 Dolap</button>
         <span></span><button class="pc-bitir" id="pcBitir">Günü bitir →</button>
       </div>
     </div>

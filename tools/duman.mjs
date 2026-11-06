@@ -386,6 +386,22 @@ const SENARYO = {
     app.BN.sapma(true); app.BN.sapma(false); app.BN.hide();
     return `${kon.it.length} ölçü (${ok} içeride, ${bad} dışarıda), muayeneyle aynı, sapma haritası açıldı`;
   },
+  async dil() {
+    // dil: İngilizce ve Almancaya geçince sayfa, panel başlığı, menü ve para biçimi değişir; Türkçeye dönülür (testler Türkçe)
+    const { app } = window.__d;
+    const D = await import('/src/js/00-dil.js'), A = await import('/src/js/00-tercihler.js');
+    const q = s => document.querySelector(s);
+    const bak = () => ({ baslik:document.title, ust:q('.tb-icons [data-p="console"] small').textContent, panel:q('.panel [data-t="p.jobs"]') && q('.panel [data-t="p.jobs"]').textContent, para:D.para(1234), estop:q('#estopBtn').textContent.trim() });
+    const tr = bak();
+    A.ayarYaz('dil', 'en'); const en = bak();
+    A.ayarYaz('dil', 'de'); const de = bak();
+    app.MENU.ac('ayarlar'); const menuDe = q('.menu-kart .menu-baslik b').textContent; app.MENU.kapat();
+    A.ayarYaz('dil', 'tr'); const geri = bak();
+    const bek = [[en.baslik, 'Manual Milling Machine'], [en.ust, 'Controls'], [en.para, '$1,234'], [en.estop, 'E-STOP'], [de.para, '1.234 $'], [de.ust, 'Bedienung'], [menuDe, 'Einstellungen'], [geri.ust, tr.ust], [geri.para, '1.234 $']];
+    if (en.panel != null) bek.push([en.panel, 'Work orders']);
+    for (const [a, b] of bek) if (a !== b) throw new Error(`dil: "${a}" beklenen "${b}" (en ${JSON.stringify(en)})`);
+    return `tr → en → de → tr: başlık, üst çubuk, panel, menü, para (${en.para} / ${de.para})`;
+  },
   async dukkan() {
     const { app, S, U, son } = window.__d, CR = app.CR;
     document.querySelector('#modeSw [data-mode="career"]').click();

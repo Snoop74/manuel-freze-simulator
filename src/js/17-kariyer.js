@@ -23,7 +23,7 @@ const CR = (() => {
   // ready: tezgâhta kullanılabilir; diğerleri dükkânda "yakında" görünür
   const EQUIP = [
     { id:'air', n:'Hava tabancası', t:'Talaşı üfleyerek temizle (B). Talaşsız teslim %5 prim', p:350, ready:true },
-    { id:'dial', n:'Mekanik 3B taster', t:'Kadranlı, elle: ibre 0\'da mil ekseni kenarda. Kopan stylus 180 ₺', p:1400, ready:true },
+    { id:'dial', n:'Mekanik 3B taster', t:'Kadranlı, elle: ibre 0\'da mil ekseni kenarda. Kopan stylus 180 $', p:1400, ready:true },
     { id:'probe', n:'3B taster', t:'Kenar, köşe ve delik merkezini bul, sıfırı yaz. Dönerken çarparsa kırılır!', p:2500, ready:true },
     { id:'h_weldon', n:'Weldon tutucu', t:HOLDERS.weldon.t, p:HOLDERS.weldon.p, ready:true },
     { id:'h_shrink', n:'Shrink-fit tutucu', t:HOLDERS.shrink.t, p:HOLDERS.shrink.p, ready:true },
@@ -144,7 +144,7 @@ const CR = (() => {
     { id:'raf', sv:0, ad:'Malzeme rafı', p:1800, t:'Ham parça %20 ucuz (toplu alım)' },
     { id:'yIlerleme', sv:0, ad:'Y ilerleme motoru', p:1200, t:'Kumandada Y ekseni için de otomatik ilerleme' },
     { id:'motor', sv:1, ad:'Güçlü mil motoru', p:6000, t:'Mil gücü 2.2 → 3.3 kW: derin paso, çelikte hızlı iş' },
-    { id:'cirak', sv:1, ad:'Çırak', p:1000, gunluk:250, t:'Gün sonunda kırık takımları biler, talaşı süpürür. Günlük 250 ₺' },
+    { id:'cirak', sv:1, ad:'Çırak', p:1000, gunluk:250, t:'Gün sonunda kırık takımları biler, talaşı süpürür. Günlük 250 $' },
     { id:'web', sv:1, ad:'Web sitesi', p:2000, t:'Gelen kutusunda her zaman bir sipariş daha' },
   ];
   const yukVar = id => !on || !!(st && st.dukkan.yuk[id]);
@@ -518,7 +518,7 @@ const CR = (() => {
   let resetArm = 0;
   $('crReset').addEventListener('click', () => {
     if (performance.now() - resetArm > 3000) { resetArm = performance.now(); $('crReset').textContent = 'Emin misiniz? Tekrar tıklayın'; setTimeout(() => $('crReset').textContent = 'Kariyeri sıfırla', 3000); return; }
-    st = fresh(); S.job = null; sel = null; fillBoard(); save(); selectJob(-1); render(); log('Kariyer sıfırlandı: 1.500 ₺ ve üç takımla yeniden başlıyorsunuz.', 'ok');
+    st = fresh(); S.job = null; sel = null; fillBoard(); save(); selectJob(-1); render(); log('Kariyer sıfırlandı: 1.500 $ ve üç takımla yeniden başlıyorsunuz.', 'ok');
   });
   if (on) fillBoard();
   return { get on() { return on; }, hasEq, openShop, render, start, settle, allowTool, lost, charge, forget, priceOf, get sel() { return sel; },

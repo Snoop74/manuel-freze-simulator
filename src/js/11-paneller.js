@@ -1,4 +1,5 @@
 // ── Paneller (PM; 12-dongu'dan ayrıldı): taşınabilir/ölçeklenebilir paneller, düzen hazır ayarları, üst çubuk simgeleri ve menüleri, takım simgeleri
+import { t } from './00-dil.js';
 import { kayit } from './00-kayit.js';
 import { $, PASIF, S, app, clamp, log } from './00-temel.js';
 import { initAudio } from './01-ses.js';
@@ -107,7 +108,8 @@ const PM = (() => {
     if (!body) return;
     if (cfg.gizli) { if (!gizliKap.isConnected) document.body.append(gizliKap); gizliKap.append(body); return; }
     const el = document.createElement('section'); el.className = 'panel'; el.hidden = true;
-    el.innerHTML = `<div class="ph"><span class="lamp"></span><b>${cfg.title}</b><span class="pstat"></span>${cfg.sizes ? '<button class="psize" title="Boyut: küçük / orta / büyük" aria-label="Panel boyutu">⤡</button>' : ''}<button class="pcol" title="Küçült" aria-label="Paneli küçült">–</button><button class="pclose" title="Kapat" aria-label="Paneli kapat">×</button></div><div class="pb"></div><div class="grip" title="Boyutlandır"></div>`;
+    const tk = 'p.' + cfg.id, tt = t(tk) === tk ? cfg.title : t(tk);   // başlık dil anahtarından (data-t: dil değişince sayfa() yeniden yazar)
+    el.innerHTML = `<div class="ph"><span class="lamp"></span><b${t(tk) === tk ? '' : ` data-t="${tk}"`}>${tt}</b><span class="pstat"></span>${cfg.sizes ? `<button class="psize" title="${t('p.boyut')}" aria-label="${t('p.boyut_aria')}" data-t-title="p.boyut" data-t-aria="p.boyut_aria">⤡</button>` : ''}<button class="pcol" title="${t('p.kucult')}" aria-label="${t('p.kucult_aria')}" data-t-title="p.kucult" data-t-aria="p.kucult_aria">–</button><button class="pclose" title="${t('p.kapat')}" aria-label="${t('p.kapat_aria')}" data-t-title="p.kapat" data-t-aria="p.kapat_aria">×</button></div><div class="pb"></div><div class="grip" title="Boyutlandır"></div>`;
     el.querySelector('.pb').append(body);
     $('panelLayer').append(el);
     // başlıktaki durum yazısı: bölümün başlığındaki ikinci alanı (ör. mil durumu) başlığa taşı

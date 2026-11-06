@@ -4,6 +4,7 @@
 //   MENU.geri()           bir önceki ekrana döner (yığın biterse kapanır) · MENU.kapat() hepsini kapatır
 // Menü açıkken klavye tezgâha gitmez; Esc bir önceki ekrana döner (menü kapalıyken Esc yine ACİL STOP).
 // Yeni ekran: MENU.ekran('ad', (k, M) => { M.baslik(...); M.dugme(...); }) ve bir düğmeden MENU.ac('ad').
+import { DILLER, t } from './00-dil.js';
 import { S, app } from './00-temel.js';
 import { AYAR, ayarSifirla, ayarYaz } from './00-tercihler.js';
 import { ac, initAudio, thud } from './01-ses.js';
@@ -53,7 +54,7 @@ const MENU = (() => {
       },
       onay(ad, etiket, ipucu) {
         const r = M.satir(etiket, ipucu), b = document.createElement('button'); b.className = 'menu-onay' + (AYAR[ad] ? ' on' : '');
-        b.textContent = AYAR[ad] ? 'Açık' : 'Kapalı';
+        b.textContent = t(AYAR[ad] ? 'm.acik' : 'm.kapali');
         b.addEventListener('click', () => { ayarYaz(ad, !AYAR[ad]); goster(); }); r.append(b); return r;
       },
       alt(...dugmeler) { const a = el('div', 'menu-alt'); a.append(...dugmeler); return a; },
@@ -92,47 +93,48 @@ const MENU = (() => {
 /* ---- Ekranlar ---- */
 const modTik = mod => { const b = document.querySelector(`#modeSw [data-mode="${mod}"]`); if (b) b.click(); };
 MENU.ekran('ana', (k, M) => {
-  M.baslik('SNOOP3000', 'Manuel freze tezgâhı');
+  M.baslik('SNOOP3000', t('m.baslik_alt'));
   const kariyer = app.CR && app.CR.on;
   const egitim = () => app.EG.baslat();
-  if (!app.EG.bitti) M.dugme('Eğitim', egitim, { ana:true, alt:'Otto Usta ile ilk parça · 10 dk · önerilir' });
-  M.dugme('Devam et', () => MENU.kapat(), { ana:app.EG.bitti, alt:kariyer ? 'kariyerde kaldığın yerden' : 'serbest atölyede kaldığın yerden' });
+  if (!app.EG.bitti) M.dugme(t('m.egitim'), egitim, { ana:true, alt:t('m.egitim_alt') });
+  M.dugme(t('m.devam'), () => MENU.kapat(), { ana:app.EG.bitti, alt:t(kariyer ? 'm.devam_kariyer' : 'm.devam_serbest') });
   // oyun modu tek satırda: hangisi seçiliyse işaretli
-  M.el('div', 'menu-baslik2', 'Oyun modu');
+  M.el('div', 'menu-baslik2', t('m.oyun_modu'));
   const sat = M.el('div', 'menu-mod');
-  for (const [mod, ad, alt, on] of [['career', 'Kariyer', 'sipariş, kasa, itibar', kariyer], ['free', 'Serbest atölye', 'her şey açık, ücretsiz', !kariyer]]) {
+  for (const [mod, ad, alt, on] of [['career', t('m.kariyer'), t('m.kariyer_alt'), kariyer], ['free', t('m.serbest'), t('m.serbest_alt'), !kariyer]]) {
     const b = document.createElement('button'); b.className = 'menu-dugme' + (on ? ' secili' : '');
     b.innerHTML = `${on ? '● ' : ''}${ad}<small>${alt}</small>`;
     b.addEventListener('click', () => { modTik(mod); MENU.kapat(); });
     sat.append(b);
   }
-  M.dugme('Ayarlar', () => MENU.ac('ayarlar'), { alt:'grafik, ses, oyun, panelleri sıfırla' });
-  if (app.EG.bitti) M.dugme('Eğitim', egitim, { alt:'Otto Usta ile ilk parçayı yeniden yap' });
-  M.dugme('Kısayollar', () => { MENU.kapat(); app.PM.setVis('keys', true); }, { alt:'klavye ve fare' });
-  M.el('div', 'menu-not', 'Bu menü: sol üstteki Menü düğmesi · tezgâhta Esc her zaman ACİL STOP');
-  M.el('div', 'menu-not surum-not', 'sürüm ' + (app.SURUM || 'dev'));
+  M.dugme(t('m.ayarlar'), () => MENU.ac('ayarlar'), { alt:t('m.ayarlar_alt') });
+  if (app.EG.bitti) M.dugme(t('m.egitim'), egitim, { alt:t('m.egitim_tekrar') });
+  M.dugme(t('m.kisayollar'), () => { MENU.kapat(); app.PM.setVis('keys', true); }, { alt:t('m.kisayollar_alt') });
+  M.el('div', 'menu-not', t('m.not'));
+  M.el('div', 'menu-not surum-not', t('m.surum', { v:app.SURUM || 'dev' }));
 });
 MENU.ekran('ayarlar', (k, M) => {
-  M.baslik('Ayarlar');
-  const s = M.sekmeler([['grafik', 'Grafik'], ['ses', 'Ses'], ['oyun', 'Oyun']]);
+  M.baslik(t('m.ayarlar'));
+  const s = M.sekmeler([['oyun', t('m.oyun')], ['grafik', t('m.grafik')], ['ses', t('m.ses')]]);
   if (s === 'grafik') {
-    M.secim('kalite', 'Kalite', [['dusuk', 'Düşük'], ['orta', 'Orta'], ['yuksek', 'Yüksek']].concat(AYAR.kalite === 'ozel' ? [['ozel', 'Özel']] : []),
-      'Zayıf bilgisayarda Düşük seçin');
-    M.secim('golge', 'Gölgeler', [[0, 'Kapalı'], [1, 'Normal'], [2, 'Yüksek']]);
-    M.kaydir('cozunurluk', 'Çözünürlük', 0.5, 1, 0.05, undefined, 'Düşük değer daha akıcı, daha bulanık');
-    M.kaydir('talas', 'Talaş miktarı', 0.2, 1, 0.05);
-    M.onay('esya', 'Atölye eşyaları', 'Kompresör, arabalar, kutular; kapalıysa daha akıcı');
-    M.onay('kaliteOto', 'Otomatik kalite', 'Oyun kasarsa kaliteyi kendisi düşürür');
+    M.secim('kalite', t('m.kalite'), [['dusuk', t('m.dusuk')], ['orta', t('m.orta')], ['yuksek', t('m.yuksek')]].concat(AYAR.kalite === 'ozel' ? [['ozel', t('m.ozel')]] : []),
+      t('m.kalite_ipucu'));
+    M.secim('golge', t('m.golge'), [[0, t('m.kapali')], [1, t('m.normal')], [2, t('m.yuksek')]]);
+    M.kaydir('cozunurluk', t('m.cozunurluk'), 0.5, 1, 0.05, undefined, t('m.cozunurluk_ipucu'));
+    M.kaydir('talas', t('m.talas'), 0.2, 1, 0.05);
+    M.onay('esya', t('m.esya'), t('m.esya_ipucu'));
+    M.onay('kaliteOto', t('m.kaliteOto'), t('m.kaliteOto_ipucu'));
   } else if (s === 'ses') {
-    M.kaydir('sesAna', 'Ana ses', 0, 1, 0.05);
-    M.kaydir('sesMakine', 'Makine ve kesme', 0, 1, 0.05);
-    M.kaydir('sesArayuz', 'Arayüz bildirimleri', 0, 1, 0.05);
+    M.kaydir('sesAna', t('m.sesAna'), 0, 1, 0.05);
+    M.kaydir('sesMakine', t('m.sesMakine'), 0, 1, 0.05);
+    M.kaydir('sesArayuz', t('m.sesArayuz'), 0, 1, 0.05);
   } else {
-    M.onay('acilisMenu', 'Açılışta ana menü', 'Kapalıysa oyun doğrudan tezgâhta açılır');
-    M.onay('gelistirici', 'Geliştirici modu', 'Sahne dışa aktarma, yerleşim, konum bilgisi · kısayol Ctrl+Shift+D');
-    M.dugme('Panelleri sıfırla', () => { app.PM.sifirla(); MENU.kapat(); }, { alt:'paneller ilk açılıştaki yerine döner' });
+    M.secim('dil', t('m.dil'), DILLER, t('m.dil_ipucu'));                  // dil (2026-11-06): değişince menü de o dilde yeniden çizilir
+    M.onay('acilisMenu', t('m.acilisMenu'), t('m.acilisMenu_ipucu'));
+    M.onay('gelistirici', t('m.gelistirici'), t('m.gelistirici_ipucu'));
+    M.dugme(t('m.panel_sifirla'), () => { app.PM.sifirla(); MENU.kapat(); }, { alt:t('m.panel_sifirla_alt') });
   }
-  M.alt(M.dugme('Varsayılanlara dön', () => { ayarSifirla(); MENU.yenile(); }), M.dugme('Geri', () => MENU.geri(), { ana:true }));
+  M.alt(M.dugme(t('m.varsayilan'), () => { ayarSifirla(); MENU.yenile(); }), M.dugme(t('m.geri'), () => MENU.geri(), { ana:true }));
 });
 
 Object.assign(app, { MENU });
