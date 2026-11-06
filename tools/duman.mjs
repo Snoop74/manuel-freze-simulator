@@ -284,7 +284,7 @@ const SENARYO = {
     return `ayrıştırıcı 7 denetim, G83 ile 4 delik boydan boya, cep 5 mm (${r.ops.length} adım)`;
   },
   async motor() {
-    const { app } = window.__d, MO = app.MO;
+    const { app } = window.__d, { MO } = await import('/src/js/28-motor.js');   // rafta: oyunda yüklenmez, test kendisi yükler
     app.MENU.kapat(); MO.ac();
     if (!MO.acik) throw new Error('motor ekranı açılmadı');
     const sur = sn => { for (let k = 0; k < sn * 60; k++) MO.adim(1 / 60); };

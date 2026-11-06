@@ -1,3 +1,4 @@
+// ── RAFTA (2026-11-06, Onat: kapsam dağılıyor; ileride ayrı motor toplama oyunu olabilir). main.js yüklemez, yalnızca duman testi yükler.
 // ── Otto'nun motoru (MO): çalışma tezgâhındaki sehpada tek silindirli 250 cc motor; tekme marş, jikle, benzin musluğu, kontak, gaz, kesit görünümü
 import { $, S, app, clamp, log } from './00-temel.js';
 import { ac, bus, initAudio, noiseBuffer } from './01-ses.js';

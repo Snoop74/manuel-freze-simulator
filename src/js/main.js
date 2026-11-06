@@ -32,4 +32,4 @@ import './24-bilgisayar.js';
 import './25-mengene.js';
 import './26-egitim.js';
 import './27-gkod.js';
-import './28-motor.js';
+// 28-motor.js rafta (2026-11-06): oyunda yüklenmez (menüde ve tezgâhta yok); duman testi kendisi yükleyip dener. Olası ayrı motor toplama oyunu için.

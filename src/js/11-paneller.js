@@ -210,7 +210,6 @@ const PM = (() => {
       else if (a === 'editor') app.TE.show(S.tool);
       else if (a === 'shop') app.CR.openShop();
       else if (a === 'egitim') app.EG.baslat();
-      else if (a === 'motor') app.MO.ac();
       else if (a === 'keys') setVis('keys', true);
       else if (a === 'menu') app.MENU.ac('ana');
       else if (a === 'sound') { $('mute').click(); b.innerHTML = `<svg viewBox="0 0 24 24">${TBICON[S.muted ? 'mute' : 'sound']}</svg>`; b.classList.toggle('on', S.muted); }
