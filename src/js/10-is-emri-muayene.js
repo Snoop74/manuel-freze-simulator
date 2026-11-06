@@ -4,7 +4,7 @@ import { $, PASIF, C, CUT, EDGE, H, INSP, NX, NY, PD, PH, PW, S, TOOLS, app, cla
 import { AYAR } from './00-tercihler.js';
 import { beep, initAudio } from './01-ses.js';
 import { rotIn } from './03-tabla-parca.js';
-import { FIX, PAR, markDirty, parAxis, parBands, straps, threads, warnParallels } from './05-baglama.js';
+import { FIX, PAR, buildVise, markDirty, parAxis, parBands, setJawOverride, straps, threads, warnParallels } from './05-baglama.js';
 import { burst } from './06-talas.js';
 import { resetPart } from './09-kumanda.js';
 
@@ -38,15 +38,16 @@ const JOBS = [
 // gerçek parça işleri (2026-11-06, Onat ile seçildi; vault: freze-gercek-parca-isleri). Serbest atölyede de denenir (acik).
 // pads: belirli bölgede istenen yükseklik (tablaya göre) · cukur: küresel uçla yarım küre çukurlar · fai: havacılık ilk parça muayenesi
 const GERCEK = {
-  mastar:() => ({ title:'Kademe mastarı', target:780, acik:true, mat:'c45', w:120, d:40, h:25,
+  // cene: mengene çenesinin üstü (alt yüzden mm): parça paralellerle yükseltilir, kademeler çenenin en az 5 mm üstünde kalır (Onat: çeneye çarpma riski)
+  mastar:() => ({ title:'Kademe mastarı', target:600, acik:true, mat:'c45', w:120, d:40, h:25, cene:10,
     face:{ depth:1, tol:0.02 }, holes:[{ x:15, y:20, d:8.5 }],
-    pads:[{ ad:'Kademe 1', x0:30, x1:60, y0:0, y1:40, z:18, tol:0.02 }, { ad:'Kademe 2', x0:60, x1:90, y0:0, y1:40, z:12, tol:0.02 }, { ad:'Kademe 3', x0:90, x1:120, y0:0, y1:40, z:6, tol:0.02 }],
-    brief:'Üretim hattının kontrol mastarı (C45). Üst yüzü 24.00\'a alın (±0.02), sonra üç kademe: 18.00, 12.00, 6.00 (her biri ±0.02, yükseklik alt yüzden). Askı deliği Ø8.5. Püf noktası: son 0.1 mm\'yi hızlı değil ölçerek alın; Z çarkında bir bölüntü 0.01.' }),
+    pads:[{ ad:'Kademe 1', x0:30, x1:60, y0:0, y1:40, z:21, tol:0.02 }, { ad:'Kademe 2', x0:60, x1:90, y0:0, y1:40, z:18, tol:0.02 }, { ad:'Kademe 3', x0:90, x1:120, y0:0, y1:40, z:15, tol:0.02 }],
+    brief:'Üretim hattının kontrol mastarı (C45). Üst yüzü 24.00\'a alın (±0.02), sonra 30 mm genişlikte üç kademe: X 30–60 21.00, X 60–90 18.00, X 90–120 15.00 (her biri ±0.02, yükseklik alt yüzden; kademe boyu 3 mm). Askı deliği Ø8.5 (X 15, Y 20). Parça paralellerle yükseltildi: çene üstü 10 mm\'de, kademeler çeneye inmez. Püf noktası: son 0.1 mm\'yi hızlı değil ölçerek alın; Z çarkında bir bölüntü 0.01.' }),
   pralin:() => {
     const pts = []; for (let j = 0; j < 4; j++) for (let i = 0; i < 6; i++) pts.push({ x:22.5 + i * 15, y:17.5 + j * 15 });
     return { title:'Çikolata kalıbı', target:720, acik:true, mat:'al', w:120, d:80, h:15, face:{ depth:0.5, tol:0.1 },
       cukur:{ d:8, depth:4, tol:0.05, pts },
-      brief:'Pastane için çikolata damlası kalıbı: üst yüzden 0.5 alın, sonra 6×4 = 24 yarım küre çukur (Ø8, 4.00 derin ±0.05, 15 aralık). T5 Ø8 küresel frezeyle her noktaya dalın: uç tam 4 mm inince çukur yarım küre olur. Gıdaya değecek: son dalışı yavaş yapın, parlak olsun.' };
+      brief:'Pastane için çikolata damlası kalıbı: üst yüzden 0.5 alın, sonra 6×4 = 24 yarım küre çukur (Ø8, 4.00 derin ±0.05, 15 aralık). T5 Ø8 küresel frezeyle her noktaya dalın: uç tam 4 mm inince çukur yarım küre olur. Dalarken ilerlemeyi düşürün (~100 mm/dk): küresel ucun ortası kesmez, hızlı dalışta takım penseten kayar ve çukur derin çıkar. Gıdaya değecek: son dalış yavaş, yüzey parlak olsun.' };
   },
   fiting:() => ({ title:'Havacılık bağlantı fitingi', target:900, acik:true, mat:'al', w:120, d:60, h:16, tolK:0.5, fai:true,
     face:{ depth:1, tol:0.05 }, pockets:[{ x0:30, x1:90, y0:15, y1:45, depth:8, r:5 }],
@@ -177,7 +178,7 @@ function drawingSVG(J) {
   if (J.face) s += `<rect class="dw-face" x="${X(0)}" y="${Y(D)}" width="${W * k}" height="${D * k}"/>`;
   if (J.round) s += `<circle class="dw-part" cx="${X(J.round.c)}" cy="${Y(J.round.c)}" r="${J.round.R * k}"/>`;
   else s += `<rect class="dw-part" x="${X(0)}" y="${Y(D)}" width="${W * k}" height="${D * k}"/>`;
-  for (const q of J.pads || []) s += `<rect x="${X(q.x0)}" y="${Y(q.y1)}" width="${(q.x1 - q.x0) * k}" height="${(q.y1 - q.y0) * k}" fill="none" class="dw-feat"/><text x="${X(q.x0) + 1.5}" y="${Y(q.y1) + 5}" font-size="4.5">${q.ad ? q.ad.toLocaleUpperCase('tr') + ' ' : 'PED '}${q.z}</text>`;
+  for (const q of J.pads || []) s += `<rect x="${X(q.x0)}" y="${Y(q.y1)}" width="${(q.x1 - q.x0) * k}" height="${(q.y1 - q.y0) * k}" fill="none" class="dw-feat"/><text x="${X(q.x0) + 1.5}" y="${Y(q.y1) + 5}" font-size="4.5">${q.ad ? `${q.ad.toLocaleUpperCase('tr')}</text><text x="${X(q.x0) + 1.5}" y="${Y(q.y1) + 10}" font-size="4.5">X ${q.x0}–${q.x1}</text><text x="${X(q.x0) + 1.5}" y="${Y(q.y1) + 15}" font-size="4.5">Z ${q.z.toFixed(2)}` : 'PED ' + q.z}</text>`;
   for (const [ex, ey, er] of J.exist || []) s += `<circle cx="${X(ex)}" cy="${Y(ey)}" r="${er * k}" fill="none" style="stroke:var(--ink-2)" stroke-width=".45" stroke-dasharray="1.2 1"/>`;   // parçada zaten var
   if (['vise', 'clamp', 'rot'].includes(FIX) && !PAR.sac && W === PW && D === PD) for (const [a, b] of parBands())   // paraleller: kesik çizgi
     s += parAxis() === 'x' ? `<rect x="${X(a)}" y="${Y(D)}" width="${(b - a) * k}" height="${D * k}" fill="none" style="stroke:var(--ink-2)" stroke-width=".5" stroke-dasharray="2 1.5"/>`
@@ -227,7 +228,9 @@ function drawingTable(J) {
   }
   if (J.deck) t += `<tr><td colspan="5">Conta yüzü: tamamen düzlenecek, düzlemsellik ≤ ${J.deck.flat}, en çok ${J.deck.maxCut} mm alınacak (en yüksek noktaya göre). AZ ALAN KAZANIR: çarpıklığı düzleyen en az talaş tam puan, fazlası puan götürür</td></tr>`;
   for (const L of J.levels || []) t += `<tr><td colspan="5">${L.name}: ${L.z.toFixed(2)} ±${L.tol} (tablaya göre yükseklik)</td></tr>`;
-  (J.pads || []).forEach((q, i) => t += `<tr><td colspan="5">${q.ad || `Ayak ${i + 1} pedi`}: ${q.z.toFixed(2)} ±${q.tol} (tablaya göre yükseklik)</td></tr>`);
+  if ((J.pads || []).some(q => q.ad)) { t += '<tr><th>Kademe</th><th>X</th><th>Y</th><th>Yükseklik</th><th></th></tr>'; J.pads.forEach(q => t += `<tr><td>${q.ad}</td><td>${q.x0}–${q.x1}</td><td>${q.y0}–${q.y1}</td><td>${q.z.toFixed(2)} ±${q.tol}</td><td>alt yüzden</td></tr>`); }
+  else (J.pads || []).forEach((q, i) => t += `<tr><td colspan="5">Ayak ${i + 1} pedi: ${q.z.toFixed(2)} ±${q.tol} (tablaya göre yükseklik)</td></tr>`);
+  if (J.cene != null) t += `<tr><td colspan="5">Bağlama: mengene, parça paralellerle yükseltilmiş; çene üstü ${J.cene} mm (alt yüzden)</td></tr>`;
   if (J.cukur) { const K = J.cukur, p0 = K.pts[0], nx = new Set(K.pts.map(q => q.x)).size, ny = K.pts.length / nx, ad = K.pts[1].x - p0.x;
     t += `<tr><th>Çukur</th><th>X</th><th>Y</th><th>Ø</th><th>Derinlik</th></tr><tr><td>K1</td><td>${p0.x.toFixed(2)}</td><td>${p0.y.toFixed(2)}</td><td>${K.d} küresel</td><td>${K.depth.toFixed(2)} ±${K.tol}</td></tr>`;
     t += `<tr><td colspan="5">${K.pts.length} çukur: K1'den ${ad} aralıkla ${nx} sütun × ${ny} sıra, konum ±${HOLE_TOL}</td></tr>`; }
@@ -497,6 +500,8 @@ function selectJob(i) {
   buildScribe(J);
   $('jobStart').textContent = S.job && !S.job.done ? 'Yeniden başla' : 'İşe başla';
 }
+// işe özel çene yüksekliği (J.cene): yoksa varsayılan (parça üstünün 5 mm altı)
+function ceneAyari(J) { if (FIX !== 'vise') return; setJawOverride(J && J.cene != null ? J.cene : null); buildVise(); }
 function startJob() {
   initAudio();
   if (app.CR.on) { app.CR.start(); return; }
@@ -505,7 +510,7 @@ function startJob() {
   else if (FIX === 'div') app.setFix('vise', true);
   const J0 = JOBS[selJob], W0 = J0.w || 150, D0 = J0.d || 100, H0 = J0.h || 40;
   if (PW !== W0 || PD !== D0 || PH !== H0) app.setStock(W0, D0, H0, true);   // iş emirleri standart ham parçayla (gerçek parça işleri kendi ölçüsüyle)
-  resetPart(JOBS[selJob].mat || 'al');
+  resetPart(JOBS[selJob].mat || 'al'); ceneAyari(J0);
   S.job = { idx:selJob, J:JOBS[selJob], time:0, done:false, stats:{ breaks:0, load:0, spot:0, peck:0, rub:0 } };
   setTimeout(() => { const J = JOBS[selJob] || (S.job && S.job.J); if (J) warnParallels(J); }, 300);   // bu arada moda geçildiyse iş kalmamış olabilir
   $('report').hidden = true;
@@ -600,5 +605,5 @@ $('jobCheck').addEventListener('click', () => {
 });
 setInterval(() => { $('jobCheck').hidden = !(S.job && !S.job.done && app.CR.yukVar('olcu')); }, 500);
 
-export { GERCEK, DIS, JOBS, inspect, scoreJob, buildScribe, localTop, threadAt, drawingSVG, drawingTable, inRect, mmss, renderJobs, selJob, selectJob, setSelJob,
+export { GERCEK, DIS, JOBS, ceneAyari, inspect, scoreJob, buildScribe, localTop, threadAt, drawingSVG, drawingTable, inRect, mmss, renderJobs, selJob, selectJob, setSelJob,
   startJob, submitJob };

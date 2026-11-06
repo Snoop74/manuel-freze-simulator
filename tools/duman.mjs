@@ -336,6 +336,9 @@ const SENARYO = {
       M.selectJob(i); M.startJob();
       const J = M.JOBS[i];
       if (T.PW !== J.w || T.PD !== J.d || T.PH !== J.h) throw new Error(`${ad}: ham parça ${T.PW}×${T.PD}×${T.PH}, beklenen ${J.w}×${J.d}×${J.h}`);
+      const { B } = window.__d;
+      if (J.cene != null && B.jawTop !== J.cene) throw new Error(`${ad}: çene üstü ${B.jawTop}, beklenen ${J.cene}`);
+      for (const q of J.pads || []) if (q.z < B.jawTop + 4.9) throw new Error(`${ad}: ${q.ad} (${q.z}) çeneye çok yakın (çene ${B.jawTop})`);
       kur(J);
       const it = M.inspect(J), r = M.scoreJob(J, run(J), it);
       if (!r.allOk) throw new Error(`${ad}: kusursuz parça kabul edilmedi: ` + it.filter(q => !q.ok).map(q => `${q.grp} ${q.label} ${q.meas}`).join('; '));
@@ -349,9 +352,10 @@ const SENARYO = {
     }
     // gerçek dalış: T5 Ø8 küresel uç, 4 mm dalış yarım küre açar
     const i = M.JOBS.findIndex(q => q.title === 'Çikolata kalıbı'); M.selectJob(i); M.startJob();
-    const T5 = takim(t => t.type === 'ball' && t.d === 8); U.setRpm(5000);
+    const T5 = takim(t => t.type === 'ball' && t.d === 8); S.wear[T.TOOLS.indexOf(T5)] = 0; T.unslip(T5); U.setRpm(5000); U.setFeed(100);   // oyuncu gibi: yavaş dalış   // taze takım: aşınmış uç tutucuda kayıp çukuru derin açıyordu
     konum(22.5, 17.5); U.spindle(true); ucGit(T.PH + 0.5); ucGit(T.PH - 4); ucGit(T.PH + 3); U.spindle(false);
     if (S.broken || S.alarm) throw new Error(`küresel dalışta kırıldı: ${son()}`);
+    if (T5.slipped) throw new Error(`100 mm/dk dalışta takım pensten kaydı (${T5.slipped} mm): yavaş dalış da güvenli değil`);
     const { H, C, NX } = T; let mn = 1e9, n = 0;
     for (let j = 0; j <= Math.round(40 / C); j++) for (let k = 0; k <= Math.round(45 / C); k++) { const h = H[j * NX + k]; if (h < mn) mn = h; if (h < T.PH - 0.01) n++; }
     const der = T.PH - mn, cap = 2 * Math.sqrt(n * C * C / Math.PI);

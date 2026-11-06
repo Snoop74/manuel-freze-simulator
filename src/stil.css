@@ -184,6 +184,7 @@ kbd{font-family:var(--f-dro);background:var(--panel-2);border:1px solid var(--li
 table{color:inherit;font-size:inherit}
 .dw-tab th,.dw-tab td{color:var(--ink);font-size:11px;border:1px solid var(--ink-2);padding:2px 5px;text-align:left;font-family:var(--f-dro);font-weight:400;white-space:nowrap}
 .dw-tab th{font-family:var(--f-display);font-weight:600;font-size:10.5px;letter-spacing:.06em}
+.dw-tab td[colspan]{white-space:normal}   /* açıklama satırları sarar, sütunlu satırlar sarmaz */
 .dw-note{color:var(--ink-2);font-size:10.5px;line-height:1.4}
 
 /* Muayene raporu */

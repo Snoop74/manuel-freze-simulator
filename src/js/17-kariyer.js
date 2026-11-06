@@ -7,7 +7,7 @@ import { FIX, PAR, warnParallels } from './05-baglama.js';
 import { clearChips } from './06-talas.js';
 import { HOLDERS } from './07-takim-gorsel.js';
 import { renderRack, resetPart, setRackTag, updateToolUI } from './09-kumanda.js';
-import { buildScribe, drawingSVG, drawingTable, mmss, selectJob, setSelJob } from './10-is-emri-muayene.js';
+import { buildScribe, ceneAyari, drawingSVG, drawingTable, mmss, selectJob, setSelJob } from './10-is-emri-muayene.js';
 import { PM, toolIcon } from './11-paneller.js';
 import { chipsOnPart, setFix } from './13-aletler.js';
 import { setStock } from './14-parca-masasi.js';
@@ -380,7 +380,7 @@ const CR = (() => {
       Object.defineProperty(o.J, '_P', { value:P, enumerable:false, writable:true, configurable:true });
     } else {
       if (PW !== o.J.w || PD !== o.J.d || PH !== o.J.h) setStock(o.J.w, o.J.d, o.J.h, true);
-      resetPart(o.mat);
+      resetPart(o.mat); ceneAyari(o.J);
     }
     S.job = { idx:-1, order:o, J:o.J, time:0, done:false, stats:{ breaks:0, load:0, spot:0, peck:0, rub:0 } };
     $('report').hidden = true;
