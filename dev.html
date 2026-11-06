@@ -700,6 +700,15 @@ table{color:inherit;font-size:inherit}
 .mt-hint[hidden]{display:none}
 body.montaj-on .panel-layer,body.montaj-on #drawing{display:none}
 body.montaj-on .topbar{pointer-events:none;opacity:.45}
+/* Otto'nun motoru (28-motor): devir göstergesi, çalıştırma anahtarları */
+.mo-rpm{display:flex;align-items:baseline;gap:8px;font-family:var(--f-dro)}.mo-rpm b{font-size:40px;line-height:1;color:var(--safety)}.mo-rpm small{color:var(--muted)}
+.mo-bar{height:10px;border-radius:5px;background:rgba(255,255,255,.07);overflow:hidden}.mo-bar.ince{height:6px}
+.mo-bar i{display:block;height:100%;width:0;background:var(--safety);transition:width .08s linear}.mo-bar i.warn{background:var(--warn)}.mo-bar i.bad{background:var(--bad)}
+.mo-bar.ince i{background:linear-gradient(90deg,#3b8fd0,#e0a33a,#d0573b)}.mo-bar.yakit i{background:#c79a3b}
+.mo-tog{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:rgba(255,255,255,.03);color:inherit;font:inherit;text-align:left;cursor:pointer}
+.mo-tog span{font-family:var(--f-dro);color:var(--muted)}.mo-tog i{font-style:normal;font-size:12px;color:var(--muted)}
+.mo-tog.on{border-color:var(--safety);background:rgba(240,180,41,.1)}.mo-tog.on i{color:var(--safety)}
+.mo-gaz{user-select:none;touch-action:none}.mo-gaz.on,#moKesit.on{border-color:var(--safety);color:var(--safety)}
 .mt-steps{margin:0 0 4px;padding-left:18px;font-size:12.5px;line-height:1.45}
 .mt-steps li{color:var(--muted)}.mt-steps li.ok{color:var(--ok)}.mt-steps li.ok::marker{content:'✓ '}
 .mt-gauge svg{width:100%;max-width:200px;display:block;margin:0 auto;font-family:var(--f-dro)}
@@ -981,6 +990,7 @@ body.tbm-acik .toast{visibility:hidden}
       <button data-p="tools"><span data-ic="tools"></span><b>Takım ayrıntıları</b><small>tutucu, bileme, taster</small></button>
       <button class="act" data-act="editor"><span data-ic="editor"></span><b>Takım editörü</b><small>kendi takımını tasarla</small></button>
       <button data-p="gkod"><span data-ic="gkod"></span><b>Program (G-kod)</b><small>CNC dönüşüm kiti</small></button>
+      <button class="act" data-act="motor"><span data-ic="motor"></span><b>Otto'nun motoru</b><small>çalışma tezgâhındaki sehpa · deneme</small></button>
       <button class="act" data-act="shop" id="tbShop" hidden><span data-ic="shop"></span><b>Dükkân</b><small>takım ve ekipman al</small></button>
     </div>
     <div class="tb-menu tb-liste" id="mnCamera" hidden><button data-v="vOp"><b>Operatör</b><small>tezgâhın önünden</small></button><button data-v="vNear"><b>Yakın</b><small>takım ve parça</small></button><button data-v="vTop"><b>Üstten</b><small>parçaya tepeden</small></button><button data-v="vFront"><b>Önden</b><small>düz karşıdan</small></button><small class="tb-hint">Sol tuş: döndür · tekerlek: yaklaş · sağ tuş: kaydır</small></div>
@@ -1110,6 +1120,25 @@ body.tbm-acik .toast{visibility:hidden}
       <button class="btn" id="mtBack">Tezgâha dön</button>
       <div class="dro-note">Deliğe tıkla: cıvata ağzına konur. Cıvatanın üstünde <b>fare tekerleği</b>: aşağı sıkar, yukarı gevşetir. Takılıp kalan cıvataya tıkla: çıkar. Boşlukta sürükle: döndür, tekerlek: yakınlaştır.</div>
     </div>
+    <div class="mt-panel mo-panel" id="motor" hidden role="dialog" aria-label="Otto'nun motoru">
+      <div class="mt-head"><b>OTTO'NUN MOTORU</b><span>250 cc · tek silindir · 4 zaman · hava soğutmalı</span></div>
+      <div class="mo-rpm"><b id="moRpm">0</b><small>dev/dk</small></div>
+      <div class="mo-bar"><i id="moRpmBar"></i></div>
+      <div class="sub">Motor sıcaklığı · <span id="moSicakT">soğuk</span></div>
+      <div class="mo-bar ince"><i id="moSicak"></i></div>
+      <div class="sub">Şamandıra odası (benzin)</div>
+      <div class="mo-bar ince yakit"><i id="moSam"></i></div>
+      <div class="sub">Çalıştırma</div>
+      <button class="mo-tog" id="moMusluk"><span>1</span><b>Benzin musluğu</b><i>Kapalı</i></button>
+      <button class="mo-tog" id="moJikle"><span>2</span><b>Jikle <kbd>J</kbd></b><i>Kapalı</i></button>
+      <button class="mo-tog" id="moKontak"><span>3</span><b>Kontak</b><i>Kapalı</i></button>
+      <div class="dro-note"><b>4.</b> Tekme koluna tıkla, basılı tutup fareyi <b>hızla aşağı</b> çek. Yavaş basarsan kompresyonda takılır.</div>
+      <button class="btn mo-gaz" id="moGaz">GAZ (basılı tut) <kbd>W</kbd></button>
+      <button class="btn" id="moKesit">Kesit görünümü <kbd>K</kbd></button>
+      <button class="btn" id="moGeri">Tezgâha dön <kbd>Esc</kbd></button>
+      <div class="dro-note">Musluk, jikle ve kontak motorun üstünde de tıklanır. Boşlukta sürükle: döndür, tekerlek: yakınlaştır.</div>
+    </div>
+    <div class="mt-hint" id="moHint" hidden></div>
     <div class="mt-hint" id="mtHint" hidden></div>
     <div class="mt-tip" id="mtTip" hidden></div>
     <div class="report" id="report" hidden>

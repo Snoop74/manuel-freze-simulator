@@ -589,6 +589,15 @@ table{color:inherit;font-size:inherit}
 .mt-hint[hidden]{display:none}
 body.montaj-on .panel-layer,body.montaj-on #drawing{display:none}
 body.montaj-on .topbar{pointer-events:none;opacity:.45}
+/* Otto'nun motoru (28-motor): devir göstergesi, çalıştırma anahtarları */
+.mo-rpm{display:flex;align-items:baseline;gap:8px;font-family:var(--f-dro)}.mo-rpm b{font-size:40px;line-height:1;color:var(--safety)}.mo-rpm small{color:var(--muted)}
+.mo-bar{height:10px;border-radius:5px;background:rgba(255,255,255,.07);overflow:hidden}.mo-bar.ince{height:6px}
+.mo-bar i{display:block;height:100%;width:0;background:var(--safety);transition:width .08s linear}.mo-bar i.warn{background:var(--warn)}.mo-bar i.bad{background:var(--bad)}
+.mo-bar.ince i{background:linear-gradient(90deg,#3b8fd0,#e0a33a,#d0573b)}.mo-bar.yakit i{background:#c79a3b}
+.mo-tog{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:rgba(255,255,255,.03);color:inherit;font:inherit;text-align:left;cursor:pointer}
+.mo-tog span{font-family:var(--f-dro);color:var(--muted)}.mo-tog i{font-style:normal;font-size:12px;color:var(--muted)}
+.mo-tog.on{border-color:var(--safety);background:rgba(240,180,41,.1)}.mo-tog.on i{color:var(--safety)}
+.mo-gaz{user-select:none;touch-action:none}.mo-gaz.on,#moKesit.on{border-color:var(--safety);color:var(--safety)}
 .mt-steps{margin:0 0 4px;padding-left:18px;font-size:12.5px;line-height:1.45}
 .mt-steps li{color:var(--muted)}.mt-steps li.ok{color:var(--ok)}.mt-steps li.ok::marker{content:'✓ '}
 .mt-gauge svg{width:100%;max-width:200px;display:block;margin:0 auto;font-family:var(--f-dro)}

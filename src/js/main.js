@@ -32,3 +32,4 @@ import './24-bilgisayar.js';
 import './25-mengene.js';
 import './26-egitim.js';
 import './27-gkod.js';
+import './28-motor.js';

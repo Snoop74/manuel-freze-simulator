@@ -36,6 +36,7 @@ const TBICON = {
   fd:'<path d="M4 20l1-5L16 4l4 4L9 19z"/><path d="M14 6l4 4"/>',
   bench:'<path d="M3 5h18v4H3z"/><path d="M5 9v10l3-4V9M15 9v6l3 4V9"/><path d="M8 5v2M11 5v2M14 5v2M17 5v2"/>',
   editor:'<path d="M7 2h6v6H7z"/><path d="M8 8h4v9l-2 2-2-2z"/><path d="M15 21l6-6-2-2-6 6v2z"/>',
+  motor:'<path d="M7 8h8v4H7z"/><path d="M6 12h10v6H6z"/><path d="M8 6h6M16 14h3l2-2M6 15H3M9 18v2"/>',
   shop:'<path d="M3 4h2l2.5 11h11L21 7H6.2"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>',
   hud:'<path d="M3 12h4l2-5 4 10 2-5h6"/>',
   log:'<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>',
@@ -209,6 +210,7 @@ const PM = (() => {
       else if (a === 'editor') app.TE.show(S.tool);
       else if (a === 'shop') app.CR.openShop();
       else if (a === 'egitim') app.EG.baslat();
+      else if (a === 'motor') app.MO.ac();
       else if (a === 'keys') setVis('keys', true);
       else if (a === 'menu') app.MENU.ac('ana');
       else if (a === 'sound') { $('mute').click(); b.innerHTML = `<svg viewBox="0 0 24 24">${TBICON[S.muted ? 'mute' : 'sound']}</svg>`; b.classList.toggle('on', S.muted); }

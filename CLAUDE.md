@@ -22,7 +22,7 @@
 - **Kalıcı veri yalnızca `kayit` ile** (`00-kayit.js`): `kayit.oku(ad, varsayilan)`, `kayit.yaz(ad, deger)`, `kayit.sil(ad)`, `kayit.hepsi()`/`kayit.yukle(o)`. Arka uç tarayıcıda localStorage; masaüstü kabuğu `window.frezeMasaustu.kayit` (get/set/remove/keys, eşzamanlı) verirse dosya. Anahtarlar `freze-` ile başlar ve eski kayıtlar kaybolmasın diye adları değiştirilmez (freze-career-v1, freze-mode, freze-tools-v1, freze-holders, freze-progress, panel düzeni). Varsayılan nesne/dizi ise bozuk ya da yanlış türde kayıt varsayılana düşer. Başka yerde localStorage kullanmak denetleyicide hatadır.
 
 ## Test
-- **Duman testi:** `npm test` derler ve `tools/duman.mjs`'i çalıştırır: kendi sunucusunu açar, Edge/Chrome'u başsız sürer (ek paket yok), freze.html'in hatasız açıldığına bakar, dev.html'de senaryoları kodla sürer (yükleme, mengene, yüzey alma, gagalama, kılavuz, kariyer günü). Tek senaryo: `node tools/duman.mjs kilavuz`. Commit'ten önce çalıştır; yeni özelliğe senaryo ekle (SENARYO nesnesi).
+- **Duman testi:** `npm test` derler ve `tools/duman.mjs`'i çalıştırır: kendi sunucusunu açar, Edge/Chrome'u başsız sürer (ek paket yok), freze.html'in hatasız açıldığına bakar, dev.html'de senaryoları kodla sürer (yükleme, mengene, yüzey alma, gagalama, kılavuz, eğitim, G-kod, motor, dükkân, kariyer günü). Tek senaryo: `node tools/duman.mjs kilavuz`. Commit'ten önce çalıştır; yeni özelliğe senaryo ekle (SENARYO nesnesi).
 - `file://` çalışmaz; `python -m http.server <port>` ile aç (her oturumda farklı port). Hem `freze.html` hem `dev.html` denenmeli.
 - Önizleme paneli arka plandayken requestAnimationFrame durur; testte kareleri elle sür.
 

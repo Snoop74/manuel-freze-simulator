@@ -283,6 +283,33 @@ const SENARYO = {
     if (cep.some(v => Math.abs(v - 5) > 0.15)) throw new Error(`cep derinliği 5 değil: ${cep.map(v => v.toFixed(2)).join(', ')}`);
     return `ayrıştırıcı 7 denetim, G83 ile 4 delik boydan boya, cep 5 mm (${r.ops.length} adım)`;
   },
+  async motor() {
+    const { app } = window.__d, MO = app.MO;
+    app.MENU.kapat(); MO.ac();
+    if (!MO.acik) throw new Error('motor ekranı açılmadı');
+    const sur = sn => { for (let k = 0; k < sn * 60; k++) MO.adim(1 / 60); };
+    const tekmele = () => { MO.tekme(); sur(4); return MO.st.calisiyor; };
+    MO.tog('musluk'); sur(3);
+    if (tekmele()) throw new Error('kontak kapalıyken çalıştı');
+    MO.tog('kontak');
+    for (let k = 0; k < 3; k++) tekmele();
+    if (MO.st.calisiyor) throw new Error(`soğuk motor jiklesiz çalışıp kaldı (${Math.round(MO.rpm())} dev/dk)`);
+    MO.tog('jikle');
+    let n = 0; while (!tekmele() && ++n < 4);
+    if (!MO.st.calisiyor) throw new Error('jikleyle 4 tekmede çalışmadı');
+    sur(4); const r0 = MO.rpm();
+    if (r0 < 700 || r0 > 2200) throw new Error(`rölanti tuhaf: ${Math.round(r0)} dev/dk`);
+    MO.st.gazTus = true; sur(3); const r1 = MO.rpm(); MO.st.gazTus = false;
+    if (r1 < 5000) throw new Error(`tam gazda devir düşük: ${Math.round(r1)}`);
+    sur(3); if (MO.rpm() > 2500 || !MO.st.calisiyor) throw new Error(`gaz bırakınca rölantiye dönmedi: ${Math.round(MO.rpm())}`);
+    MO.kesit(true); sur(0.5); MO.kesit(false);
+    MO.tog('musluk'); let t = 0; while (MO.st.calisiyor && t < 60) { sur(1); t++; }
+    if (MO.st.calisiyor) throw new Error('musluk kapalıyken 60 sn çalıştı');
+    for (let k = 0; k < 40 && !(MO.kapat(), !MO.acik); k++) await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 2500));
+    if (MO.acik) throw new Error('motor ekranı kapanmadı');
+    return `kontaksız ve jiklesiz soğuk çalışmadı, jikleyle ${n + 1}. tekmede çalıştı, rölanti ${Math.round(r0)}, tam gaz ${Math.round(r1)}, musluk kapanınca ${t} sn sonra durdu`;
+  },
   async dukkan() {
     const { app, S, U, son } = window.__d, CR = app.CR;
     document.querySelector('#modeSw [data-mode="career"]').click();

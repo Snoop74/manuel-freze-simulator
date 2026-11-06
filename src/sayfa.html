@@ -33,6 +33,7 @@
       <button data-p="tools"><span data-ic="tools"></span><b>Takım ayrıntıları</b><small>tutucu, bileme, taster</small></button>
       <button class="act" data-act="editor"><span data-ic="editor"></span><b>Takım editörü</b><small>kendi takımını tasarla</small></button>
       <button data-p="gkod"><span data-ic="gkod"></span><b>Program (G-kod)</b><small>CNC dönüşüm kiti</small></button>
+      <button class="act" data-act="motor"><span data-ic="motor"></span><b>Otto'nun motoru</b><small>çalışma tezgâhındaki sehpa · deneme</small></button>
       <button class="act" data-act="shop" id="tbShop" hidden><span data-ic="shop"></span><b>Dükkân</b><small>takım ve ekipman al</small></button>
     </div>
     <div class="tb-menu tb-liste" id="mnCamera" hidden><button data-v="vOp"><b>Operatör</b><small>tezgâhın önünden</small></button><button data-v="vNear"><b>Yakın</b><small>takım ve parça</small></button><button data-v="vTop"><b>Üstten</b><small>parçaya tepeden</small></button><button data-v="vFront"><b>Önden</b><small>düz karşıdan</small></button><small class="tb-hint">Sol tuş: döndür · tekerlek: yaklaş · sağ tuş: kaydır</small></div>
@@ -162,6 +163,25 @@
       <button class="btn" id="mtBack">Tezgâha dön</button>
       <div class="dro-note">Deliğe tıkla: cıvata ağzına konur. Cıvatanın üstünde <b>fare tekerleği</b>: aşağı sıkar, yukarı gevşetir. Takılıp kalan cıvataya tıkla: çıkar. Boşlukta sürükle: döndür, tekerlek: yakınlaştır.</div>
     </div>
+    <div class="mt-panel mo-panel" id="motor" hidden role="dialog" aria-label="Otto'nun motoru">
+      <div class="mt-head"><b>OTTO'NUN MOTORU</b><span>250 cc · tek silindir · 4 zaman · hava soğutmalı</span></div>
+      <div class="mo-rpm"><b id="moRpm">0</b><small>dev/dk</small></div>
+      <div class="mo-bar"><i id="moRpmBar"></i></div>
+      <div class="sub">Motor sıcaklığı · <span id="moSicakT">soğuk</span></div>
+      <div class="mo-bar ince"><i id="moSicak"></i></div>
+      <div class="sub">Şamandıra odası (benzin)</div>
+      <div class="mo-bar ince yakit"><i id="moSam"></i></div>
+      <div class="sub">Çalıştırma</div>
+      <button class="mo-tog" id="moMusluk"><span>1</span><b>Benzin musluğu</b><i>Kapalı</i></button>
+      <button class="mo-tog" id="moJikle"><span>2</span><b>Jikle <kbd>J</kbd></b><i>Kapalı</i></button>
+      <button class="mo-tog" id="moKontak"><span>3</span><b>Kontak</b><i>Kapalı</i></button>
+      <div class="dro-note"><b>4.</b> Tekme koluna tıkla, basılı tutup fareyi <b>hızla aşağı</b> çek. Yavaş basarsan kompresyonda takılır.</div>
+      <button class="btn mo-gaz" id="moGaz">GAZ (basılı tut) <kbd>W</kbd></button>
+      <button class="btn" id="moKesit">Kesit görünümü <kbd>K</kbd></button>
+      <button class="btn" id="moGeri">Tezgâha dön <kbd>Esc</kbd></button>
+      <div class="dro-note">Musluk, jikle ve kontak motorun üstünde de tıklanır. Boşlukta sürükle: döndür, tekerlek: yakınlaştır.</div>
+    </div>
+    <div class="mt-hint" id="moHint" hidden></div>
     <div class="mt-hint" id="mtHint" hidden></div>
     <div class="mt-tip" id="mtTip" hidden></div>
     <div class="report" id="report" hidden>
