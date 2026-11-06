@@ -311,6 +311,55 @@ const SENARYO = {
     if (MO.acik) throw new Error('motor ekranı kapanmadı');
     return `kontaksız ve jiklesiz soğuk çalışmadı, jikleyle ${n + 1}. tekmede çalıştı, rölanti ${Math.round(r0)}, tam gaz ${Math.round(r1)}, musluk kapanınca ${t} sn sonra durdu`;
   },
+  async gercek() {
+    // gerçek parça işleri (mastar, çikolata kalıbı, havacılık fitingi): kusursuz yüzey kabul edilir, bozuğu reddedilir; küresel dalış gerçek çukur açar
+    const { S, T, U, app, takim, konum, ucGit, sur, son } = window.__d;
+    const M = await import('/src/js/10-is-emri-muayene.js');
+    app.MENU.kapat(); if (app.CR.on) document.querySelector('#modeSw [data-mode="free"]').click();
+    const run = J => ({ time:J.target * 0.8, stats:{ breaks:0, load:0, spot:0, peck:0, rub:0 } });
+    const kur = (J, bozuk) => {                                      // resimdeki ideal yüzeyi yükseklik haritasına yaz
+      const { H, CUT, C, NX, NY } = T, top = J.h - (J.face ? J.face.depth : 0);
+      T.EDGE.fill(C);                                                // kenar: takım hücrenin sınırına kadar kesti (gerçek kesimde hücre içi kayıt)
+      for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+        const x = i * C, y = j * C; let z = top;
+        for (const q of J.pads || []) if (x >= q.x0 && x <= q.x1 && y >= q.y0 && y <= q.y1) z = Math.min(z, q.z);
+        for (const p of J.pockets) { const cx = Math.max(p.x0 + p.r, Math.min(p.x1 - p.r, x)), cy = Math.max(p.y0 + p.r, Math.min(p.y1 - p.r, y)); if (Math.hypot(x - cx, y - cy) <= p.r && x >= p.x0 && x <= p.x1 && y >= p.y0 && y <= p.y1) z = Math.min(z, top - p.depth); }
+        if (J.cukur) { const R = J.cukur.d / 2; for (const c of J.cukur.pts) { const r = Math.hypot(x - c.x, y - c.y); if (r < R) z = Math.min(z, top - J.cukur.depth + R - Math.sqrt(R * R - r * r) + (bozuk || 0)); } }
+        let t = z < J.h - 1e-3 ? T.TOOLS.findIndex(q => q.no === (J.cukur && z < top - 0.01 ? 'T5' : 'T3')) + 1 : 0;   // kesen takım (muayene çapı takımdan da okur)
+        for (const h of J.holes) if (Math.hypot(x - h.x, y - h.y) <= h.d / 2) { z = 0; t = T.TOOLS.findIndex(q => q.type === 'drill' && Math.abs(q.d - h.d) < 0.01) + 1; }
+        H[j * NX + i] = z; CUT[j * NX + i] = t;
+      }
+    };
+    const out = [];
+    for (const ad of ['Kademe mastarı', 'Çikolata kalıbı', 'Havacılık bağlantı fitingi']) {
+      const i = M.JOBS.findIndex(q => q.title === ad); if (i < 0) throw new Error(`${ad} serbest iş listesinde yok`);
+      M.selectJob(i); M.startJob();
+      const J = M.JOBS[i];
+      if (T.PW !== J.w || T.PD !== J.d || T.PH !== J.h) throw new Error(`${ad}: ham parça ${T.PW}×${T.PD}×${T.PH}, beklenen ${J.w}×${J.d}×${J.h}`);
+      kur(J);
+      const it = M.inspect(J), r = M.scoreJob(J, run(J), it);
+      if (!r.allOk) throw new Error(`${ad}: kusursuz parça kabul edilmedi: ` + it.filter(q => !q.ok).map(q => `${q.grp} ${q.label} ${q.meas}`).join('; '));
+      out.push(`${ad.split(' ')[0].toLowerCase()} ${r.stars}★`);
+      if (J.cukur) { kur(J, 0.2); const b = M.inspect(J); if (b.every(q => q.ok)) throw new Error('0.2 mm sığ çukurlar kabul edildi'); }
+      if (J.fai) {                                                    // ilk parça muayenesi: 3 sapmaya kadar kesintili kabul, fazlası ret
+        const sahte = n => it.map((q, k) => k < n ? Object.assign({}, q, { ok:false, sc:0.5 }) : q);
+        if (M.scoreJob(J, run(J), sahte(3)).stars !== 1) throw new Error('3 sapmalı havacılık parçası sapma onayı almadı');
+        if (M.scoreJob(J, run(J), sahte(4)).stars !== 0) throw new Error('4 sapmalı havacılık parçası reddedilmedi');
+      }
+    }
+    // gerçek dalış: T5 Ø8 küresel uç, 4 mm dalış yarım küre açar
+    const i = M.JOBS.findIndex(q => q.title === 'Çikolata kalıbı'); M.selectJob(i); M.startJob();
+    const T5 = takim(t => t.type === 'ball' && t.d === 8); U.setRpm(5000);
+    konum(22.5, 17.5); U.spindle(true); ucGit(T.PH + 0.5); ucGit(T.PH - 4); ucGit(T.PH + 3); U.spindle(false);
+    if (S.broken || S.alarm) throw new Error(`küresel dalışta kırıldı: ${son()}`);
+    const { H, C, NX } = T; let mn = 1e9, n = 0;
+    for (let j = 0; j <= Math.round(40 / C); j++) for (let k = 0; k <= Math.round(45 / C); k++) { const h = H[j * NX + k]; if (h < mn) mn = h; if (h < T.PH - 0.01) n++; }
+    const der = T.PH - mn, cap = 2 * Math.sqrt(n * C * C / Math.PI);
+    if (Math.abs(der - 4) > 0.05) throw new Error(`küresel çukur derinliği ${der.toFixed(3)} (4.00 bekleniyordu)`);
+    if (Math.abs(cap - 8) > 0.6) throw new Error(`küresel çukur ağız çapı ${cap.toFixed(2)} (8 bekleniyordu)`);
+    void T5;
+    return `${out.join(', ')} kusursuz kabul; sığ çukur ve 4 sapmalı fiting ret; dalış ${der.toFixed(2)} derin, ağız Ø${cap.toFixed(1)}`;
+  },
   async dukkan() {
     const { app, S, U, son } = window.__d, CR = app.CR;
     document.querySelector('#modeSw [data-mode="career"]').click();

@@ -35,6 +35,26 @@ const JOBS = [
     holes:[[-22, -22], [22, -22], [22, 22], [-22, 22]].map(([u, v]) => ({ x:75 + u, y:50 + v, d:5, tap:'M6', tapLen:8.5 })),
     montaj:{ parca:'kule', bolt:'M6', cx:75, cy:50, F:60, s:44, tf:8, L:16 } },
 ];
+// gerçek parça işleri (2026-11-06, Onat ile seçildi; vault: freze-gercek-parca-isleri). Serbest atölyede de denenir (acik).
+// pads: belirli bölgede istenen yükseklik (tablaya göre) · cukur: küresel uçla yarım küre çukurlar · fai: havacılık ilk parça muayenesi
+const GERCEK = {
+  mastar:() => ({ title:'Kademe mastarı', target:780, acik:true, mat:'c45', w:120, d:40, h:25,
+    face:{ depth:1, tol:0.02 }, holes:[{ x:15, y:20, d:8.5 }],
+    pads:[{ ad:'Kademe 1', x0:30, x1:60, y0:0, y1:40, z:18, tol:0.02 }, { ad:'Kademe 2', x0:60, x1:90, y0:0, y1:40, z:12, tol:0.02 }, { ad:'Kademe 3', x0:90, x1:120, y0:0, y1:40, z:6, tol:0.02 }],
+    brief:'Üretim hattının kontrol mastarı (C45). Üst yüzü 24.00\'a alın (±0.02), sonra üç kademe: 18.00, 12.00, 6.00 (her biri ±0.02, yükseklik alt yüzden). Askı deliği Ø8.5. Püf noktası: son 0.1 mm\'yi hızlı değil ölçerek alın; Z çarkında bir bölüntü 0.01.' }),
+  pralin:() => {
+    const pts = []; for (let j = 0; j < 4; j++) for (let i = 0; i < 6; i++) pts.push({ x:22.5 + i * 15, y:17.5 + j * 15 });
+    return { title:'Çikolata kalıbı', target:720, acik:true, mat:'al', w:120, d:80, h:15, face:{ depth:0.5, tol:0.1 },
+      cukur:{ d:8, depth:4, tol:0.05, pts },
+      brief:'Pastane için çikolata damlası kalıbı: üst yüzden 0.5 alın, sonra 6×4 = 24 yarım küre çukur (Ø8, 4.00 derin ±0.05, 15 aralık). T5 Ø8 küresel frezeyle her noktaya dalın: uç tam 4 mm inince çukur yarım küre olur. Gıdaya değecek: son dalışı yavaş yapın, parlak olsun.' };
+  },
+  fiting:() => ({ title:'Havacılık bağlantı fitingi', target:900, acik:true, mat:'al', w:120, d:60, h:16, tolK:0.5, fai:true,
+    face:{ depth:1, tol:0.05 }, pockets:[{ x0:30, x1:90, y0:15, y1:45, depth:8, r:5 }],
+    holes:[{ x:15, y:30, d:8.5 }, { x:105, y:30, d:8.5 }, { x:10, y:10, d:5 }, { x:110, y:10, d:5 }, { x:110, y:50, d:5 }, { x:10, y:50, d:5 }],
+    brief:'7075-T6 alüminyum bağlantı fitingi. Üst yüzü 15.00\'e alın, ortaya 60×30 hafifletme cebi (8 derin, R5: taban 7.00 kalır), iki Ø8.5 pim deliği (aralarında 90.00) ve köşelere 4×Ø5 perçin deliği. Havacılık: toleranslar yarıya iner ve İLK PARÇA MUAYENESİ uygulanır: en çok 3 ölçü dışı sapma onayıyla kesintili kabul edilir, 3\'ten fazlası ret.' }),
+};
+JOBS.push(GERCEK.mastar(), GERCEK.pralin(), GERCEK.fiting());
+
 JOBS.forEach(J => { J.pockets = J.pockets || []; J.holes = J.holes || []; J.arcs = J.arcs || []; J.pockets.forEach(p => { if (p.r == null) p.r = 5; }); });
 // cep köşe radyüslü dikdörtgen: dönen takım iç köşeyi keskin açamaz, resimdeki R en büyük köşe radyüsüdür (daha küçüğü fazla kesim sayılmaz)
 function inRR(x, y, p, m = 0) {
@@ -92,6 +112,7 @@ function localTop(J, x, y) {
     let t = top; for (const p of J.pockets) if (inRR(x, y, p)) t = Math.min(t, top - p.depth); return t;
   }
   let t = jobTop(J);
+  for (const q of J.pads || []) if (inRect(x, y, q)) t = Math.min(t, q.z);
   for (const p of J.pockets) if (inRR(x, y, p)) t = Math.min(t, jobTop(J) - p.depth);
   for (const A of J.arcs || []) if (inArc(x, y, A)) t = Math.min(t, jobTop(J) - A.depth);
   return t;
@@ -111,6 +132,8 @@ function allowedAt(J, x, y) {
     return e;
   }
   let e = jobTop(J);
+  for (const q of J.pads || []) if (inRect(x, y, q, 0.6)) e = Math.min(e, q.z - q.tol);
+  if (J.cukur) { const K = J.cukur, R = K.d / 2; for (const c of K.pts) { const r = Math.hypot(x - c.x, y - c.y); if (r <= R + 0.6) e = Math.min(e, jobTop(J) - K.depth + R - Math.sqrt(Math.max(0, R * R - r * r)) - K.tol); } }   // küresel çukurun yüzeyi
   for (const p of J.pockets) if (inRect(x, y, p, 0.6)) e = Math.min(e, jobTop(J) - p.depth);
   for (const A of J.arcs || []) if (inArc(x, y, A, 0.6)) e = Math.min(e, jobTop(J) - A.depth);
   return e;
@@ -154,7 +177,7 @@ function drawingSVG(J) {
   if (J.face) s += `<rect class="dw-face" x="${X(0)}" y="${Y(D)}" width="${W * k}" height="${D * k}"/>`;
   if (J.round) s += `<circle class="dw-part" cx="${X(J.round.c)}" cy="${Y(J.round.c)}" r="${J.round.R * k}"/>`;
   else s += `<rect class="dw-part" x="${X(0)}" y="${Y(D)}" width="${W * k}" height="${D * k}"/>`;
-  for (const q of J.pads || []) s += `<rect x="${X(q.x0)}" y="${Y(q.y1)}" width="${(q.x1 - q.x0) * k}" height="${(q.y1 - q.y0) * k}" fill="none" class="dw-feat"/><text x="${X(q.x0) + 1.5}" y="${Y(q.y1) + 5}" font-size="4.5">PED ${q.z}</text>`;
+  for (const q of J.pads || []) s += `<rect x="${X(q.x0)}" y="${Y(q.y1)}" width="${(q.x1 - q.x0) * k}" height="${(q.y1 - q.y0) * k}" fill="none" class="dw-feat"/><text x="${X(q.x0) + 1.5}" y="${Y(q.y1) + 5}" font-size="4.5">${q.ad ? q.ad.toLocaleUpperCase('tr') + ' ' : 'PED '}${q.z}</text>`;
   for (const [ex, ey, er] of J.exist || []) s += `<circle cx="${X(ex)}" cy="${Y(ey)}" r="${er * k}" fill="none" style="stroke:var(--ink-2)" stroke-width=".45" stroke-dasharray="1.2 1"/>`;   // parçada zaten var
   if (['vise', 'clamp', 'rot'].includes(FIX) && !PAR.sac && W === PW && D === PD) for (const [a, b] of parBands())   // paraleller: kesik çizgi
     s += parAxis() === 'x' ? `<rect x="${X(a)}" y="${Y(D)}" width="${(b - a) * k}" height="${D * k}" fill="none" style="stroke:var(--ink-2)" stroke-width=".5" stroke-dasharray="2 1.5"/>`
@@ -163,6 +186,7 @@ function drawingSVG(J) {
     s += `<rect class="dw-feat" style="fill:var(--paper)" x="${X(p.x0)}" y="${Y(p.y1)}" width="${(p.x1 - p.x0) * k}" height="${(p.y1 - p.y0) * k}" rx="${(p.r || 0) * k}"/>`;
     s += `<text x="${X(p.x0) + 2}" y="${Y(p.y1) + 6}" font-size="5">C${i + 1}  ${p.x1 - p.x0}×${p.y1 - p.y0} ↓${p.depth}  R${p.r || 0}</text>`;
   });
+  if (J.cukur) { const K = J.cukur; K.pts.forEach((c, i) => { s += `<circle class="dw-feat" cx="${X(c.x)}" cy="${Y(c.y)}" r="${K.d / 2 * k}"/>`; if (!i) s += `<text x="${X(c.x) + K.d / 2 * k + 1}" y="${Y(c.y) - K.d / 2 * k}" font-size="4.5">${K.pts.length}× K Ø${K.d} ↓${K.depth}</text>`; }); }
   J.holes.forEach((h, i) => {
     const r = h.d / 2 * k;
     s += `<line class="dw-cl" x1="${X(h.x) - r - 4}" y1="${Y(h.y)}" x2="${X(h.x) + r + 4}" y2="${Y(h.y)}"/><line class="dw-cl" x1="${X(h.x)}" y1="${Y(h.y) - r - 4}" x2="${X(h.x)}" y2="${Y(h.y) + r + 4}"/>`;
@@ -201,9 +225,13 @@ function drawingTable(J) {
     t += '<tr><th>Yay</th><th>Merkez</th><th>R × genişlik</th><th>Açı</th><th>Derinlik</th></tr>';
     J.arcs.forEach((A, i) => t += `<tr><td>Y${i + 1}</td><td>${A.cx}, ${A.cy}</td><td>R${A.r} × ${A.w} ±${SIZE_TOL}</td><td>${A.a0}°–${A.a1}°</td><td>${A.depth.toFixed(2)} ±${DEPTH_TOL}</td></tr>`);
   }
-  if (J.deck) t += `<tr><td colspan="5">Conta yüzü: tamamen düzlenecek, düzlemsellik ≤ ${J.deck.flat}, en çok ${J.deck.maxCut} mm alınacak (en yüksek noktaya göre)</td></tr>`;
+  if (J.deck) t += `<tr><td colspan="5">Conta yüzü: tamamen düzlenecek, düzlemsellik ≤ ${J.deck.flat}, en çok ${J.deck.maxCut} mm alınacak (en yüksek noktaya göre). AZ ALAN KAZANIR: çarpıklığı düzleyen en az talaş tam puan, fazlası puan götürür</td></tr>`;
   for (const L of J.levels || []) t += `<tr><td colspan="5">${L.name}: ${L.z.toFixed(2)} ±${L.tol} (tablaya göre yükseklik)</td></tr>`;
-  (J.pads || []).forEach((q, i) => t += `<tr><td colspan="5">Ayak ${i + 1} pedi: ${q.z.toFixed(2)} ±${q.tol} (tablaya göre yükseklik)</td></tr>`);
+  (J.pads || []).forEach((q, i) => t += `<tr><td colspan="5">${q.ad || `Ayak ${i + 1} pedi`}: ${q.z.toFixed(2)} ±${q.tol} (tablaya göre yükseklik)</td></tr>`);
+  if (J.cukur) { const K = J.cukur, p0 = K.pts[0], nx = new Set(K.pts.map(q => q.x)).size, ny = K.pts.length / nx, ad = K.pts[1].x - p0.x;
+    t += `<tr><th>Çukur</th><th>X</th><th>Y</th><th>Ø</th><th>Derinlik</th></tr><tr><td>K1</td><td>${p0.x.toFixed(2)}</td><td>${p0.y.toFixed(2)}</td><td>${K.d} küresel</td><td>${K.depth.toFixed(2)} ±${K.tol}</td></tr>`;
+    t += `<tr><td colspan="5">${K.pts.length} çukur: K1'den ${ad} aralıkla ${nx} sütun × ${ny} sıra, konum ±${HOLE_TOL}</td></tr>`; }
+  if (J.fai) t += '<tr><td colspan="5">İLK PARÇA MUAYENESİ (havacılık): en çok 3 ölçü dışı sapma onayıyla kesintili kabul, fazlası ret</td></tr>';
   if (J.flush) t += `<tr><td colspan="5">Kaynak dikişleri plaka yüzeyiyle sıfırlanacak (${J.flush.top.toFixed(2)} +${J.flush.tol}); plakaya en çok 0.2 mm dalınabilir</td></tr>`;
   if (J.exist && J.exist.length) t += '<tr><td colspan="5">Kesik daireler parçada zaten olan delik ve detaylardır.</td></tr>';
   if (J.holes.length) t += `<tr><td colspan="5">Delik konum toleransı ±${HOLE_TOL}</td></tr>`;
@@ -346,7 +374,8 @@ function inspect(J) {
     const cov = n ? cut / n : 0, mean = n ? sum / n : 0, flat = mx - mn, take = J.deck.top0 - mean;
     add('Conta yüzü', 'Temizlenen alan', '≥ %98', '%' + (cov * 100).toFixed(1), cov >= 0.98, cov / 0.98, 2);
     add('Conta yüzü', 'Düzlemsellik', '≤ ' + J.deck.flat.toFixed(2), flat.toFixed(3), flat <= J.deck.flat, dev(flat, J.deck.flat), 2);
-    add('Conta yüzü', 'Alınan talaş', '≤ ' + J.deck.maxCut.toFixed(2), take.toFixed(3), take <= J.deck.maxCut, take <= J.deck.maxCut ? 1 : Math.max(0, 1 - (take - J.deck.maxCut) / 0.3), 2);
+    const need = J.deck.need || 0, az = clamp((take - need - 0.02) / Math.max(0.05, J.deck.maxCut - need), 0, 1);   // az alan kazanır: gereken en az talaş tam puan
+    add('Conta yüzü', 'Alınan talaş (az = iyi)', '≥ ' + need.toFixed(2) + ', ≤ ' + J.deck.maxCut.toFixed(2), take.toFixed(3), take <= J.deck.maxCut, take <= J.deck.maxCut ? 1 - 0.6 * az : Math.max(0, 1 - (take - J.deck.maxCut) / 0.3), 3);
   }
   for (const L of J.levels || []) {                                // döküm flanş: alın ve göbek seviyeleri
     const g = J._P.geo; let n = 0, cut = 0, sum = 0;
@@ -365,10 +394,26 @@ function inspect(J) {
       if (allowedAt(J, i * C, j * C) < 0) continue;
       const k = j * NX + i; n++; if (CUT[k]) cut++; sum += H[k];
     }
-    const mean = n ? sum / n : 0, cov = n ? cut / n : 0, nm = 'Ayak ' + (idx + 1);
-    add(nm, 'Ped yüksekliği', q.z.toFixed(2) + ' ±' + q.tol, mean.toFixed(3), Math.abs(mean - q.z) <= q.tol, dev(Math.abs(mean - q.z), q.tol), 2);
+    const mean = n ? sum / n : 0, cov = n ? cut / n : 0, nm = q.ad || 'Ayak ' + (idx + 1);
+    add(nm, q.ad ? 'Yükseklik' : 'Ped yüksekliği', q.z.toFixed(2) + ' ±' + q.tol, mean.toFixed(3), Math.abs(mean - q.z) <= q.tol, dev(Math.abs(mean - q.z), q.tol), 2);
     add(nm, 'Temizlenen alan', '≥ %97', '%' + (cov * 100).toFixed(1), cov >= 0.97, cov / 0.97);
   });
+  if (J.cukur) {                                                   // küresel çukurlar: derinlik ve konum (dipteki hücrelerin ağırlık merkezi)
+    const K = J.cukur, R = K.d / 2; let okD = 0, okP = 0, worst = 0, worstP = 0;
+    for (const c of K.pts) {
+      let mn = 1e9, sx = 0, sy = 0, n = 0;
+      for (let j = Math.floor((c.y - R - 1) / C); j <= Math.ceil((c.y + R + 1) / C); j++) for (let i = Math.floor((c.x - R - 1) / C); i <= Math.ceil((c.x + R + 1) / C); i++) {
+        if (i < 0 || j < 0 || i >= NX || j >= NY) continue;
+        const h = H[j * NX + i]; if (h < mn) mn = h;
+        if (h < top - K.depth * 0.5) { sx += i * C; sy += j * C; n++; }
+      }
+      const d = top - mn, dd = Math.abs(d - K.depth), pe = n ? Math.hypot(sx / n - c.x, sy / n - c.y) : 99;
+      if (dd <= K.tol) okD++; if (pe <= HOLE_TOL) okP++; worst = Math.max(worst, dd); worstP = Math.max(worstP, pe);
+    }
+    const N = K.pts.length;
+    add('Çukurlar', 'Derinlik ' + K.depth.toFixed(2) + ' ±' + K.tol, N + '/' + N, okD + '/' + N + ' (en kötü ±' + worst.toFixed(3) + ')', okD === N, okD / N * dev(worst, K.tol) ** 0.3, 3);
+    add('Çukurlar', 'Konum ±' + HOLE_TOL, N + '/' + N, okP + '/' + N, okP === N, okP / N, 2);
+  }
   if (J.flush) {                                                   // kaynaklı plaka: dikiş yüzeyle sıfır
     let n = 0, hi = 0, mx = -1e9;
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
@@ -400,10 +445,10 @@ function scoreJob(J, run, items) {
   const st = run.stats;
   const carePts = clamp(15 - 6 * st.breaks - 1 * st.load - 3 * st.spot - 2 * st.peck - 1 * st.rub, 0, 15);
   const total = Math.round(accPts + timePts + carePts);
-  const allOk = items.every(i => i.ok);
-  // Tolerans dışı ölçüsü olan parça en fazla 1 yıldız alır (şartlı kabul)
-  const stars = allOk ? (total >= 90 ? 3 : total >= 75 ? 2 : total >= 55 ? 1 : 0) : (total >= 60 ? 1 : 0);
-  return { accPts, timePts, carePts, total, stars, allOk };
+  const allOk = items.every(i => i.ok), fails = items.filter(i => !i.ok).length;
+  // Tolerans dışı ölçüsü olan parça en fazla 1 yıldız alır (şartlı kabul). Havacılık (fai): 3'e kadar sapma onayı, fazlası ret
+  const stars = allOk ? (total >= 90 ? 3 : total >= 75 ? 2 : total >= 55 ? 1 : 0) : J.fai ? (fails <= 3 ? 1 : 0) : (total >= 60 ? 1 : 0);
+  return { accPts, timePts, carePts, total, stars, allOk, fails, fai:!!J.fai };
 }
 
 /* -- Arayüz -- */
@@ -458,10 +503,11 @@ function startJob() {
   if (selJob < 0) return;
   if (JOBS[selJob].rot && FIX !== 'rot') app.setFix('rot', true);
   else if (FIX === 'div') app.setFix('vise', true);
-  if (PW !== 150 || PD !== 100 || PH !== 40) app.setStock(150, 100, 40, true);   // iş emirleri standart ham parçayla
+  const J0 = JOBS[selJob], W0 = J0.w || 150, D0 = J0.d || 100, H0 = J0.h || 40;
+  if (PW !== W0 || PD !== D0 || PH !== H0) app.setStock(W0, D0, H0, true);   // iş emirleri standart ham parçayla (gerçek parça işleri kendi ölçüsüyle)
   resetPart(JOBS[selJob].mat || 'al');
   S.job = { idx:selJob, J:JOBS[selJob], time:0, done:false, stats:{ breaks:0, load:0, spot:0, peck:0, rub:0 } };
-  setTimeout(() => warnParallels(JOBS[selJob] || S.job.J), 300);
+  setTimeout(() => { const J = JOBS[selJob] || (S.job && S.job.J); if (J) warnParallels(J); }, 300);   // bu arada moda geçildiyse iş kalmamış olabilir
   $('report').hidden = true;
   $('jobStart').textContent = 'Yeniden başla';
   log(`İş ${selJob + 1} başladı: ${JOBS[selJob].title}. Yeni ham parça bağlandı, makine süresi işliyor.`, 'ok');
@@ -505,7 +551,7 @@ function deliver(run, items) {
 const STAR = '<svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6 6.5.8-4.8 4.5 1.2 6.5L12 17.3l-5.8 3.1 1.2-6.5L2.6 9.4l6.5-.8z" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 function showReport(run, items, r, newBest) {
   $('rpJob').textContent = `${run.order ? 'SİPARİŞ #' + run.order.id + ' · ' : run.idx >= 0 ? 'İŞ ' + (run.idx + 1) + ' · ' : ''}${run.J.title.toLocaleUpperCase('tr')} · MAKİNE SÜRESİ ${mmss(run.time)}`;
-  $('rpTitle').textContent = r.stars === 3 ? 'Kusursuz parça' : r.allOk ? 'Parça kabul edildi' : r.stars ? 'Şartlı kabul: tolerans dışı ölçü var' : 'Parça hurdaya ayrıldı';
+  $('rpTitle').textContent = r.stars === 3 ? 'Kusursuz parça' : r.allOk ? 'Parça kabul edildi' : r.fai ? (r.stars ? `Sapma onayı: ${r.fails} ölçü dışı (en çok 3)` : `İlk parça muayenesi: ret (${r.fails} ölçü dışı, en çok 3)`) : r.stars ? 'Şartlı kabul: tolerans dışı ölçü var' : 'Parça hurdaya ayrıldı';
   $('rpStars').innerHTML = [0, 1, 2].map(i => STAR.replace('<svg', `<svg class="${i < r.stars ? 'on' : 'off'}"`)).join('');
   $('rpTotal').textContent = r.total;
   $('rpVerdict').textContent = newBest ? 'YENİ REKOR' : '';
@@ -554,5 +600,5 @@ $('jobCheck').addEventListener('click', () => {
 });
 setInterval(() => { $('jobCheck').hidden = !(S.job && !S.job.done && app.CR.yukVar('olcu')); }, 500);
 
-export { DIS, JOBS, buildScribe, localTop, threadAt, drawingSVG, drawingTable, inRect, mmss, renderJobs, selJob, selectJob, setSelJob,
+export { GERCEK, DIS, JOBS, inspect, scoreJob, buildScribe, localTop, threadAt, drawingSVG, drawingTable, inRect, mmss, renderJobs, selJob, selectJob, setSelJob,
   startJob, submitJob };

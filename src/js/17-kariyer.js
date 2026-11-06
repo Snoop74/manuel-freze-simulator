@@ -410,6 +410,9 @@ const CR = (() => {
       tags.push(onTime ? ['Zamanında teslim +%10', 'ok'] : ['Gecikti: zaman primi yok', 'warn']);
       tags.push(clean ? ['Temiz teslim +%5', 'ok'] : ['Talaşlı teslim: hava tabancası +%5 kazandırırdı', 'warn']);
       txt = `Müşteri memnun: +${tl(pay)}${run.time <= o.J.target ? ' (zamanında teslim primi dahil)' : ''}${clean ? ' · temiz teslim +%5' : ' · parça talaşlı geldi, temizleseydiniz +%5'} · itibar +${rep}`;
+    } else if (r.stars >= 1 && r.fai) {                            // havacılık: sapma onayı, her ölçü dışı ödemeden düşer
+      const k = [0, 0.7, 0.55, 0.4][r.fails] || 0.4; pay = Math.round(o.pay * k / 10) * 10;
+      txt = `Sapma onayı: ${r.fails} ölçü dışı, müşteri kesintiyle kabul etti: +${tl(pay)} · itibar değişmedi`; tags.push([`Sapma onayı (${r.fails}/3): ödemenin %${Math.round(k * 100)}'i`, 'warn']);
     } else if (r.stars >= 1) { pay = Math.round(o.pay * 0.04) * 10; txt = `Şartlı kabul, indirimli ödeme: +${tl(pay)} · itibar değişmedi`; tags.push(['Şartlı kabul: ödemenin %40\'ı', 'warn']); }
     else if (o.own) {
       rep = -3; const v = Math.max(0, Math.min(o.value, st.money + kredi())); pay = -v;

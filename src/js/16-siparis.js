@@ -1,7 +1,7 @@
 // ── Sipariş üretici (17-kariyer'den ayrıldı): seviyeye göre müşteri, malzeme, ham parça ölçüsü, delik/cep/yay özellikleri,
 //   hazır (müşteri getirdiği) parça işleri ve koşullar (acil, seri, hassas). Durum tutmaz: sipariş numarasını kariyer verir (sira).
 import { MATS, PASIF } from './00-temel.js';
-import { DIS, inRect } from './10-is-emri-muayene.js';
+import { DIS, GERCEK, inRect } from './10-is-emri-muayene.js';
 import { BLANKS, SF, genBlank, r05, rp, rr, withSeed } from './16-hazir-parca.js';
 
 const tl = v => Math.round(v).toLocaleString('tr-TR') + ' ₺';
@@ -121,8 +121,12 @@ const BLANK_JOBS = {
 // conta yüzü traşlama işi (silindir kapağı, egzoz flanşı): en yüksek nokta, izin verilen en alçak seviye
 function deckJob(P, flat, maxCut, brief, val, target) {
   const sf = P.deckSf ?? SF.old;
-  let top0 = -1; for (let y = 0; y <= P.d; y += 1) for (let x = 0; x <= P.w; x += 1) if (P.Sf(x, y) === sf && P.H(x, y) >= P.deckBase) top0 = Math.max(top0, P.H(x, y));
-  return { deck:{ flat, maxCut, top0, floor:top0 - maxCut, base:P.deckBase - 0.02, sf }, brief, val, target };
+  let top0 = -1, low0 = 1e9, hx = 0, hy = 0;
+  for (let y = 0; y <= P.d; y += 1) for (let x = 0; x <= P.w; x += 1) if (P.Sf(x, y) === sf && P.H(x, y) >= P.deckBase) { const h = P.H(x, y); if (h > top0) { top0 = h; hx = x; hy = y; } low0 = Math.min(low0, h); }
+  const need = Math.max(0, +(top0 - low0).toFixed(3));            // çarpıklık: düzlemek için gereken en az talaş
+  const kose = `${hy > P.d / 2 ? 'arka' : 'ön'} ${hx > P.w / 2 ? 'sağ' : 'sol'}`;   // müşterinin ipucu: en yüksek nokta
+  const ipucu = ` Müşteri: "Cetvelle baktım, ${kose} köşe kalkık gibi; çarpıklık ${need.toFixed(2)} civarı." Az alan kazanır: kapak inceldikçe sıkıştırma artar; çarpıklığı tam düzleyen en az talaş tam puan alır, fazlası puan götürür.`;
+  return { deck:{ flat, maxCut, top0, need, floor:top0 - maxCut, base:P.deckBase - 0.02, sf }, brief:brief + ipucu, val, target };
 }
 // iş koşulları: acil (süre kısa, ödeme ×1.35; 2026-11-05 dengesi, eski ×1.6/×0.55/−%20), seri (3 adet, son adette +%10), hassas (toleranslar yarıya, ödeme ×1.5)
 const COND = {
@@ -159,7 +163,23 @@ function genBlankOrder(lv, sira) {
   return addCond(o, lv, B.cond || (B.ayni ? 'yok' : null));    // aynen ödeyen komşu acele etmez
 }
 
+// gerçek parça işleri (10-is-emri GERCEK): müşteri, seviye, ödeme; ham parçayı atölye alır
+const GERCEK_IS = {
+  mastar:{ lv:0, cust:[['Yıldız Makina kalite birimi', 'fabrika'], ['Akın Otomasyon kalite', 'fabrika'], ['Kaya Hidrolik montaj hattı', 'fabrika']], pay:900 },
+  pralin:{ lv:0, cust:[["Ayten'in Pastanesi", 'pastane'], ['Butik Çikolatacı Leyla', 'dükkân'], ['Otel Pastane Şefi', 'otel']], pay:750 },
+  fiting:{ lv:2, cust:[['Gökçe Havacılık', 'havacılık'], ['Anadolu Uçak Bakım', 'havacılık']], pay:2600, sabit:'yok' },
+};
+function genGercekOrder(lv, sira, free) {
+  const ids = Object.keys(GERCEK_IS).filter(k => GERCEK_IS[k].lv <= lv); if (!ids.length) return null;
+  const id = pick(ids), G = GERCEK_IS[id], J = GERCEK[id](), [cn, ck] = pick(G.cust);
+  delete J.acik; J.gercek = id; J.arcs = []; J.pockets = J.pockets || []; J.holes = J.holes || [];
+  const cost = free ? 0 : stockCost(J.w, J.d, J.h, J.mat);
+  J.brief = `${cn} (${ck}): ${J.brief} ${free ? 'Malzemeyi müşteri getirdi.' : `Ham parça ${tl(cost)}, iş başlayınca kasadan çıkar.`}`;
+  return addCond({ id:sira(), cust:cn, kind:ck, mat:J.mat, J, pay:Math.round((G.pay * (1 + lv * 0.15) + cost * 1.25) / 10) * 10, cost, free, lv }, lv, G.sabit || null);
+}
+
 function genOrder(free, lv, sira) {
+  if (Math.random() < 0.22) { const g = genGercekOrder(lv, sira, free); if (g) return g; }   // gerçek parça işi
   if (!free && Math.random() < 0.5) return genBlankOrder(lv, sira);
   const m = pick([['al', 'pom', 'brass', 'al'], ['al', 'brass', 's235', 'pom'], ['s235', 'c45', 'al', 'gg25', 'brass'], ['c45', 'ss304', 's235', 'brass']][lv]);
   const big = lv >= 1 && Math.random() < 0.25;                   // büyük plaka: mengene en fazla 135 mm açılır
