@@ -1,8 +1,9 @@
-// ── Hazır parçalar: yüzey türleri, tohumlu rastgele, BLANKS şablonları, loadBlank; GEÇİCİ galeri (BG)
+// ── Hazır parçalar: yüzey türleri, tohumlu rastgele, BLANKS şablonları, loadBlank; iş ve parça galerisi (BG)
 import { $, C, H, MATS, NX, NY, PH, S, SURF, app, clamp, log } from './00-temel.js';
 import { initAudio } from './01-ses.js';
 import { FIX, buildVise, markDirty, markThrough, setJawOverride } from './05-baglama.js';
 import { resetPart, spindle } from './09-kumanda.js';
+import { GERCEK, JOBS, selectJob, startJob } from './10-is-emri-muayene.js';
 import { setFix } from './13-aletler.js';
 import { setStock } from './14-parca-masasi.js';
 
@@ -296,12 +297,22 @@ function loadBlank(id, seed = Math.random() * 1e9 | 0, force = false) {
   log(`Hazır parça bağlandı: ${B.name} (${P.info}). ${MATS[P.mat].short}.`, 'ok');
   return P;
 }
-// GEÇİCİ: şablonları hızlıca görmek için galeri penceresi (üst çubukta "Hazır parça galerisi")
+// İş ve parça galerisi (Aletler → İş ve parça galerisi): gerçek parça işlerini dene, müşteri parçası şablonlarını bağla
 const BG = (() => {
   const el = document.createElement('div'); el.className = 'blank-gal'; el.hidden = true;
-  el.innerHTML = '<div class="bg-head"><b>HAZIR PARÇA GALERİSİ</b><small>geçici</small><button class="btn" id="bgClose">Kapat</button></div><div class="bg-list"></div><div class="dro-note" id="bgInfo">Bir parçaya tıklayın: mengeneye bağlanır. "Yeni çeşit" aynı tipten başka bir parça üretir.</div>';
+  el.innerHTML = '<div class="bg-head"><b>İŞ VE PARÇA GALERİSİ</b><small></small><button class="btn" id="bgClose">Kapat</button></div><div class="bg-list"></div><div class="dro-note" id="bgInfo">Bir parçaya tıklayın: mengeneye bağlanır. "Yeni çeşit" aynı tipten başka bir parça üretir.</div>';
   document.body.append(el);
   const L = el.querySelector('.bg-list');
+  const bas = t => { const h = document.createElement('div'); h.className = 'bg-sec'; h.textContent = t; L.append(h); };
+  bas('Gerçek parça işleri');
+  const gercekAd = Object.values(GERCEK).map(f => f().title);
+  JOBS.forEach((J, i) => {
+    if (!gercekAd.includes(J.title)) return;
+    const c = document.createElement('div'); c.className = 'bg-card';
+    c.innerHTML = `<div class="bg-t"><b>${J.title}</b><span>${MATS[J.mat].short} ${J.w}×${J.d}×${J.h}</span></div><p>${J.brief.split('. ')[0]}.</p><div class="bg-b"><button class="btn start" data-j="${i}">İşi dene</button></div>`;
+    L.append(c);
+  });
+  bas('Müşteri parçaları (şablonlar)');
   for (const B of BLANKS) {
     const c = document.createElement('div'); c.className = 'bg-card';
     c.innerHTML = `<div class="bg-t"><b>${B.name}</b><span>${B.cat}</span></div><p>${B.desc}</p><div class="bg-b"><button class="btn start" data-b="${B.id}">Bağla</button><button class="btn" data-r="${B.id}">Yeni çeşit</button><button class="btn" data-m="${B.id}">Masada incele</button></div>`;
@@ -310,6 +321,10 @@ const BG = (() => {
   el.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return; initAudio();
     if (b.id === 'bgClose') { el.hidden = true; return; }
+    if (b.dataset.j) {                                              // gerçek parça işi: serbest atölyede başlar
+      if (app.CR.on) { log('Gerçek parça işleri galeriden serbest atölyede denenir: kariyerde siparişlerle gelir.', 'warn'); return; }
+      selectJob(+b.dataset.j); startJob(); return;
+    }
     const id = b.dataset.b || b.dataset.r || b.dataset.m; if (!id) return;
     if (S.spindle) spindle(false);
     const P = loadBlank(id); if (!P) return;

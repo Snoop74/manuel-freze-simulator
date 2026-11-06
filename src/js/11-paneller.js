@@ -209,6 +209,7 @@ const PM = (() => {
       else if (a === 'fd' && !PASIF.fd) app.FD.setOn(!app.FD.on);
       else if (a === 'bench') $('benchOpen').click();
       else if (a === 'editor') app.TE.show(S.tool);
+      else if (a === 'galeri') app.BG.toggle();
       else if (a === 'shop') app.CR.openShop();
       else if (a === 'egitim') app.EG.baslat();
       else if (a === 'keys') setVis('keys', true);
