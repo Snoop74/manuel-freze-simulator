@@ -1,5 +1,5 @@
 // ── Parça masası (CP): ayrı sahnede inceleme, kumpas, yükseklik, delik/cep, kesit; ham parça ölçüsü (BN)
-import { $, C, H, INSP, NX, NY, PD, PH, PW, S, TAU, app, clamp, log, mat, rapid, tool, warnOnce } from './00-temel.js';
+import { $, C, H, INSP, NX, NY, PD, PH, PW, S, TAU, TEST, app, clamp, log, mat, rapid, tool, warnOnce } from './00-temel.js';
 import { initAudio, thud } from './01-ses.js';
 import { M, MX, bakeRest } from './02-sahne-tezgah.js';
 import { FIXLIM } from './03-tabla-parca.js';
@@ -254,8 +254,21 @@ const BN = (() => {
     });
     const tab = new THREE.Mesh(new THREE.PlaneGeometry(520, 203), new THREE.MeshStandardMaterial({ map:pano, roughness:0.8 })); tab.position.set(-120, 1720, 2); arka.add(tab);
     // Masa üstü aletler ve raftaki kutular kodla çizilmişti, atölyenin hazır modelleri yanında oyuncak gibi duruyordu (Onat, 2026-11-06): kaldırıldı.
-    // Uygun CC0 model bulunursa 19-atolye'deki model() gibi yüklenir. Lamba modelsiz, yalnızca ışığı kaldı.
+    // Yerlerine onaylı hazır modeller geldi (aşağıda koy).
     const isik = new THREE.PointLight(0xffd9a0, 0.7, 1600, 1.4); isik.position.set(-120, 420, -60); sc.add(isik);
+    // hazır modeller (Poly Haven CC0, assets/LISANS.md): masa lambası, rapor panosu, şerit metre; granitin kenarlarında (parça ortada)
+    const gl = THREE.GLTFLoader && !TEST ? new THREE.GLTFLoader() : null;
+    const koy = (id, x, z, ry, f, k = 1) => gl && gl.load(`assets/model/${id}/${id}.gltf`, g => {
+      const o = g.scene; o.scale.setScalar(1000 * k); o.rotation.y = ry;
+      o.traverse(c => { if (c.isMesh) { c.castShadow = c.receiveShadow = true; if (c.material) c.material.envMapIntensity = 0.6; } });
+      o.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(o);
+      o.position.set(x - (bb.min.x + bb.max.x) / 2, -bb.min.y, z - (bb.min.z + bb.max.z) / 2); sc.add(o);
+      if (f) { o.updateMatrixWorld(true); f(o, new THREE.Box3().setFromObject(o)); }
+    }, undefined, () => {});
+    // kol lambası (iskeletsiz: hep gergin duruşta): masanın sol kenarına tutturulmuş, başı parçaya bakar; ışık ampulde
+    koy('desk_lamp_arm_01', -300, -60, 0.7, o => { const b = o.getObjectByName('Box001_1'); if (b) { const bb = new THREE.Box3().setFromObject(b); bb.getCenter(isik.position); isik.position.y -= 30; } }, 0.8);
+    koy('clipboard', 250, -190, -0.25);
+    koy('measuring_tape_01', 330, 170, 0.6);
     // atölye malzemeleri (üç düzlemli doku) köşe noktalarının duruş konumunu ister; yoksa yüzey siyah çizilir
     sc.updateMatrixWorld(true);
     sc.traverse(o => { if (o.isMesh && o.material && o.material.userData && o.material.userData.restSurface) bakeRest(o, o.geometry); });
@@ -454,7 +467,7 @@ const BN = (() => {
   $('bnClear').addEventListener('click', () => { clearMarks(); $('bnList').innerHTML = ''; hint('Ölçümler temizlendi.'); });
   $('bnSecX').addEventListener('input', section); $('bnSecY').addEventListener('input', section);
   window.addEventListener('keydown', e => { if (open && e.code === 'Escape') { e.stopImmediatePropagation(); hide(); } }, true);
-  return { show, hide, get kon() { return kon; }, hepsi, sapma };   // kon, hepsi, sapma: duman testi de kullanır
+  return { show, hide, get kon() { return kon; }, hepsi, sapma, get sc() { return sc; }, get cam() { return cam; }, get ctl() { return ctl; } };   // kon, hepsi, sapma: duman testi; sc, cam, ctl: geliştirici incelemesi
 })();
 
 /* ---------------- Takım editörü: kendi takımını tasarla ----------------

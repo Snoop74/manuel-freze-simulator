@@ -25,5 +25,8 @@ Hepsi **CC0** (kamu malı): ticari kullanım serbest, atıf gerekmez. Yine de ka
 | `model/hanging_industrial_lamp/` (glTF, 1K dokular) | https://polyhaven.com/a/hanging_industrial_lamp | Kuutti Siitonen |
 | `model/hand_truck/` (glTF, 1K dokular) | https://polyhaven.com/a/hand_truck | Mutanzom3D |
 | `model/WetFloorSign_01/` (glTF, 1K dokular) | https://polyhaven.com/a/WetFloorSign_01 | Fran Calvente |
+| `model/clipboard/` (glTF, 1K dokular; ölçüm masası) | https://polyhaven.com/a/clipboard | ProgrammerOnCoffee |
+| `model/desk_lamp_arm_01/` (glTF, 1K dokular; ölçüm masası) | https://polyhaven.com/a/desk_lamp_arm_01 | Yann Kervran, Kuutti Siitonen |
+| `model/measuring_tape_01/` (glTF, 1K dokular; ölçüm masası) | https://polyhaven.com/a/measuring_tape_01 | Kuutti Siitonen |
 
-İndirme: dokular ve HDRI 2026-10-30, modeller 2026-10-31; `dl.polyhaven.org`.
+İndirme: dokular ve HDRI 2026-10-30, modeller 2026-10-31 (ölçüm masasının üç modeli 2026-11-06); `dl.polyhaven.org`.
