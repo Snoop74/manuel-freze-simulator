@@ -357,6 +357,12 @@ const SENARYO = {
     if (st.money !== para - gider) throw new Error(`kira düşmedi (${para} → ${st.money}, beklenen −${gider})`);
     app.CR.ertesiGun();
     if (st.gun !== gun + 1) throw new Error('ertesi güne geçilmedi');
+    // fazla mesai bedava değil: bir günü aşan taşma ertesi günü de kirasıyla kapatır (eskiden 540 dakikanın üstü siliniyordu)
+    { const g0 = st.gun, m0 = st.money; st.dk = 600 + 700; app.CR.gunuBitir(); app.CR.ertesiGun();
+      if (st.dk !== 700) throw new Error(`taşma devretmedi (dk ${st.dk})`);
+      app.CR.gunuBitir(); app.CR.ertesiGun();
+      if (st.gun !== g0 + 2 || st.dk !== 100) throw new Error(`taşan gün kapanmadı (gün ${st.gun - g0}, dk ${st.dk})`);
+      if (st.money >= m0) throw new Error('taşan günün kirası alınmadı'); }
     // kilitlenme (ekonomi ajanı Opus buldu): kasa ham parçaya yetmezken iş kabul edilmez; kabul edilmiş iş bırakılabilir
     { const aktif = st.orders.find(q => q.kabul); if (aktif) app.CR.birak(aktif.id);
       const pahali = st.orders.find(q => !q.free && q.cost > 0 && !app.CR.bekler(q) && !q.kabul);

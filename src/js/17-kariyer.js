@@ -213,7 +213,7 @@ const CR = (() => {
   }
   function gunSonu() {
     raporBekliyor = true;
-    st.devir = Math.min(MESAI - 60, Math.max(0, Math.round(st.dk - MESAI)));   // 18:00'i aşan süre ertesi sabaha devreder (fazla mesai bedava değil)
+    st.devir = Math.max(0, Math.round(st.dk - MESAI));   // 18:00'i aşan süre ertesi sabaha devreder (fazla mesai bedava değil); bir günü aşarsa ertesi gün de kirasıyla kapanır
     const k = kira(); harca(k); cash(-k);
     if (st.dukkan.yuk.cirak) {                                    // çırak: maaşını alır, kırıkları biler, talaşı süpürür
       const n = Object.keys(st.kirik).length, ucret = YUK.find(u => u.id === 'cirak').gunluk;
@@ -230,7 +230,8 @@ const CR = (() => {
   function ertesiGun() {
     raporBekliyor = false;
     st.gun++; st.dk = st.devir || 0; st.devir = 0; sonKayit = 0;
-    if (st.dk) log(`Dünkü işin ${st.dk} dakikası bugüne taştı: güne ${saatTxt(st.dk)}'de başlıyorsunuz.`); st.sonrakiMail = rnd(25, 80); st.bugun = bosGun();
+    if (st.dk >= MESAI) log(`Dünkü iş bugünün mesaisini de yedi (${st.dk} dakika taştı): bu gün de kapanıyor.`, 'warn');
+    else if (st.dk) log(`Dünkü işin ${st.dk} dakikası bugüne taştı: güne ${saatTxt(st.dk)}'de başlıyorsunuz.`); st.sonrakiMail = rnd(25, 80); st.bugun = bosGun();
     suresiDolanlar(); fillBoard(); yeniSiparis(false);
     save(); render(); log(`${st.gun}. gün (${GUNLER[(st.gun - 1) % 7]}) başladı: 08:00. Maillere bakın.`, 'ok');
   }
