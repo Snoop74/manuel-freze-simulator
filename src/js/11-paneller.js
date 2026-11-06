@@ -34,6 +34,7 @@ const TBICON = {
   drawing:'<rect x="3" y="4" width="18" height="16" rx="1.5"/><circle cx="12" cy="12" r="3.5"/><path d="M12 6.5v11M6.5 12h11" stroke-dasharray="2 1.6"/>',
   air:'<path d="M3 8.5h11v4H3z"/><path d="M14 10.5h6"/><path d="M5 12.5l-1.5 7.5h4.5L9.5 12.5"/><path d="M21 7.5c1.2 1 1.2 5 0 6"/>',
   fd:'<path d="M4 20l1-5L16 4l4 4L9 19z"/><path d="M14 6l4 4"/>',
+  olcum:'<path d="M3 15l12-12 6 6-12 12z"/><path d="M6 12l2 2M9 9l2 2M12 6l2 2"/><path d="M3 21h7"/>',
   bench:'<path d="M3 5h18v4H3z"/><path d="M5 9v10l3-4V9M15 9v6l3 4V9"/><path d="M8 5v2M11 5v2M14 5v2M17 5v2"/>',
   editor:'<path d="M7 2h6v6H7z"/><path d="M8 8h4v9l-2 2-2-2z"/><path d="M15 21l6-6-2-2-6 6v2z"/>',
   motor:'<path d="M7 8h8v4H7z"/><path d="M6 12h10v6H6z"/><path d="M8 6h6M16 14h3l2-2M6 15H3M9 18v2"/>',

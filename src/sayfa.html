@@ -17,6 +17,7 @@
       <button class="tbi tbb" data-p="console" data-tip="Kumanda paneli"><span data-ic="console"></span><small>Kumanda</small></button>
       <button class="tbi tbb" data-p="jobs" data-tip="İş emirleri, teknik resim, teslim"><span data-ic="jobs"></span><small>İş</small></button>
       <button class="tbi tbb" data-p="part" data-tip="Parça, malzeme ve bağlama"><span data-ic="part"></span><small>Parça</small></button>
+      <button class="tbi tbb act" data-act="bench" data-tip="Ölçüm masası: parçayı ölç, kesit al"><span data-ic="olcum"></span><small>Ölçüm</small></button>
       <button class="tbi tbb" data-menu="alet" data-tip="Hava tabancası, ölçü, takım editörü…"><span data-ic="tools"></span><small>Aletler ▾</small></button>
       <button class="tbi tbb" data-menu="camera" data-tip="Hazır kamera açıları"><span data-ic="camera"></span><small>Kamera ▾</small></button>
       <button class="tbi tbb" data-menu="help" data-tip="Yardım, kısayollar, ayrıntılı durum"><span data-ic="help"></span><small>Yardım ▾</small></button>
@@ -28,7 +29,6 @@
     <div class="tb-menu tb-liste" id="mnAlet" hidden>
       <button class="act" data-act="air" id="tbAir"><span data-ic="air"></span><b>Hava tabancası</b><small>talaşı üfle · B</small></button>
       <button class="act" data-act="fd" id="tbFd" data-pasif="fd"><span data-ic="fd"></span><b>Fareyle sür</b><small>parçanın üstünde çiz · G</small></button>
-      <button class="act" data-act="bench"><span data-ic="bench"></span><b>Parça masası</b><small>ölç, kesit al</small></button>
       <button class="act" data-act="drawing" id="tbDraw"><span data-ic="drawing"></span><b>Teknik resim</b><small>seçili işin resmi</small></button>
       <button data-p="tools"><span data-ic="tools"></span><b>Takım ayrıntıları</b><small>tutucu, bileme, taster</small></button>
       <button class="act" data-act="galeri"><span data-ic="bench"></span><b>İş ve parça galerisi</b><small>gerçek parça işleri, müşteri parçaları</small></button>
@@ -129,7 +129,7 @@
     </div>
     <div class="bench" id="bench" hidden>
       <div class="bench-box" role="dialog" aria-label="Parça masası">
-        <div class="bench-head"><b>PARÇA MASASI</b><span id="bnInfo"></span><button class="btn" id="bnClose">Kapat</button></div>
+        <div class="bench-head"><b>ÖLÇÜM MASASI</b><span id="bnInfo"></span><button class="btn" id="bnClose">Kapat</button></div>
         <div class="bench-body">
           <div class="bench-view" id="bnView"><canvas id="bnC" aria-label="Parçanın 3B görünümü"></canvas><div class="bench-hint" id="bnHint"></div></div>
           <div class="bench-side">
