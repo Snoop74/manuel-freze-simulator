@@ -85,6 +85,10 @@ const BLANK_JOBS = {
     return { face:{ depth:+(P.stockH - 12).toFixed(2), tol:0.1 }, pockets:[{ x0:cx - sl / 2, x1:cx + sl / 2, y0:cy - 5, y1:cy + 5, depth:dep, r:5 }],
       holes:[{ x:14, y:cy, d:12 }, { x:P.w - 14, y:cy, d:12 }, { x:cx - sl / 2 - 15, y:cy, d:8.5 }, { x:cx + sl / 2 + 15, y:cy, d:8.5 }],
       brief:`Tufallı lamanın üstünü 12.00 yüksekliğe işleyin (±0.1), ortaya ${sl}×10 ayar kanalı (${dep} derin, R5), uçlara 2×Ø12 ve kanalın iki yanına 2×Ø8.5 delik açın.`, val:320 + P.w * 1.2 + sl * 3, target:180 + P.w * 0.8 + sl * 2 }; } },
+  termostat:{ lv:1, cust:[['Sanayi Oto Servis', 'tamirhane'], ['Klasik Oto Restorasyon', 'atölye'], ['Kamyon Garajı Metin', 'oto tamiri']], title:'Termostat gövdesi: conta yüzü ve burç deliği', value:900, make(P) {
+    const [hx, hy] = P.geo.studs[P.geo.kotu], yer = P.geo.kotu ? 'sağ' : 'sol';
+    return Object.assign(deckJob(P, 0.05, 0.6, `Su kaçıran termostat gövdesinin korozyon yemiş conta yüzünü tamamen düzleyin (düzlemsellik ≤ 0.05, en yüksek noktadan en çok 0.6 mm). Sonra ${yer} kulaktaki genişlemiş deliği burç için Ø12'ye büyütün. Döküm kenarları ölçü tutmaz: sıfırı deliğin merkezinden alın (taster ya da kenar bulucuyla).`, 420, 160),
+      { holes:[{ x:hx, y:hy, d:12 }] }); } },
   tekstil:{ lv:1, cust:[['Bursa Dokuma A.Ş.', 'fabrika'], ['Tekstil Makine Servisi', 'servis'], ['Örme Fabrikası Bakım', 'bakım']], title:'Dişli kutusu kapağı: conta yüzü ve delikler', value:1500, make(P) {
     const holes = P.bolts.map(([x, y]) => ({ x, y, d:8.5 }));
     return Object.assign(deckJob(P, 0.1, 1.0, `Yağ kaçıran dişli kutusu kapağının conta yüzünü tamamen düzleyin (düzlemsellik ≤ 0.10, en yüksek noktadan en çok 1.0 mm), sonra conta yüzüne ${holes.length}×Ø8.5 cıvata deliği açın.`, 400 + P.w * P.d / 35 + holes.length * 40, 160 + P.w * P.d / 80 + holes.length * 35), { holes }); } },

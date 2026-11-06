@@ -137,6 +137,24 @@ const BLANKS = [
         },
         Sf:() => SF.cast };
     } },
+  // termostat gövdesi (2026-11-07, Onat'ın örneği): döküm alüminyum, conta yüzü yukarı; ortada su geçişi, iki kulakta cıvata deliği, conta yüzünde korozyon çukurları
+  { id:'termostat', name:'Termostat gövdesi', cat:'Motor', desc:'Döküm alüminyum otomobil termostat gövdesi: conta yüzü korozyon yemiş, kulaklardaki deliklerden biri genişlemiş. Yüz düzlenecek, delik burç için büyütülecek.',
+    gen() {
+      const w = 96, d = 60, cx = 48, cy = 30, h = rp([14, 16]), a = rr(0.5, 0.9), warp = +rr(0.05, 0.15).toFixed(2), nz = castNoise();
+      const studs = [[10, cy], [86, cy]], kotu = rp([0, 1]);
+      const pits = Array.from({ length:rp([5, 6, 7]) }, () => { const an = rr(0, Math.PI * 2), r = rr(22, 27); return [cx + Math.cos(an) * r, cy + Math.sin(an) * r * 0.9, rr(2.5, 5.5), +rr(0.08, 0.22).toFixed(2)]; });
+      const icinde = (x, y) => Math.hypot(x - cx, y - cy) <= 30 || (Math.abs(y - cy) <= 11 && x >= 10 && x <= 86) || studs.some(([sx, sy]) => Math.hypot(x - sx, y - sy) <= 11);
+      return { w, d, h:h + a + warp + 0.4, mat:'al', warp, deckBase:h, deckSf:SF.cast, exist:[...studs.map(([x, y], k) => [x, y, k === kotu ? 5.2 : 4.25]), [cx, cy, 19]],
+        geo:{ studs, kotu }, info:`korozyon ${pits.length} çukur, en derin ${Math.max(...pits.map(p => p[3])).toFixed(2)} mm; ${kotu ? 'sağ' : 'sol'} delik genişlemiş`,
+        H:(x, y) => {
+          if (!icinde(x, y) || Math.hypot(x - cx, y - cy) <= 19) return 0;
+          if (studs.some(([sx, sy], k) => Math.hypot(x - sx, y - sy) <= (k === kotu ? 5.2 : 4.25))) return 0;
+          let z = h + a + warp * (x / w) + nz(x, y) * 0.08;
+          for (const [px, py, pr, pd] of pits) { const r = Math.hypot(x - px, y - py); if (r < pr) z -= pd * (1 - (r / pr) ** 2); }   // korozyon çukuru
+          return z;
+        },
+        Sf:() => SF.cast };
+    } },
   { id:'pillow', name:'Yatak gövdesi', cat:'Makine', desc:'Döküm yatak gövdesi (ters bağlı): iki uçta bağlantı ayağı, ortada rulman göbeği. Ayakların üstü aynı yüksekliğe işlenecek ve delinecek.',
     gen() {
       const w = rp([160, 180]), d = rp([56, 60, 64]), foot = rp([12, 14]), pad = 4, boss = rp([34, 38]), Rb = rp([24, 27]), bore = rp([14, 16]), a = +rr(0.8, 1.6).toFixed(1), nz = castNoise();

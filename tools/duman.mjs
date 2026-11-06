@@ -264,7 +264,7 @@ const SENARYO = {
     if (!app.CR.hasEq('cnc')) { GK.baslat(false); if (GK.calisiyor) throw new Error('kariyerde kitsiz program çalıştı'); document.getElementById('shop').hidden = true; }
     document.querySelector('#modeSw [data-mode="free"]').click();
     app.setStock(150, 100, 40, true); yeni(); const t7 = takim(t => t.no === 'T7');
-    S.wear[T.TOOLS.indexOf(t7)] = 0; T.unslip(t7);   // taze matkap: önceki senaryoların aşındırdığı T7 programda ara sıra kırılıyordu
+    S.wear[T.TOOLS.indexOf(t7)] = 0; T.unslip(t7); S.damage = 0; S.temp = 0; U.resetPart('al');   // taze matkap, birikmiş zorlanma ve ısı yok: önceki senaryoların aşındırdığı T7 programda ara sıra kırılıyordu
     S.zx = 0; S.zy = 0; S.zn = S.nose - (S.nose - T.TOOLS[S.tool].len - T.PH);   // Z0 = parça üstü (bu takımla)
     GK.yukle(GK.ORNEK.delik[1]); GK.baslat(false);
     if (!GK.calisiyor) throw new Error(`program başlamadı: ${son()}`);
@@ -435,6 +435,20 @@ const SENARYO = {
     const b = await dene('Pnömatik valf taban plakası', true);
     if (!b.ipucu.includes('ıslık')) throw new Error(`eksik cıvatada kaçak çıkmadı: ${b.ipucu}`);
     return 'servo bağlandı (kol döner), valf 6 bar kaçaksız, eksik cıvatada port ıslık çaldı';
+  },
+  async termostat() {
+    // termostat gövdesi (müşteri parçası): sipariş gelir, korozyon çukurları gereken en az talaşı belirler, büyütülecek delik genişlemiş kulakta
+    const { genOrder } = await import('/src/js/16-siparis.js'), { genBlank } = await import('/src/js/16-hazir-parca.js');
+    let o = null, n = 0;
+    for (let k = 0; k < 3000 && !o; k++) { const q = genOrder(false, 1, () => ++n); if (q.J.blank && q.J.blank.id === 'termostat') o = q; }
+    if (!o) throw new Error('3000 siparişte termostat işi gelmedi');
+    const P = genBlank('termostat', o.J.blank.seed), J = o.J;
+    if (!(J.deck && J.deck.need > 0.05 && J.deck.need < J.deck.maxCut)) throw new Error(`gereken talaş tuhaf: ${J.deck && J.deck.need}`);
+    const [hx, hy] = P.geo.studs[P.geo.kotu];
+    if (J.holes.length !== 1 || J.holes[0].d !== 12 || J.holes[0].x !== hx || J.holes[0].y !== hy) throw new Error(`delik yanlış: ${JSON.stringify(J.holes)}`);
+    if (P.H(48, 30) !== 0 || P.H(hx, hy) !== 0 || P.H(2, 2) !== 0) throw new Error('su geçişi, delik ya da dış kontur boş değil');
+    if (!/Müşteri: "Cetvelle/.test(J.brief)) throw new Error('mailde ipucu yok');
+    return `${o.cust}: gereken en az talaş ${J.deck.need.toFixed(2)} mm (sınır ${J.deck.maxCut}), Ø12 burç deliği ${P.geo.kotu ? 'sağ' : 'sol'} kulakta`;
   },
   async dukkan() {
     const { app, S, U, son } = window.__d, CR = app.CR;
