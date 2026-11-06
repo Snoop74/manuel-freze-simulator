@@ -1,6 +1,6 @@
 // ── Sipariş üretici (17-kariyer'den ayrıldı): seviyeye göre müşteri, malzeme, ham parça ölçüsü, delik/cep/yay özellikleri,
 //   hazır (müşteri getirdiği) parça işleri ve koşullar (acil, seri, hassas). Durum tutmaz: sipariş numarasını kariyer verir (sira).
-import { para } from './00-dil.js';
+import { para, t } from './00-dil.js';
 import { MATS, PASIF } from './00-temel.js';
 import { DIS, GERCEK, inRect } from './10-is-emri-muayene.js';
 import { BLANKS, SF, genBlank, r05, rp, rr, withSeed } from './16-hazir-parca.js';
@@ -15,6 +15,8 @@ const CUSTOMERS = [
   ['Akın Otomasyon', 'fabrika'], ['Marmara Tekne', 'tersane'], ['Kaya Hidrolik', 'fabrika'], ['Gökçe Havacılık', 'havacılık'],
 ];
 
+// müşteri: sipariş geldiği anki dilin adı ve türü (sözlükte c:Ad, k:tür; yoksa Türkçesi)
+const yerel = ([cn, ck]) => [t('c:' + cn), t('k:' + ck)];
 const stockCost = (w, d, h, m) => Math.round(w * d * h / 1e6 * MATS[m].rho * PRICE_KG[m] + 20);   // kg × ₺/kg + kesim
 
 /* -- Sipariş üretici: seviyeye göre malzeme, ham parça ölçüsü ve özellikler -- */
@@ -156,7 +158,7 @@ function genBlankOrder(lv, sira) {
   const mf = MATF[P.mat] || 1;
   const J = Object.assign({ pockets:[], holes:[], arcs:[], face:null, w:P.w, d:P.d, h:P.stockH, mat:P.mat, title:B.title, exist:P.exist || [], round:P.round || null, blank:{ id, seed } }, F);
   J.target = Math.round(F.target * (mf > 1.2 ? 1.3 : 1) / 10) * 10;
-  const [cn, ck] = pick(B.cust);
+  const [cn, ck] = yerel(pick(B.cust));
   J.brief = `${cn} (${ck}) kendi parçasını getirdi: ${BLANKS.find(q => q.id === id).name}, ${MATS[P.mat].short} ${P.w}×${P.d}. ${F.brief} Hurdaya çıkarsa parça bedeli ${tl(B.value)} sizden.`;
   delete J.val; delete J.brief0;
   const o = { id:sira(), cust:cn, kind:ck, mat:P.mat, J, pay:Math.round(F.val * mf * (1 + lv * 0.15) / 10) * 10, cost:0, free:true, own:true, value:B.value, lv };
@@ -172,7 +174,7 @@ const GERCEK_IS = {
 };
 function genGercekOrder(lv, sira, free) {
   const ids = Object.keys(GERCEK_IS).filter(k => GERCEK_IS[k].lv <= lv); if (!ids.length) return null;
-  const id = pick(ids), G = GERCEK_IS[id], J = GERCEK[id](), [cn, ck] = pick(G.cust);
+  const id = pick(ids), G = GERCEK_IS[id], J = GERCEK[id](), [cn, ck] = yerel(pick(G.cust));
   delete J.acik; J.gercek = id; J.arcs = []; J.pockets = J.pockets || []; J.holes = J.holes || [];
   const cost = free ? 0 : stockCost(J.w, J.d, J.h, J.mat);
   J.brief = `${cn} (${ck}): ${J.brief} ${free ? 'Malzemeyi müşteri getirdi.' : `Ham parça ${tl(cost)}, iş başlayınca kasadan çıkar.`}`;
@@ -220,7 +222,7 @@ function genOrder(free, lv, sira) {
   J.arcs = J.arcs || [];
   const val = (120 + (J.face ? area / 60 : 0) + J.holes.reduce((s, q) => s + 50 + q.d * 6 + h * 1.2, 0) + J.pockets.reduce((s, p) => s + 60 + vol(p) / 120, 0) + J.arcs.reduce((s, A) => s + 150 + avol(A) / 60, 0)) * mf * (1 + lv * 0.15);
   J.target = Math.round((60 + (J.face ? area / 100 : 0) + J.holes.length * (25 + h * 1.2) + J.pockets.reduce((s, p) => s + 40 + vol(p) / 25, 0) + J.arcs.reduce((s, A) => s + 90 + avol(A) / 20, 0)) * (mf > 1.2 ? 1.3 : 1) / 10) * 10;
-  const [cn, ck] = pick(CUSTOMERS.slice(0, 6 + lv * 2));
+  const [cn, ck] = yerel(pick(CUSTOMERS.slice(0, 6 + lv * 2)));
   J.title = arc ? pick(['Ayar flanşı', 'Yaylı kapak', 'Döner mesnet']) : pcd ? pick(['Bağlantı flanşı', 'Delikli disk plakası']) : J.pockets.length && J.holes.length ? pick(['Flanş', 'Kapak plakası', 'Adaptör']) : J.pockets.length ? pick(['Yuva bloğu', 'Cepli taban'])
     : J.holes.length >= 4 ? pick(['Bağlantı plakası', 'Montaj plakası']) : J.holes.length ? pick(['Taşıyıcı', 'Burç plakası', 'Mesnet']) : 'Yüzey işleme';
   const f = [];
