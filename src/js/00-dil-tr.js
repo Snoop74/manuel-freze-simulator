@@ -578,6 +578,30 @@ const TR = {
   "c:LED Aydınlatma Ltd.": "LED Aydınlatma Ltd.",
   "c:Bilgisayar Toplayıcı Mert": "Bilgisayar Toplayıcı Mert",
   "k:elektronik": "elektronik",
+  // 21-montaj: parça türleri (kule, servo, valf) ve kapanış sahneleri
+  "mt.kule.ad": "Sensör kulesi",
+  "mt.servo.ad": "Servo motor",
+  "mt.valf.ad": "Pnömatik valf",
+  "mt.kule.yerlestir": "Kuleyi yerleştir",
+  "mt.servo.yerlestir": "Servoyu yerleştir",
+  "mt.valf.yerlestir": "Valfi yerleştir",
+  "mt.info": "{ad} · 4×{bolt}×{L} imbus · {t0}–{t1} Nm",
+  "mt.giris": "Parça çalışma tezgâhında, müşterinin parçası ({ad}) yanında. \"{yer}\" ile plakaya koyun.",
+  "mt.kule.ok": "Sensör yandı: konveyör çalışıyor!",
+  "mt.servo.ok": "Servo bağlandı: kol dönüyor!",
+  "mt.valf.ok": "Hava testi: 6 bar, kaçak yok. Valf çalışıyor!",
+  "mt.valf.kacak": "Hava testi: port ıslık çalıyor, flanş tam oturmadı ya da cıvata eksik!",
+  "g.robotkol.t": "Robot kol bağlantı parçası",
+  "g.robotkol.b": "Hobici robot kolu için alüminyum kol parçası. Servo flanşına 4×M6 diş (Ø5 delip T11 ile; kare 44, merkez X 45, Y 35; diş en az 8.5), öbür uçta Ø12 eksen deliği (X 115, Y 35), arada hafifletme cebi (X 76–98, Y 20–50, 8 derin, R5). Teslimde montaj masasında servo bağlanır: cıvataları çapraz sırayla 8–10 Nm sıkın; doğru oturursa kol döner.",
+  "g.valf.t": "Pnömatik valf taban plakası",
+  "g.valf.b": "Otomasyon hattı için valf taban plakası. Valf flanşına 4×M6 diş (Ø5 delip T11 ile; kare 44, merkez X 60, Y 40; diş en az 8.5), flanşın içinde 3 hava portu Ø5 boydan boya (X 50, 60, 70; Y 40). Sıra planlaması: önce hepsini punta, sonra del, en son kılavuz; takım az değişsin. Teslimde valf bağlanır ve 6 bar hava testi yapılır: flanş tam oturmazsa port ıslık çalar.",
+  "c:Hobi Robot Atölyesi": "Hobi Robot Atölyesi",
+  "c:Paketleme Otomasyonu": "Paketleme Otomasyonu",
+  // 21-montaj: yerleştirme
+  "mt.yerinde": "{ad} yerinde. Cıvata takmak için deliğe tıklayın.",
+  // 21-montaj: adımlar
+  "mt.adim1": "{ad}: plakaya yerleştirin",
+  "mt.once": "Önce parçayı plakaya yerleştirin.",
   // @MODULLER@
 };
 

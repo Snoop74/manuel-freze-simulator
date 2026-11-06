@@ -578,6 +578,30 @@ const DE = {
   "c:LED Aydınlatma Ltd.": "LED-Leuchten GmbH",
   "c:Bilgisayar Toplayıcı Mert": "PC-Bastler Max",
   "k:elektronik": "Elektronik",
+  // 21-montaj: parça türleri (kule, servo, valf) ve kapanış sahneleri
+  "mt.kule.ad": "Sensorturm",
+  "mt.servo.ad": "Servomotor",
+  "mt.valf.ad": "Pneumatikventil",
+  "mt.kule.yerlestir": "Turm aufsetzen",
+  "mt.servo.yerlestir": "Servo aufsetzen",
+  "mt.valf.yerlestir": "Ventil aufsetzen",
+  "mt.info": "{ad} · 4×{bolt}×{L} Innensechskant · {t0}–{t1} Nm",
+  "mt.giris": "Das Teil liegt auf der Werkbank neben dem Kundenteil ({ad}). Mit \"{yer}\" auf die Platte setzen.",
+  "mt.kule.ok": "Der Sensor leuchtet: das Förderband läuft!",
+  "mt.servo.ok": "Servo montiert: der Arm dreht sich!",
+  "mt.valf.ok": "Dichtheitsprüfung: 6 bar, keine Leckage. Das Ventil arbeitet!",
+  "mt.valf.kacak": "Dichtheitsprüfung: ein Anschluss pfeift; der Flansch sitzt nicht oder eine Schraube fehlt!",
+  "g.robotkol.t": "Roboterarm-Glied",
+  "g.robotkol.b": "Aluminium-Glied für den Roboterarm eines Bastlers. 4×M6-Gewinde für den Servoflansch (Ø5 bohren, mit T11 gewinden; Quadrat 44, Mitte X 45, Y 35; mindestens 8.5 Gewinde), am anderen Ende eine Ø12-Achsbohrung (X 115, Y 35), dazwischen eine Erleichterungstasche (X 76–98, Y 20–50, 8 tief, R5). Bei der Abgabe wird der Servo auf der Montagebank montiert: Schrauben über Kreuz auf 8–10 Nm; sitzt er richtig, dreht sich der Arm.",
+  "g.valf.t": "Pneumatik-Ventilgrundplatte",
+  "g.valf.b": "Ventilgrundplatte für eine Automationslinie. 4×M6-Gewinde für den Ventilflansch (Ø5 bohren, mit T11 gewinden; Quadrat 44, Mitte X 60, Y 40; mindestens 8.5 Gewinde) und 3 Luftanschlüsse Ø5 durchgehend innerhalb des Flansches (X 50, 60, 70; Y 40). Reihenfolge planen: erst alles anbohren, dann bohren, zuletzt gewinden, damit wenig Werkzeugwechsel. Bei der Abgabe wird das Ventil montiert und mit 6 bar geprüft: sitzt der Flansch nicht, pfeift ein Anschluss.",
+  "c:Hobi Robot Atölyesi": "Hobby-Roboterwerkstatt",
+  "c:Paketleme Otomasyonu": "Verpackungsautomation",
+  // 21-montaj: yerleştirme
+  "mt.yerinde": "{ad} sitzt. Bohrung anklicken, um eine Schraube einzusetzen.",
+  // 21-montaj: adımlar
+  "mt.adim1": "{ad}: auf die Platte setzen",
+  "mt.once": "Zuerst das Teil auf die Platte setzen.",
   // @MODULLER@
 };
 

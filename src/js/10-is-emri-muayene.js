@@ -62,12 +62,20 @@ const GERCEK = {
     return { tk:'g.kaburga', title:t('g.kaburga.t'), target:1200, acik:true, mat:'al', w:160, d:100, h:20, fai:true,
       face:{ depth:1, tol:0.05 }, pockets, agirlik:{ hedef, tol }, brief:t('g.kaburga.b', { hedef, tol }) };
   },
+  // montajlı gerçek işler: dişli delikler listede önce (montajın çapraz sıra denetimi 0..3 ister)
+  robotkol:() => ({ tk:'g.robotkol', title:t('g.robotkol.t'), target:780, acik:true, mat:'al', w:140, d:70, h:15,
+    holes:[[-22, -22], [22, -22], [22, 22], [-22, 22]].map(([u, v]) => ({ x:45 + u, y:35 + v, d:5, tap:'M6', tapLen:8.5 })).concat([{ x:115, y:35, d:12 }]),
+    pockets:[{ x0:76, x1:98, y0:20, y1:50, depth:8, r:5 }],
+    montaj:{ parca:'servo', bolt:'M6', cx:45, cy:35, F:60, s:44, tf:8, L:16 }, brief:t('g.robotkol.b') }),
+  valf:() => ({ tk:'g.valf', title:t('g.valf.t'), target:720, acik:true, mat:'al', w:120, d:80, h:20,
+    holes:[[-22, -22], [22, -22], [22, 22], [-22, 22]].map(([u, v]) => ({ x:60 + u, y:40 + v, d:5, tap:'M6', tapLen:8.5 })).concat([50, 60, 70].map(x => ({ x, y:40, d:5 }))),
+    montaj:{ parca:'valf', bolt:'M6', cx:60, cy:40, F:60, s:44, tf:8, L:16 }, brief:t('g.valf.b') }),
   fiting:() => ({ tk:'g.fiting', title:t('g.fiting.t'), target:900, acik:true, mat:'al', w:120, d:60, h:16, tolK:0.5, fai:true,
     face:{ depth:1, tol:0.05 }, pockets:[{ x0:30, x1:90, y0:15, y1:45, depth:8, r:5 }],
     holes:[{ x:15, y:30, d:8.5 }, { x:105, y:30, d:8.5 }, { x:10, y:10, d:5 }, { x:110, y:10, d:5 }, { x:110, y:50, d:5 }, { x:10, y:50, d:5 }],
     brief:t('g.fiting.b') }),
 };
-JOBS.push(GERCEK.mastar(), GERCEK.pralin(), GERCEK.fiting(), GERCEK.sogutucu(), GERCEK.kaburga());
+JOBS.push(GERCEK.mastar(), GERCEK.pralin(), GERCEK.fiting(), GERCEK.sogutucu(), GERCEK.kaburga(), GERCEK.robotkol(), GERCEK.valf());
 // dil: anahtarlı işlerin (tk) başlığı ve tarifi o anki dilden; dil değişince liste ve seçili iş yeniden çizilir
 function isMetni() { for (const J of JOBS) if (J.tk) { J.title = t(J.tk + '.t'); if (t(J.tk + '.b') !== J.tk + '.b') J.brief = t(J.tk + '.b', J.agirlik); } }
 isMetni();

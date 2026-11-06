@@ -1,5 +1,6 @@
 // ── Montaj (MT): işlenmiş plaka atölyedeki çalışma tezgâhına alınır, müşterinin parçası vidalanır; alyan ve tork anahtarı fare tekerleğiyle
 import { $, C, CUT, H, NX, NY, PD, PH, PW, S, TOOLS, app, clamp, log } from './00-temel.js';
+import { t } from './00-dil.js';
 import { ac, beep, initAudio, metalRing, noiseHit, thud } from './01-ses.js';
 import { FLOOR_Y, M, camera, canvas, controls, scene } from './02-sahne-tezgah.js';
 import { flushMesh, markDirty, stockBase, tapThread, threads, topGeo, topMat, topMesh, walls } from './05-baglama.js';
@@ -61,6 +62,44 @@ const MT = (() => {
     g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
     return g;
   }
+  // müşteri parçaları: kare flanş (4 cıvata) + gövde. servo: çıkış diski (horn) başarıda döner; valf: hava testi
+  function flans(mat) {
+    const g = new THREE.Group(), a = m.s / 2, F = m.F, rc = 6, sh = new THREE.Shape();
+    sh.moveTo(-F / 2 + rc, -F / 2); sh.lineTo(F / 2 - rc, -F / 2); sh.absarc(F / 2 - rc, -F / 2 + rc, rc, -Math.PI / 2, 0);
+    sh.lineTo(F / 2, F / 2 - rc); sh.absarc(F / 2 - rc, F / 2 - rc, rc, 0, Math.PI / 2);
+    sh.lineTo(-F / 2 + rc, F / 2); sh.absarc(-F / 2 + rc, F / 2 - rc, rc, Math.PI / 2, Math.PI);
+    sh.lineTo(-F / 2, -F / 2 + rc); sh.absarc(-F / 2 + rc, -F / 2 + rc, rc, Math.PI, Math.PI * 1.5);
+    for (const [u, v] of [[-a, -a], [a, -a], [a, a], [-a, a]]) { const ph = new THREE.Path(); ph.absarc(u, v, D.clr / 2, 0, Math.PI * 2, true); sh.holes.push(ph); }
+    const fl = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth:m.tf - 1.2, bevelEnabled:true, bevelThickness:0.6, bevelSize:0.6, bevelSegments:2, curveSegments:24 }), mat);
+    fl.geometry.translate(0, 0, 0.6); fl.rotation.x = -Math.PI / 2; g.add(fl);
+    return g;
+  }
+  const kut = (g, w, h, d, mat, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); o.position.set(x, y, z); g.add(o); return o; };
+  const sil = (g, r, h, mat, x, y, z, seg = 28) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), mat); o.position.set(x, y, z); g.add(o); return o; };
+  function servo() {                                              // siyah gövdeli servo, alüminyum flanş, üstte çıkış mili ve beyaz disk (horn)
+    const g = flans(mats.dark), y0 = m.tf;
+    kut(g, m.F * 0.62, 46, m.F * 0.5, mats.plast, 0, y0 + 23, 0);
+    kut(g, m.F * 0.66, 4, m.F * 0.54, mats.black, 0, y0 + 2, 0);
+    const horn = new THREE.Group(); horn.position.set(m.F * 0.12, y0 + 50, 0); g.add(horn);
+    sil(horn, 5, 8, mats.steel, 0, 0, 0, 20);
+    sil(horn, 13, 3, mats.paint, 0, 5, 0, 32); kut(horn, 46, 3, 8, mats.paint, 14, 5, 0);
+    const kol = new THREE.Group(); kol.position.set(0, 7, 0); horn.add(kol); kut(kol, 140, 6, 22, mats.steel, 70, 3, 0);   // robot kolunun bir sonraki parçası
+    const kab = new THREE.Mesh(new THREE.TorusGeometry(24, 2.2, 8, 24, Math.PI * 0.7), mats.plast); kab.position.set(-m.F * 0.3, y0 + 26, 0); kab.rotation.z = Math.PI * 0.4; g.add(kab);
+    g.userData.horn = horn;
+    g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
+    return g;
+  }
+  function valf() {                                               // alüminyum blok, üstte bobin, yanlarda hızlı bağlantı rakorları
+    const g = flans(mats.steel), y0 = m.tf;
+    kut(g, m.F * 0.8, 38, m.F * 0.8, mats.steel, 0, y0 + 19, 0);
+    sil(g, 16, 40, mats.plast, 0, y0 + 58, 0, 28); kut(g, 34, 10, 20, mats.plast, 0, y0 + 82, 0);
+    for (const s of [-1, 1]) { const r = sil(g, 6, 14, mats.paint, s * (m.F * 0.4 + 7), y0 + 20, 0, 16); r.rotation.z = Math.PI / 2; }
+    sil(g, 5, 10, mats.glass, 0, y0 + 90, 0, 16);
+    g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
+    return g;
+  }
+  const PARCA = { kule:() => tower(), servo, valf };
+  const pt = () => PARCA[m.parca] ? m.parca : 'kule';
   const hexR = () => D.d * 0.83 / Math.sqrt(3);                  // imbus anahtar ağzı (M6: 5, M10: 8 mm) altıgenin köşe yarıçapı
   function bolt() {                                               // DIN 912 imbus: tırtıllı silindir baş, altıgen yuva, haddelenmiş diş, pahlı uç
     const g = new THREE.Group(), d = D.d, hd = D.head, R = hd / 2 - 0.35, N = 72;
@@ -181,11 +220,11 @@ const MT = (() => {
     const oy = found.length ? found.reduce((s, q) => s + q.y - J.holes[meas.indexOf(q)].y, 0) / found.length : 0;
     const clr = (D.clr - D.d) / 2;
     st = { placed:false, drop:0, ox, oy, order:[], early:0, cost:0, coil:0, press:false, finish:0, toolT:0, lastWheel:0,
-      bolts:J.holes.map((h, i) => {
+      bolts:J.holes.map((h, i) => [h, i]).filter(([h]) => h.tap).map(([h, i]) => {
         const q = meas[i], res = q.none ? 99 : Math.hypot(q.x - (h.x + ox), q.y - (h.y + oy));
         return { i, q, res, zor:res > clr && res <= clr + 0.25, st:'bos', tq:0, z:0, ang:0, coil:false, mesh:null, hit:null, lb:null };
       }) };
-    st.tw = tower(); st.tw.position.copy(P3(m.cx + ox, m.cy + oy, PH + 70)); grp.add(st.tw);
+    st.tw = PARCA[pt()](); st.tw.position.copy(P3(m.cx + ox, m.cy + oy, PH + 70)); grp.add(st.tw);
     st.al = allen(); grp.add(st.al); st.wr = wrench(); grp.add(st.wr);
     for (const b of st.bolts) {
       const h = J.holes[b.i];
@@ -198,7 +237,7 @@ const MT = (() => {
   function place() {
     if (st.placed) return;
     st.placed = true; st.drop = 1; thud(120, 0.15, 0.2);
-    hint('Kule yerinde. Cıvata takmak için deliğe tıklayın.');
+    hint(t('mt.yerinde', { ad:t(`mt.${pt()}.ad`) }));
     panel();
   }
   // cıvata deliğin ağzına konur; elle ne kadar inebileceği diş ve kaçıklığa bağlı (goal)
@@ -289,6 +328,7 @@ const MT = (() => {
     if (st.finish) {                                               // sensör ışığı yandı: kısa bekleyip rapora geç
       st.finish -= dt;
       mats.led.emissive.setRGB(0.1, 1.6 + Math.sin(performance.now() / 90) * 0.4, 0.3);
+      if (st.tw.userData.horn) st.tw.userData.horn.rotation.y += dt * 2.4 * Math.sin(performance.now() / 500);   // servo: kol ileri geri döner
       if (st.finish <= 0) { st.finish = 0; close(true); }
     }
   }
@@ -313,7 +353,7 @@ const MT = (() => {
   function panel() {
     const B = st.bolts, all = B.every(b => b.st === 'el' && b.tq >= tq0());
     $('mtSteps').innerHTML = [
-      [st.placed, 'Kuleyi plakaya yerleştirin'],
+      [st.placed, t('mt.adim1', { ad:t(`mt.${pt()}.ad`) })],
       [B.every(b => b.st === 'el'), 'Deliğe tıklayıp cıvatayı koyun, sonra üstünde FARE TEKERLEĞİYLE alyanla vidalayın'],
       [all, `Tork anahtarı: tekerleği yavaş çevirin, kadrandaki ibre yeşilde (${tq0()}–${tq1()} Nm) durun. Çapraz sıra 1-3-2-4`],
     ].map(([ok, t]) => `<li class="${ok ? 'ok' : ''}">${t}</li>`).join('');
@@ -340,7 +380,7 @@ const MT = (() => {
     const b = pickBolt(e);
     if (!b) return;                                                // boşluk: kamera döner
     e.preventDefault(); e.stopImmediatePropagation(); controls.enabled = false; st.press = true;
-    if (!st.placed) { hint('Önce kuleyi plakaya yerleştirin.'); return; }
+    if (!st.placed) { hint(t('mt.once')); return; }
     if (b.st === 'bos') { insert(b); return; }
     if (b.st === 'agiz' && b.goal > 0 && b.z <= b.goal + 1e-6) { remove(b); hint(`Cıvata ${b.i + 1} çıkarıldı.`); panel(); return; }
     if (b.st === 'agiz' || b.st === 'el') { hint('Sıkmak için fare tekerleğini çevirin: aşağı sıkar, yukarı gevşetir.'); flashTip(); }
@@ -420,11 +460,18 @@ const MT = (() => {
     add('Montaj', 'Flanş oturması', '≤ 0.05', gap.toFixed(2) + (o.length ? ` (sıra ${o.map(i => i + 1).join('-')})` : ''), gap <= 0.05 && o.length === 4, gap <= 0.05 ? 1 : Math.max(0, 1 - (gap - 0.05) / 0.1), 2);
     return out;
   }
+  // hava testi sesi: kaçak varsa tiz ıslık, yoksa kısa basınç tıslaması
+  function hava(kacak) {
+    if (!ac) return; const t0 = ac.currentTime;
+    if (kacak) for (let k = 0; k < 6; k++) noiseHit(t0 + k * 0.25, 'bandpass', 3200 + Math.random() * 600, 18, 0.12, 0.3);
+    else noiseHit(t0, 'highpass', 2500, 0.7, 0.08, 0.6);
+  }
   function finish() {
     if (st.finish || cam) return;
     const extra = result(), ok = extra.every(i => i.ok) && items0.every(i => i.ok);
     st.extra = extra;
-    if (ok) { st.finish = 1.6; beep(1200, 0.1); setTimeout(() => beep(1600, 0.14), 140); hint('Sensör yandı: konveyör çalışıyor!'); }
+    if (ok) { st.finish = pt() === 'kule' ? 1.6 : 2.6; beep(1200, 0.1); setTimeout(() => beep(1600, 0.14), 140); hint(t(`mt.${pt()}.ok`)); if (pt() === 'valf') hava(false); }
+    else if (pt() === 'valf' && st.bolts.some(b => b.st === 'el')) { hava(true); hint(t('mt.valf.kacak')); setTimeout(() => close(true), 1800); }   // kaçak: ıslık, sonra rapor
     else close(true);
   }
 
@@ -461,7 +508,8 @@ const MT = (() => {
     document.body.classList.add('montaj-on'); $('montaj').hidden = false;
     mats.led.emissive.setRGB(0, 0, 0);
     build(); grp.visible = true; partOnMachine(false);
-    $('mtInfo').textContent = `Sensör kulesi · 4×${m.bolt}×${m.L} imbus · ${D.tq[0]}–${D.tq[1]} Nm`;
+    $('mtInfo').textContent = t('mt.info', { ad:t(`mt.${pt()}.ad`), bolt:m.bolt, L:m.L, t0:D.tq[0], t1:D.tq[1] });
+    $('mtPlace').textContent = t(`mt.${pt()}.yerlestir`);
     $('mtGauge').innerHTML = gaugeSVG(); dialV = -1; gauge(0);
     st.back = { p:camera.position.clone(), t:controls.target.clone(), min:controls.minDistance, max:controls.maxDistance, pan:controls.enablePan, pol:controls.maxPolarAngle };
     const c = P3(m.cx - PW / 2, m.cy - PD / 2, 0);              // kulenin tezgâhtaki yeri (grp merkezine göre)
@@ -469,7 +517,7 @@ const MT = (() => {
     fly(new THREE.Vector3(tx + 95, BY + 175, tz + 225), new THREE.Vector3(tx, BY + 45, tz), () => {
       controls.minDistance = 90; controls.maxDistance = 700; controls.enablePan = false; controls.maxPolarAngle = Math.PI * 0.47;
     });
-    hint('Parça çalışma tezgâhında, müşterinin sensör kulesi yanında. "Kuleyi yerleştir" ile plakaya koyun.');
+    hint(t('mt.giris', { ad:t(`mt.${pt()}.ad`), yer:t(`mt.${pt()}.yerlestir`) }));
     last = 0; cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
   }
   // deliver: true montaj sonucunu teslim eder; false tezgâha döner (iş sürer, delik/diş düzeltilebilir)

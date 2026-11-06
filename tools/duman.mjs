@@ -404,6 +404,38 @@ const SENARYO = {
     for (const [a, b] of bek) if (a !== b) throw new Error(`dil: "${a}" beklenen "${b}" (en ${JSON.stringify(en)})`);
     return `tr → en → de → tr: başlık, üst çubuk, panel, menü, para (${en.para} / ${de.para})`;
   },
+  async montaj() {
+    // montajlı gerçek işler: robot kol (servo) ve valf plakası (hava testi); delikler hazır plakayla (jobDemo), cıvatalar doğrudan sıkılmış sayılır
+    const { app } = window.__d, MT = app.MT;
+    const M = await import('/src/js/10-is-emri-muayene.js');
+    app.MENU.kapat(); if (app.CR.on) document.querySelector('#modeSw [data-mode="free"]').click();
+    const bekle = ms => new Promise(r => setTimeout(r, ms)), q = id => document.getElementById(id);
+    const dene = async (ad, bozuk) => {
+      const i = M.JOBS.findIndex(j => j.title === ad); if (i < 0) throw new Error(`${ad} yok`);
+      M.selectJob(i); q('jobDemo').click();                         // başlatır, delip diş çeker
+      const run = window.__d.S.job; if (!run || !run.J.montaj) throw new Error(`${ad}: montajlı iş başlamadı`);
+      let sonuc = null; MT.open(run, [], r => { sonuc = r; });
+      for (let k = 0; k < 40 && !MT.st; k++) await bekle(100);
+      await bekle(4500);                                            // kamera geçişi (test hızında yavaş)
+      const st = MT.st; if (!st) throw new Error(`${ad}: montaj açılmadı`);
+      if (st.bolts.length !== 4) throw new Error(`${ad}: ${st.bolts.length} cıvata (yalnızca 4 dişli delik olmalı)`);
+      q('mtPlace').click();
+      st.bolts.forEach((b, k) => { b.st = bozuk && k === 3 ? 'agiz' : 'el'; b.tq = 9; b.z = 0; }); st.order = bozuk ? [0, 2, 1] : [0, 2, 1, 3];
+      const horn = !!st.tw.userData.horn;
+      for (let k = 0; k < 30 && !q('mtHint').textContent.match(/bağlandı|kaçak|ıslık/); k++) { q('mtDone').click(); await bekle(300); }
+      const ipucu = q('mtHint').textContent;
+      for (let k = 0; k < 80 && !sonuc; k++) await bekle(100);
+      return { horn, ipucu, sonuc };
+    };
+    const r = await dene('Robot kol bağlantı parçası');
+    if (!r.horn) throw new Error('servo modelinde çıkış diski yok');
+    if (!r.ipucu.includes('Servo bağlandı')) throw new Error(`servo başarı mesajı yok: ${r.ipucu}`);
+    const v = await dene('Pnömatik valf taban plakası');
+    if (!v.ipucu.includes('kaçak yok')) throw new Error(`valf hava testi geçmedi: ${v.ipucu}`);
+    const b = await dene('Pnömatik valf taban plakası', true);
+    if (!b.ipucu.includes('ıslık')) throw new Error(`eksik cıvatada kaçak çıkmadı: ${b.ipucu}`);
+    return 'servo bağlandı (kol döner), valf 6 bar kaçaksız, eksik cıvatada port ıslık çaldı';
+  },
   async dukkan() {
     const { app, S, U, son } = window.__d, CR = app.CR;
     document.querySelector('#modeSw [data-mode="career"]').click();

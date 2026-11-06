@@ -578,6 +578,30 @@ const EN = {
   "c:LED Aydınlatma Ltd.": "Bright LED Lighting Ltd.",
   "c:Bilgisayar Toplayıcı Mert": "PC builder Mark",
   "k:elektronik": "electronics",
+  // 21-montaj: parça türleri (kule, servo, valf) ve kapanış sahneleri
+  "mt.kule.ad": "Sensor tower",
+  "mt.servo.ad": "Servo motor",
+  "mt.valf.ad": "Pneumatic valve",
+  "mt.kule.yerlestir": "Place the tower",
+  "mt.servo.yerlestir": "Place the servo",
+  "mt.valf.yerlestir": "Place the valve",
+  "mt.info": "{ad} · 4×{bolt}×{L} socket head · {t0}–{t1} Nm",
+  "mt.giris": "The part is on the workbench next to the customer's part ({ad}). Use \"{yer}\" to put it on the plate.",
+  "mt.kule.ok": "The sensor lit up: the conveyor is running!",
+  "mt.servo.ok": "Servo fitted: the arm is turning!",
+  "mt.valf.ok": "Air test: 6 bar, no leaks. The valve works!",
+  "mt.valf.kacak": "Air test: a port is whistling; the flange is not seated or a bolt is missing!",
+  "g.robotkol.t": "Robot arm link",
+  "g.robotkol.b": "Aluminium link for a hobbyist's robot arm. 4×M6 threads for the servo flange (drill Ø5, tap with T11; 44 square, centre X 45, Y 35; at least 8.5 of thread), a Ø12 axle hole at the other end (X 115, Y 35) and a lightening pocket between them (X 76–98, Y 20–50, 8 deep, R5). On delivery the servo is fitted on the assembly bench: tighten the bolts crosswise to 8–10 Nm; if it seats properly the arm turns.",
+  "g.valf.t": "Pneumatic valve base plate",
+  "g.valf.b": "Valve base plate for an automation line. 4×M6 threads for the valve flange (drill Ø5, tap with T11; 44 square, centre X 60, Y 40; at least 8.5 of thread) and 3 air ports Ø5 right through inside the flange (X 50, 60, 70; Y 40). Plan the order: spot everything first, then drill, tap last, so the tool changes are few. On delivery the valve is fitted and air-tested at 6 bar: if the flange does not seat, a port whistles.",
+  "c:Hobi Robot Atölyesi": "Hobby Robot Workshop",
+  "c:Paketleme Otomasyonu": "Packaging Automation",
+  // 21-montaj: yerleştirme
+  "mt.yerinde": "{ad} in place. Click a hole to put a bolt in.",
+  // 21-montaj: adımlar
+  "mt.adim1": "{ad}: place it on the plate",
+  "mt.once": "Place the part on the plate first.",
   // @MODULLER@
 };
 

@@ -172,6 +172,8 @@ const GERCEK_IS = {
   pralin:{ lv:0, cust:[["Ayten'in Pastanesi", 'pastane'], ['Butik Çikolatacı Leyla', 'dükkân'], ['Otel Pastane Şefi', 'otel']], pay:750 },
   fiting:{ lv:2, cust:[['Gökçe Havacılık', 'havacılık'], ['Anadolu Uçak Bakım', 'havacılık']], pay:2600, sabit:'yok' },
   sogutucu:{ lv:1, cust:[['Akustik Amfi Atölyesi', 'elektronik'], ['LED Aydınlatma Ltd.', 'fabrika'], ['Bilgisayar Toplayıcı Mert', 'elektronik']], pay:1400 },
+  robotkol:{ lv:0, cust:[['Hobi Robot Atölyesi', 'hobi'], ['Üniversite Robot Takımı', 'öğrenci takımı'], ['Robotik Kulübü', 'okul']], pay:1100 },
+  valf:{ lv:1, cust:[['Paketleme Otomasyonu', 'fabrika'], ['Akın Otomasyon', 'fabrika'], ['Konveyör Sistemleri Ltd.', 'fabrika']], pay:1300 },
   kaburga:{ lv:2, cust:[['Gökçe Havacılık', 'havacılık'], ['Anadolu Uçak Bakım', 'havacılık']], pay:3600, sabit:'yok' },
 };
 function genGercekOrder(lv, sira, free) {
