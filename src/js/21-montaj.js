@@ -76,10 +76,11 @@ const MT = (() => {
   }
   const kut = (g, w, h, d, mat, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); o.position.set(x, y, z); g.add(o); return o; };
   const sil = (g, r, h, mat, x, y, z, seg = 28) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), mat); o.position.set(x, y, z); g.add(o); return o; };
+  const ic = () => m.s - D.d * 1.5 - 3;                          // gövde genişliği: cıvata başlarının (Ø1.5d) arasında 1.5 mm boşluk kalsın
   function servo() {                                              // siyah gövdeli servo, alüminyum flanş, üstte çıkış mili ve beyaz disk (horn)
-    const g = flans(mats.dark), y0 = m.tf;
-    kut(g, m.F * 0.62, 46, m.F * 0.5, mats.plast, 0, y0 + 23, 0);
-    kut(g, m.F * 0.66, 4, m.F * 0.54, mats.black, 0, y0 + 2, 0);
+    const g = flans(mats.dark), y0 = m.tf, w = ic();
+    kut(g, w - 2, 46, m.F * 0.5, mats.plast, 0, y0 + 23, 0);
+    kut(g, w, 4, m.F * 0.54, mats.black, 0, y0 + 2, 0);
     const horn = new THREE.Group(); horn.position.set(m.F * 0.12, y0 + 50, 0); g.add(horn);
     sil(horn, 5, 8, mats.steel, 0, 0, 0, 20);
     sil(horn, 13, 3, mats.paint, 0, 5, 0, 32); kut(horn, 46, 3, 8, mats.paint, 14, 5, 0);
@@ -90,10 +91,10 @@ const MT = (() => {
     return g;
   }
   function valf() {                                               // alüminyum blok, üstte bobin, yanlarda hızlı bağlantı rakorları
-    const g = flans(mats.steel), y0 = m.tf;
-    kut(g, m.F * 0.8, 38, m.F * 0.8, mats.steel, 0, y0 + 19, 0);
-    sil(g, 16, 40, mats.plast, 0, y0 + 58, 0, 28); kut(g, 34, 10, 20, mats.plast, 0, y0 + 82, 0);
-    for (const s of [-1, 1]) { const r = sil(g, 6, 14, mats.paint, s * (m.F * 0.4 + 7), y0 + 20, 0, 16); r.rotation.z = Math.PI / 2; }
+    const g = flans(mats.steel), y0 = m.tf, w = ic();
+    kut(g, w, 38, w, mats.steel, 0, y0 + 19, 0);
+    sil(g, Math.min(16, w / 2), 40, mats.plast, 0, y0 + 58, 0, 28); kut(g, 34, 10, 20, mats.plast, 0, y0 + 82, 0);
+    for (const s of [-1, 1]) { const r = sil(g, 6, 14, mats.paint, s * (w / 2 + 7), y0 + 22, 0, 16); r.rotation.z = Math.PI / 2; }
     sil(g, 5, 10, mats.glass, 0, y0 + 90, 0, 16);
     g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
     return g;
